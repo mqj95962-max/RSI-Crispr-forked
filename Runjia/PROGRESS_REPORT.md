@@ -45,11 +45,6 @@ statement rather than a diary. `FINDINGS_LOG.md` is the chronological record and
 - [Appendix A — Every feature set, grouped, with its data source](#appendix-a--every-feature-set-grouped-with-its-data-source)
 - [Appendix B — Papers referred to](#appendix-b--papers-referred-to)
 
-> **A note on the charts.** Three figures are written as Mermaid blocks, which
-> GitHub renders in place. Any viewer that cannot render them shows the source
-> instead — nothing is lost, because **every chart sits next to the table it was
-> drawn from**, and the tables are the record.
-
 ---
 
 ## Part 0 — Why this problem is worth working on
@@ -443,18 +438,6 @@ As ratios against crisprHAL 2 as published:
 | SLICER, as published | **2,360×** | 12× | **152×** | 92× |
 | SLICER, minimum cost | **17,200×** | 87× | **1,330×** | 352× |
 
-Drawn on a log scale, because the measures span four orders of magnitude —
-each block is roughly one power of ten of advantage over crisprHAL 2:
-
-```
-                                 1x      10x    100x    1,000x  10,000x
-  bytes moved             12x    ████████▌
-  wall-clock, 8 threads   92x    ███████████████▌
-  CPU-seconds            152x    ████████████████▊
-  training FLOPs       2,360x    ██████████████████████████▍
-  FLOPs, minimum cost 17,200x    ████████████████████████████████▌
-```
-
 **The spread between 12× and 17,200× is the point.** Quoting one number would be
 a choice of rhetoric, so here is what each measure is good for and which way it
 is biased.
@@ -523,15 +506,6 @@ subsets, published settings at every size, no tuning
 | 20,000 | **0.6904** | 0.6811 | 0.009 |
 | 26,853 (all) | **0.6944** | 0.6877 | 0.007 |
 
-```mermaid
-xychart-beta
-    title "Spearman against training size — upper line SLICER, lower crisprHAL 2"
-    x-axis "training guides" [4000, 8000, 13880, 20000, 26853]
-    y-axis "Spearman rho" 0.48 --> 0.72
-    line [0.6374, 0.6672, 0.6844, 0.6904, 0.6944]
-    line [0.5072, 0.6207, 0.6632, 0.6811, 0.6877]
-```
-
 | training guides needed to reach | SLICER | crisprHAL 2 |
 |---|---:|---:|
 | 90% of its own best | **4,000** | 8,000 |
@@ -539,11 +513,24 @@ xychart-beta
 | 99% of its own best | 20,000 | 20,000 |
 
 **SLICER needs about half the data to get most of the way.** 4,000 guides against
-8,000 for 90% of each model's own ceiling, and 8,000 against 13,880 for 95%. The
-gap between the two curves collapses monotonically — 0.130 → 0.047 → 0.021 →
-0.009 → 0.007 — which is the signature of a **sample-complexity** difference
-rather than a ceiling difference: they converge, and what separates them is how
-much evidence each needs to get there.
+8,000 for 90% of each model's own ceiling, and 8,000 against 13,880 for 95%.
+
+**The right way to read the two columns is as two curves approaching their own
+asymptotes at different rates**, not as a gap that happens to shrink. Both are
+saturating — our last 6,853 guides buy +0.004 and theirs buy +0.007 — so neither
+is data-starved at full size, and the asymptotes are close together (0.694 and
+0.688). What differs is the *rate*: by 4,000 guides SLICER has covered **92% of
+the distance from its 4,000-guide score to its ceiling already**, while
+crisprHAL 2 has covered 73% and needs twice the data to reach the same fraction
+of its own limit. The gap between the columns — 0.130 → 0.047 → 0.021 → 0.009 →
+0.007 — is the *difference between two saturating curves*, which is large early
+and vanishes late by construction.
+
+That distinction matters for what can be claimed. **It is not evidence that the
+tree pipeline has a higher ceiling** — the ceilings are within 0.007, which is
+inside the fold spread. It is evidence that it **gets there on less evidence**,
+which is a property of inductive bias and the only one of our cost measures that
+no hardware change can touch.
 
 By 20,000 guides both are within 1% of their own best, so **the difference is a
 small-data property, not a general one.** State it that way: on a screen of this
@@ -746,14 +733,6 @@ the same 30 epochs, with only the amount of sequence changing
 | ±500 nt | 1,023 nt | 0.5214 | 372 s |
 | **±1,000 nt** | **2,023 nt** | **0.5190** | 686 s |
 
-```mermaid
-xychart-beta
-    title "CNN accuracy against sequence given (flat from 100 nt, then declining)"
-    x-axis "flanking nt each side" [0, 100, 250, 500, 1000]
-    y-axis "Spearman rho" 0.49 --> 0.53
-    line [0.4980, 0.5203, 0.5247, 0.5214, 0.5190]
-```
-
 **The curve is flat from ±100 and then declines.** Handing the network the exact
 DNA family A summarises buys it nothing — 0.5190 at ±1,000 against 0.5203 at
 ±100, inside one fold standard deviation (0.011) — while costing 8× the compute.
@@ -780,14 +759,8 @@ Splitting family A by distance, the ±10 nt of immediate context is worth
 **+0.049** and the 50–1,000 nt windows **+0.026**, so a third of the gain lives
 beyond what a 378 nt input can see at all.
 
-```mermaid
-xychart-beta
-    title "Where the flank gain lives (delta rho over baseline)"
-    x-axis ["upstream only", "downstream only", "nearest 10 nt", "windows 50-1000", "both sides, all"]
-    y-axis "delta rho" 0 --> 0.08
-    bar [0.019, 0.065, 0.049, 0.026, 0.075]
-``` **Using the right instrument for the
-shape of the signal is the whole of SLICER's advantage.**
+**Using the right instrument for the shape of the signal is the whole of
+SLICER's advantage.**
 
 #### Two features built to explain the asymmetry, and they do not
 
