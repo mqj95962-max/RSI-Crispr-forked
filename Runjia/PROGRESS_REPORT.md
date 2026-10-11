@@ -395,57 +395,97 @@ those terms rather than as a win.
 
 ### What they do differ in: cost
 
-Measured on one machine, CPU to CPU, threads pinned, five repetitions:
+**Every measure, because no single one is architecture-independent and each is
+biased a different way.** One training fold on the curated 33,567 guides,
+eight threads (`src/sgrna/cost.py`, `results/cost_panel.csv`):
 
-| | SLICER | crisprHAL 2 |
-|---|---|---|
-| one fold | **17.1 s** (IQR 0.7) | ~21 min |
-| five folds | **1.4 min** | **105 min** |
-| peak memory, one fold | 3.33 GB (3.23–3.68) | 4.55 GB |
-| features | named quantities you can look up | learned, inside a network |
+| | crisprHAL 2 | crisprHAL 2, tuned | **SLICER** | **SLICER, minimum cost** | SLICER, ridge |
+|---|---:|---:|---:|---:|---:|
+| **Spearman ρ** | 0.6971 | 0.7040 | **0.7082** | 0.6814 | 0.6272 |
+| **training FLOPs** | 4.21 × 10¹⁴ | 1.25 × 10¹⁵ | **1.79 × 10¹¹** | **2.45 × 10¹⁰** | — |
+| **bytes moved** | 8.5 × 10¹² | 2.2 × 10¹³ | 7.1 × 10¹¹ | 9.8 × 10¹⁰ | — |
+| **arithmetic intensity** | 49 FLOP/byte | 56 | **0.25** | **0.25** | — |
+| **CPU-seconds** | ~10,000 | ~32,000 | **65.8** | **7.5** | **3.4** |
+| wall-clock, 8 threads | 21 min | 69 min | 13.8 s | 3.6 s | 2.9 s |
+| CPU-per-wall ratio | 7.9 | 7.7 | 4.8 | 2.1 | 1.2 |
+| peak memory | 4.55 GB | 4.6 GB | 3.76 GB | 2.83 GB | 3.09 GB |
+| rented CPU cost per fold | £0.11 | £0.36 | **£0.0007** | **£0.0001** | — |
 
-**About 74× less time for equal accuracy, at broadly similar memory.** The saving
-is time, not footprint — SLICER holds a 33,567 × 6,517 table in memory and is not
-light on RAM.
+As ratios against crisprHAL 2 as published:
 
-> **Where the footprint actually comes from — measured, and one lever worth
-> having** (`src/sgrna/bench.py`, `results/memory_comparison*.csv`). Peak RSS,
-> threads pinned, every repetition in a fresh process, three repetitions each,
-> because a single shot is not reliable here:
->
-> | configuration | columns | peak (median, range) | selection | ρ |
-> |---|---:|---:|---:|---:|
-> | imports only — the floor | — | 0.17 GB | — | — |
-> | all columns + XGBoost (current) | 6,517 | **3.33** (3.23–3.68) | 12.0 s | 0.6939 |
-> | all columns + LightGBM | 6,517 | 3.05 (3.05–3.05) | 2.4 s | 0.6945 |
-> | reduced columns, subset after loading | 712 | 2.83 | 1.4 s | 0.6823 |
-> | **reduced columns, stored reduced** | 712 | **0.65** | 1.4 s | 0.6823 |
->
-> **The model is not the lever.** The 0.3 GB between the two selectors is the
-> same size as XGBoost's own run-to-run spread, so the two are indistinguishable
-> on memory; what LightGBM buys is 5× on selection time, which is a separate
-> argument (Part 9).
->
-> **Subsetting columns after loading is not the lever either** — 14%, because
-> peak RSS is already set by the time the subset is taken. **Storing the reduced
-> matrix is**: reading a 712-column store instead of a 6,517-column one is a
-> **5× reduction, 3.33 GB → 0.65 GB**, for −0.0116 ρ, which is the same cost the
-> reduced representation shows in Part 4. Not adopted as the default, because the
-> full-matrix form is what the reproduction check above anchors to; available if
-> footprint ever becomes the binding constraint.
->
-> **Protocol, because it decides the answer:** peak memory must be measured one
+| | FLOPs | bytes | CPU-s | wall |
+|---|---:|---:|---:|---:|
+| SLICER, as published | **2,360×** | 12× | **152×** | 92× |
+| SLICER, minimum cost | **17,200×** | 87× | **1,330×** | 352× |
+
+**The spread between 12× and 17,200× is the point.** Quoting one number would be
+a choice of rhetoric, so here is what each measure is good for and which way it
+is biased.
+
+**FLOPs — hardware-independent, but it flatters us badly.** Arithmetic intensity
+is **0.25 FLOP/byte for our histogram construction and 49 for their
+convolutions**, against the ~10–30 a modern CPU needs to be compute-bound.
+Their work is compute-bound; **ours is memory-bandwidth-bound.** Counting
+arithmetic therefore captures nearly all of their cost and about a quarter of
+ours, which makes 2,360× an **upper bound** on the true advantage. The 12× on
+bytes moved is the matching lower bound — too low, because a streaming scan with
+no reuse is the cheapest kind of byte to move.
+
+**CPU-seconds — the number to lead with.** It transfers to another machine, it is
+what a cloud bill is computed from, and at 152× it sits between the two analytic
+bounds, which is what you would expect of a measure that captures both. Also note
+the **CPU-per-wall ratios**: 7.9 for crisprHAL against 4.8 for us, so *they*
+parallelise better and our wall-clock advantage (92×) understates our
+CPU-seconds advantage (152×). That cuts against the usual direction of this
+argument and should be said.
+
+**Wall-clock — the most quoted and the least portable.** It depends on core
+count, thread affinity and whether the machine swaps; this project has already
+had to retract one wall-clock figure for exactly that reason.
+
+**Peak memory — a constraint, not a cost.** It answers "will this run on my
+laptop", which is binary and cliff-edged, and it barely separates the models
+(1.2×) because it is set by *loading the matrix* rather than by the model. The
+one lever that works is storing fewer columns: Part 4 measures 3.33 → **0.65 GB**
+on a reduced store, a 5× reduction, while subsetting after loading saves only
+14%.
+
+> **Protocol, because it decides the answer.** Peak memory must be measured one
 > configuration per process, repeated. `ru_maxrss` is a high-water mark that
-> never falls, so two arms sharing a process share a number; and run-to-run
-> spread for one arm here is ~0.3 GB, wider than most differences worth
-> reporting.
+> never falls, so two arms sharing a process share a number — an earlier version
+> of this table reported 4.03 GB for both selectors for exactly that reason — and
+> run-to-run spread for a single arm here is ~0.3 GB, wider than most differences
+> worth reporting. The same applies to CPU-seconds: `bench.py` and `cost.py` both
+> fork a fresh process per repetition.
 
-Two caveats. **crisprHAL 2 as published is GPU-trained**, so this shows their
-architecture needs ~74× more *CPU* time, not that a laptop beats a GPU. And
-**most of our 17 s is not the model** — 14 s is a feature-selection step whose
-only output is a ranking. Swapping its XGBoost for LightGBM makes the fold 6.6 s
-(≈190×) with accuracy indistinguishable (+0.0008), but it has not been adopted,
-because every number here was produced with the current selector.
+**Rented cost — the decision a team actually makes.** Pence against tens of
+pence per fold, but it tracks October 2026 on-demand rates and should be
+recomputed rather than cited.
+
+**Energy (joules) would be the physically honest total** and we have not measured
+it: `powermetrics` needs elevated privileges on this machine. CPU-seconds is the
+available proxy and is roughly proportional at fixed hardware.
+
+**And the only genuinely architecture-independent measure is sample complexity**
+— how many labelled guides each method needs to reach a given accuracy. It is
+architecture-free because it says nothing about how the computation is done. Ours
+is measured (Part 10: four times the data buys +0.008 ρ, flat past 20,000
+guides); crisprHAL 2's is not, and getting it would mean retraining them on
+subsets. **That is the fair fight neither of us has run**, and it is worth one
+line in the paper as an acknowledged gap.
+
+**What to put in the abstract:** *equal or better accuracy for about 150× less
+CPU time and three orders of magnitude fewer arithmetic operations, on a laptop
+rather than a GPU* — with the memory-bound caveat in the methods, because the
+FLOP ratio is the one a referee will check.
+
+Two further caveats on the whole table. **crisprHAL 2 as published is
+GPU-trained**, so this measures their architecture's CPU cost, not a laptop
+beating an accelerator; on a GPU their wall-clock would fall by roughly the
+10–30× their arithmetic intensity permits, and ours would barely move. And **the
+minimum-cost column is not the configuration any number elsewhere in this report
+was produced with** — it costs −0.0125 ρ and exists to answer "how light can this
+get", not to replace the baseline.
 
 ---
 
@@ -1721,46 +1761,21 @@ rule explaining why in a way that generalises.
    at ~90% and across kingdoms at 0%. Shown on **matched input**: given the same
    ±1,000 nt, a convolutional network extracts 4.3× less than a windowed mean,
    and the barrier is inductive bias rather than receptive field.
-8. **Equal or better accuracy for three to four orders of magnitude less
-   computation**, measured rather than asserted — and this is the contribution
-   with the clearest practical consequence, so it belongs in the abstract.
-   Against crisprHAL 2 on identical rows, labels and folds, with both models
-   tuned to convergence on their own settings:
+8. **Equal or better accuracy for about 150× less CPU time**, measured across
+   every cost measure we can compute rather than asserted on one — and this is
+   the contribution with the clearest practical consequence, so it belongs in the
+   abstract. Against crisprHAL 2 on identical rows, labels and folds: **152×
+   fewer CPU-seconds, 2,360× fewer training FLOPs, 92× less wall-clock, 1.2× the
+   memory**, and **17,200× fewer FLOPs stripped to a minimum configuration** that
+   costs −0.0125 ρ. A plain ridge regression on the reduced columns costs 3.4
+   CPU-seconds and still beats a convolutional network at any input width.
 
-   | | SLICER | crisprHAL 2 | ratio |
-   |---|---:|---:|---:|
-   | Spearman ρ, tuned | **0.7213** | 0.7040 | +0.0173 |
-   | **training FLOPs** | **1.79 × 10¹¹** | 4.21 × 10¹⁴ | **2,360×** |
-   | **CPU-seconds per fold** | **65.8** | ~10,000 | **~150×** |
-   | wall-clock per fold, 10 cores | 13.8 s | ~21 min | 91× |
-   | peak memory | 3.8 GB | 4.6 GB | 1.2× |
-   | hardware needed | a laptop | written for a GPU | — |
+   The full panel, the direction each measure is biased, and the arithmetic-
+   intensity finding that makes the FLOP ratio an upper bound rather than a
+   headline, are in Part 3. The short version: **their work is compute-bound at
+   49 FLOP/byte and ours is memory-bound at 0.25**, so counting arithmetic
+   measures nearly all of their cost and a quarter of ours.
 
-   And **stripped to its minimum the same pipeline costs 7.5 CPU-seconds and
-   2.45 × 10¹⁰ FLOPs** — 17,200× fewer than crisprHAL — for −0.0125 ρ, by
-   dropping the feature-selection pass and training on the reduced column set.
-   A plain ridge regression on those columns costs **3.4 CPU-seconds** and still
-   reaches ρ 0.627, which is more than the convolutional network manages at any
-   input width.
-
-   Four honesty notes that must travel with those numbers. The comparison is
-   **CPU-to-CPU** and crisprHAL 2 as published is GPU-trained, so this measures
-   their architecture's CPU cost, not a laptop beating a GPU. **FLOPs flatter us
-   and wall-clock flatters them** — the ratio is 2,360× on arithmetic and 91× on
-   a ten-core wall clock, because our CPU-to-wall ratio is 4.8, so most of the
-   apparent speed is parallelism rather than less work. Their *tuned*
-   configuration is 3× more expensive again (1.25 × 10¹⁵ FLOPs), so the accuracy
-   they gain from tuning widens the cost gap while narrowing the accuracy one.
-
-   And **no single number is architecture-independent, FLOPs least of all for
-   this particular pair.** Arithmetic intensity — FLOPs per byte moved — is
-   **0.25 for our histogram construction and 64 for their convolutions**, against
-   the ~10–30 a modern CPU needs to be compute-bound. So their work is
-   compute-bound and ours is **memory-bandwidth-bound**: counting arithmetic
-   measures almost all of their cost and only a quarter of ours. The 2,360×
-   is therefore an upper bound on the true advantage, and the defensible practice
-   is to quote a panel — FLOPs, CPU-seconds on named hardware, bytes moved, and
-   peak memory — rather than to pick the flattering one.
 9. **Nine metrics, one ordering.** SLICER leads crisprHAL 2 on Spearman,
    Kendall's τ, Pearson, R², calibration slope, top-decile precision, NDCG@10,
    pick-percentile and within-gene pick-percentile — tuned and untuned alike. The

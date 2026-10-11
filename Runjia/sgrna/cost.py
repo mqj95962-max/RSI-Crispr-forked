@@ -247,6 +247,86 @@ def flops_slicer(n_train: int = 26853, n_cols: int = 6517, n_trees: int = 400,
                      f"depth {depth}, ~1 add per (row, col, level)")
 
 
+def bytes_crisprhal(n_train: int = 26853, epochs: int = 48, length: int = 378,
+                    filters: int = 128, kernel: int = 3, gru: int = 128) -> int:
+    """Bytes moved for one training run: activations in and out, plus weights.
+
+    Counted per layer as (input activations + output activations + weights) x 4,
+    which is what a cache-naive implementation would touch; a fused kernel moves
+    less. The point of the number is the *ratio* to FLOPs, so a consistent
+    convention matters more than the absolute figure.
+    """
+    b = 0
+    L, c_in = length, 4
+    for _ in range(4):
+        b += (L * c_in + L * filters + kernel * c_in * filters) * 4
+        c_in = filters
+        L //= 2
+    L_rnn = length // 2
+    b += (L_rnn * filters + L_rnn * 2 * gru + 3 * (filters + gru) * gru * 2) * 4
+    return 3 * b * n_train * epochs
+
+
+def bytes_slicer(n_train: int = 26853, n_cols: int = 6517, n_trees: int = 400,
+                 depth: int = 4, colsample: float = 0.8,
+                 n_select_trees: int = 300, select_cols: int | None = None,
+                 n_final_cols: int = 300) -> int:
+    """Bytes moved: one float32 read per (row, candidate column, tree level).
+
+    Histogram construction is a streaming scan with almost no reuse -- each
+    value is read, binned and discarded -- which is why this pipeline is
+    bandwidth-bound rather than compute-bound.
+    """
+    select_cols = n_cols if select_cols is None else select_cols
+    reads = (n_select_trees * depth * n_train * select_cols * colsample
+             + n_trees * depth * n_train * n_final_cols * colsample)
+    return int(4 * reads + 4 * n_train * n_cols)
+
+
+# Cloud rates, October 2026, on-demand, for the cheapest instance that fits.
+# Quoted so the arithmetic is checkable, not because they are stable.
+RATE_CPU_CORE_HOUR = 0.04      # GBP, general-purpose vCPU
+RATE_GPU_HOUR = 0.45           # GBP, one T4/L4-class accelerator
+
+
+def panel(verbose: bool = True) -> pd.DataFrame:
+    """Every cost measure this project can compute, with its bias stated."""
+    rows = []
+    for label, f, byt, cpu_s, wall_s, cores, gb in (
+        ("crisprHAL 2, published", flops_crisprhal()["train_flops"],
+         bytes_crisprhal(), 10000.0, 1266.0, 8, 4.55),
+        ("crisprHAL 2, tuned",
+         flops_crisprhal(epochs=64, filters=192, gru=192,
+                         dense=(64, 64))["train_flops"],
+         bytes_crisprhal(epochs=64, filters=192, gru=192), 32000.0, 4148.0, 8, 4.6),
+        ("SLICER, as published", flops_slicer()["train_flops"],
+         bytes_slicer(), 65.8, 13.8, 8, 3.76),
+        ("SLICER, minimum cost", flops_slicer(
+            n_cols=712, select_cols=0, n_select_trees=0,
+            n_final_cols=712)["train_flops"],
+         bytes_slicer(n_cols=712, select_cols=0, n_select_trees=0,
+                      n_final_cols=712), 7.5, 3.6, 8, 2.83),
+        ("SLICER, ridge on reduced columns", np.nan, np.nan, 3.4, 2.9, 8, 3.09),
+    ):
+        rows.append(dict(
+            model=label, train_flops=f, bytes_moved=byt,
+            flops_per_byte=(f / byt if f == f and byt == byt else np.nan),
+            cpu_seconds=cpu_s, wall_seconds=wall_s, peak_gb=gb,
+            cpu_per_wall=round(cpu_s / wall_s, 2),
+            gbp_per_fold_cpu=round(cpu_s / 3600 * RATE_CPU_CORE_HOUR, 4),
+        ))
+    df = pd.DataFrame(rows)
+    base = df.loc[df["model"] == "crisprHAL 2, published"]
+    for col in ("train_flops", "bytes_moved", "cpu_seconds", "wall_seconds"):
+        df[f"ratio_{col}"] = (base[col].iloc[0] / df[col]).round(1)
+    df.to_csv(config.RESULTS / "cost_panel.csv", index=False)
+    if verbose:
+        show = ["model", "train_flops", "bytes_moved", "flops_per_byte",
+                "cpu_seconds", "wall_seconds", "peak_gb", "cpu_per_wall"]
+        print(df[show].to_string(index=False))
+    return df
+
+
 def flops(verbose: bool = True) -> pd.DataFrame:
     rows = [
         flops_crisprhal(),
@@ -270,9 +350,14 @@ def flops(verbose: bool = True) -> pd.DataFrame:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--what", choices=["cpu", "flops", "both"], default="both")
+    ap.add_argument("--what", choices=["cpu", "flops", "panel", "both"],
+                    default="both")
     ap.add_argument("--reps", type=int, default=3)
     args = ap.parse_args(argv)
+    if args.what == "panel":
+        print("=== every cost measure, one training fold ===")
+        panel()
+        return 0
     if args.what in ("flops", "both"):
         print("=== analytic FLOPs for one training run ===")
         flops()
