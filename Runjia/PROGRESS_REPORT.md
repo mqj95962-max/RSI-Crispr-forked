@@ -344,6 +344,14 @@ folds. As a check that the harness is faithful rather than flattering, it was
 also run on their own shipped split and scored **0.6940** against their published
 0.695.
 
+> **And on their split, not ours.** Every other number here uses our folds, so
+> the margin could in principle be a property of the split. Running SLICER on
+> **crisprHAL 2's own shipped train/test partition** — the one they designed and
+> published 0.695 for, which we never touched while building anything — gives
+> **ρ 0.6997 on default settings**, against 0.6940 for our rerun of their model
+> on the same split and 0.695 published (`their_split_slicer.csv`). The margin is
+> not a split artefact.
+
 That left one objection, and it was the right one: **neither model was tuned, so
 the margin might only reflect whose defaults suited this data.** Both have now
 been searched, each inside the training folds so no configuration ever sees a
@@ -466,13 +474,49 @@ recomputed rather than cited.
 it: `powermetrics` needs elevated privileges on this machine. CPU-seconds is the
 available proxy and is roughly proportional at fixed hardware.
 
-**And the only genuinely architecture-independent measure is sample complexity**
-— how many labelled guides each method needs to reach a given accuracy. It is
-architecture-free because it says nothing about how the computation is done. Ours
-is measured (Part 10: four times the data buys +0.008 ρ, flat past 20,000
-guides); crisprHAL 2's is not, and getting it would mean retraining them on
-subsets. **That is the fair fight neither of us has run**, and it is worth one
-line in the paper as an acknowledged gap.
+#### Sample complexity — the only architecture-free measure, and now run for both
+
+Every measure above depends on how the computation is organised: FLOPs on the
+architecture, CPU-seconds on the hardware, bytes moved on the access pattern.
+**Sample complexity does not.** It asks how much labelled data a method needs to
+reach a given accuracy, which is a property of its inductive bias and nothing
+else — so it is the one comparison a GPU cannot change.
+
+Both models, **the same fixed test set** (fold 1, 6,714 guides), nested training
+subsets, published settings at every size, no tuning
+(`src/sgrna/sample_complexity.py`, `results/sample_complexity.csv`):
+
+| training guides | **SLICER** | **crisprHAL 2** | gap |
+|---:|---:|---:|---:|
+| 4,000 | **0.6374** | 0.5072 | **0.130** |
+| 8,000 | **0.6672** | 0.6207 | 0.047 |
+| 13,880 | **0.6844** | 0.6632 | 0.021 |
+| 20,000 | **0.6904** | 0.6811 | 0.009 |
+| 26,853 (all) | **0.6944** | 0.6877 | 0.007 |
+
+| training guides needed to reach | SLICER | crisprHAL 2 |
+|---|---:|---:|
+| 90% of its own best | **4,000** | 8,000 |
+| 95% of its own best | **8,000** | 13,880 |
+| 99% of its own best | 20,000 | 20,000 |
+
+**SLICER needs about half the data to get most of the way.** 4,000 guides against
+8,000 for 90% of each model's own ceiling, and 8,000 against 13,880 for 95%. The
+gap between the two curves collapses monotonically — 0.130 → 0.047 → 0.021 →
+0.009 → 0.007 — which is the signature of a **sample-complexity** difference
+rather than a ceiling difference: they converge, and what separates them is how
+much evidence each needs to get there.
+
+By 20,000 guides both are within 1% of their own best, so **the difference is a
+small-data property, not a general one.** State it that way: on a screen of this
+size the two methods end up close, and the tree pipeline gets there sooner. That
+matters for the practical case the paper should make — a new organism or a new
+enzyme starts with a few thousand measured guides, not thirty thousand — and it
+is the one cost advantage that survives any amount of hardware.
+
+The shape also explains the earlier learning-curve result (Part 10): our own
+curve is flat past 20,000 because we were already near our ceiling there, not
+because more data cannot help in general.
 
 **What to put in the abstract:** *equal or better accuracy for about 150× less
 CPU time and three orders of magnitude fewer arithmetic operations, on a laptop
@@ -1776,12 +1820,17 @@ rule explaining why in a way that generalises.
    49 FLOP/byte and ours is memory-bound at 0.25**, so counting arithmetic
    measures nearly all of their cost and a quarter of ours.
 
-9. **Nine metrics, one ordering.** SLICER leads crisprHAL 2 on Spearman,
-   Kendall's τ, Pearson, R², calibration slope, top-decile precision, NDCG@10,
-   pick-percentile and within-gene pick-percentile — tuned and untuned alike. The
-   largest relative gap is **top-decile precision (0.299 against 0.268, +11%)**,
-   where the decision actually lives, against +2.5% on ρ. The most deflationary
-   is NDCG@10, which puts all four arms within 0.009 of each other.
+9. **Nine metrics, and one of them goes the other way.** Tuned, SLICER leads
+   crisprHAL 2 on all nine — Spearman, Kendall's τ, Pearson, R², calibration
+   slope, top-decile precision, NDCG@10, pick-percentile and within-gene
+   pick-percentile. **Untuned it leads on eight: crisprHAL 2 is the better
+   calibrated of the two** (slope 1.049 against our 1.097, so their error from
+   unity is half ours). Tuning reverses it — ours goes to 1.023 and theirs drifts
+   to 1.066 — but the untuned exception should be quoted, not buried, because it
+   is the only measure in the panel that does not favour us and a referee will
+   find it. The largest gap in our favour is **top-decile precision (0.299
+   against 0.268, +11%)**, where the decision actually lives, against +2.5% on ρ;
+   the most deflationary is NDCG@10, which puts all four arms within 0.009.
 10. **The ceiling argument tested rather than assumed**, twice. The two-enzyme
    derivation rests on a false independence assumption — the disagreement between
    WT-SpCas9 and eSpCas9 is predictable at ρ 0.546, so it is enzyme biology, not
