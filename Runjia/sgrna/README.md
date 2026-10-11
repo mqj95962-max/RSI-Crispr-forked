@@ -37,14 +37,16 @@ parameter table that belongs with the code. In the working folder it lives at
 | `genome.py`, `io_utils.py`, `qct.py` | genome access, caching, the recovered quantum tables |
 | `decode_v_columns.py`, `featurise.py`, `expand.py` | the decoding work — regenerate 6,169 of the 6,232 published columns from a 20-mer |
 | `build_guide_index.py`, `build_features.py`, `build_matrix.py` | locate guides, build feature families, assemble the matrix |
-| `features/` | the nine feature families, one module each (`a_flank` is the one that worked) |
+| `features/` | the ten feature families, one module each — `a_flank` is the one that worked, `j_periodicity` the most recent null |
 | `run_ablation.py` | the ablation harness: grouped CV, permutation controls, the selector |
 | `evaluate.py`, `importance.py`, `attribution.py` | model comparison and the interpretability measurements |
 | `diagnose.py`, `ceiling2.py` | the redundancy / headroom / ceiling diagnostics |
 | `representation.py` | how few of the 6,232 published columns the model needs (427, it turns out) |
 | `importance_models.py` | seven model families × three importance methods — why SHAP survives a change of model and split gain does not |
 | `asymmetry.py` | is the downstream flank advantage a transcription effect? (no — and half the test the data cannot support) |
-| `bench.py` | peak memory and training cost, one fresh process per repetition |
+| `bench.py`, `cost.py` | peak memory, CPU-seconds, FLOPs and bytes moved — one fresh process per repetition |
+| `panel.py` | the nine-metric comparison: ranking, calibration, NDCG, pick-percentile, within-gene |
+| `sample_complexity.py` | guides needed to reach a given accuracy — the one cost measure independent of architecture |
 | `faithfulness.py` | drop what the ranking points at and refit — and why that is uninterpretable on a redundant matrix |
 | `noshay_replicate.py` | the inherited paper's own iRF model, run here |
 | `crisprhal_tune.py` | a hyperparameter search for crisprHAL 2, so the head-to-head is not tuned-against-untuned |

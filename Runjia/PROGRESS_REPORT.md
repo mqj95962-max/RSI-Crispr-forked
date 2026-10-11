@@ -2,9 +2,21 @@
 
 **S**imple **L**ightweight **I**nterpretable **C**RISPR **E**fficiency **R**anker.
 
-RSI09. State of the project as of 4 October 2026. Each result says what it means
+RSI09. State of the project as of 11 October 2026. Each result says what it means
 before giving the figure; Parts 1 and 2 cover only the points where a reader who
 knows the background still gets *this* dataset wrong.
+
+**In one paragraph.** A 2023 feature set for *E. coli* sgRNA efficiency was
+decoded and made usable for any guide, which revealed that its 6,232 columns are
+an elaborate spelling of 20 letters — 427 of them do the same job. That led to a
+rule for which feature ideas cannot possibly help, correct 8 times out of 8 in
+the direction it is reliable, and to the one large effect this project found: the
+**DNA surrounding the cut site predicts cutting**, worth +0.080 ρ, a smooth
+compositional gradient rather than a motif, and not recoverable by a
+convolutional network given the same 2,000 bases. The resulting model reaches
+**ρ 0.721 against 0.704** for the published state of the art with both tuned, on
+identical rows and on their own split, for **~150× less CPU time** and **about
+half the training data**.
 
 This document states what we currently think and the evidence for it. It
 deliberately contains no record of what we used to think — sixteen claims have
@@ -32,6 +44,11 @@ statement rather than a diary. `FINDINGS_LOG.md` is the chronological record and
 - [Part 12 — Next steps and how to frame the write-up](#part-12--next-steps-and-how-to-frame-the-write-up)
 - [Appendix A — Every feature set, grouped, with its data source](#appendix-a--every-feature-set-grouped-with-its-data-source)
 - [Appendix B — Papers referred to](#appendix-b--papers-referred-to)
+
+> **A note on the charts.** Three figures are written as Mermaid blocks, which
+> GitHub renders in place. Any viewer that cannot render them shows the source
+> instead — nothing is lost, because **every chart sits next to the table it was
+> drawn from**, and the tables are the record.
 
 ---
 
@@ -426,6 +443,18 @@ As ratios against crisprHAL 2 as published:
 | SLICER, as published | **2,360×** | 12× | **152×** | 92× |
 | SLICER, minimum cost | **17,200×** | 87× | **1,330×** | 352× |
 
+Drawn on a log scale, because the measures span four orders of magnitude —
+each block is roughly one power of ten of advantage over crisprHAL 2:
+
+```
+                                 1x      10x    100x    1,000x  10,000x
+  bytes moved             12x    ████████▌
+  wall-clock, 8 threads   92x    ███████████████▌
+  CPU-seconds            152x    ████████████████▊
+  training FLOPs       2,360x    ██████████████████████████▍
+  FLOPs, minimum cost 17,200x    ████████████████████████████████▌
+```
+
 **The spread between 12× and 17,200× is the point.** Quoting one number would be
 a choice of rhetoric, so here is what each measure is good for and which way it
 is biased.
@@ -493,6 +522,15 @@ subsets, published settings at every size, no tuning
 | 13,880 | **0.6844** | 0.6632 | 0.021 |
 | 20,000 | **0.6904** | 0.6811 | 0.009 |
 | 26,853 (all) | **0.6944** | 0.6877 | 0.007 |
+
+```mermaid
+xychart-beta
+    title "Spearman against training size — upper line SLICER, lower crisprHAL 2"
+    x-axis "training guides" [4000, 8000, 13880, 20000, 26853]
+    y-axis "Spearman rho" 0.48 --> 0.72
+    line [0.6374, 0.6672, 0.6844, 0.6904, 0.6944]
+    line [0.5072, 0.6207, 0.6632, 0.6811, 0.6877]
+```
 
 | training guides needed to reach | SLICER | crisprHAL 2 |
 |---|---:|---:|
@@ -708,6 +746,14 @@ the same 30 epochs, with only the amount of sequence changing
 | ±500 nt | 1,023 nt | 0.5214 | 372 s |
 | **±1,000 nt** | **2,023 nt** | **0.5190** | 686 s |
 
+```mermaid
+xychart-beta
+    title "CNN accuracy against sequence given (flat from 100 nt, then declining)"
+    x-axis "flanking nt each side" [0, 100, 250, 500, 1000]
+    y-axis "Spearman rho" 0.49 --> 0.53
+    line [0.4980, 0.5203, 0.5247, 0.5214, 0.5190]
+```
+
 **The curve is flat from ±100 and then declines.** Handing the network the exact
 DNA family A summarises buys it nothing — 0.5190 at ±1,000 against 0.5203 at
 ±100, inside one fold standard deviation (0.011) — while costing 8× the compute.
@@ -732,7 +778,15 @@ The signal itself is a smooth compositional gradient: it **peaks at 250–500
 letters** and has faded by 1,000, which is also where the network peaks (±250).
 Splitting family A by distance, the ±10 nt of immediate context is worth
 **+0.049** and the 50–1,000 nt windows **+0.026**, so a third of the gain lives
-beyond what a 378 nt input can see at all. **Using the right instrument for the
+beyond what a 378 nt input can see at all.
+
+```mermaid
+xychart-beta
+    title "Where the flank gain lives (delta rho over baseline)"
+    x-axis ["upstream only", "downstream only", "nearest 10 nt", "windows 50-1000", "both sides, all"]
+    y-axis "delta rho" 0 --> 0.08
+    bar [0.019, 0.065, 0.049, 0.026, 0.075]
+``` **Using the right instrument for the
 shape of the signal is the whole of SLICER's advantage.**
 
 #### Two features built to explain the asymmetry, and they do not

@@ -1,5 +1,12 @@
 # RSI-Crispr
 
+**Where the project stands:** SLICER, the model in `Runjia/`, reaches Spearman
+**0.721** on the curated 33,567-guide benchmark against **0.704** for crisprHAL 2,
+the published state of the art, with both models tuned to convergence — for about
+**150× less CPU time**, and needing about **half the training data** to get most
+of the way. [`Runjia/PROGRESS_REPORT.md`](Runjia/PROGRESS_REPORT.md) is the full
+write-up.
+
 Predicting sgRNA cutting efficiency (`cut.score`) in *E. coli* CRISPR-Cas9
 screens, extending the quantum chemical tensor (QCT) feature set of
 [Noshay et al. 2023, NAR 51:10147](https://doi.org/10.1093/nar/gkad736).
