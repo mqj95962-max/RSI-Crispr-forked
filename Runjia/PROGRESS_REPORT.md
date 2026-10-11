@@ -137,10 +137,8 @@ because nobody needs a guide's exact efficiency — they have candidates and wan
 the best one. But **ratios of Δρ are not ratios of information.** On the ρ²
 scale, 0.53 → 0.61 is worth +0.09 while 0.82 → 0.90 is worth +0.18: the same Δρ
 is worth twice as much higher up. So when this report says the flank features
-extract more than a CNN does, that compares two measurements taken **at the same
-baseline** and does not generalise to other baselines. (That comparison has a
-second problem — the two models were not given the same sequence — which Part 5
-now states outright.)
+extract 4.3× what a CNN gets from the same DNA, that compares two measurements
+taken **at the same baseline** and does not generalise to other baselines.
 
 ### What ρ buys on the decision a practitioner actually makes
 
@@ -213,8 +211,7 @@ letters. 6,580 columns on the original screen, 6,517 on the curated one. *Why
 named features rather than raw sequence:* Part 5 shows the signal is a smooth
 compositional gradient, and a windowed mean computes a gradient exactly where a
 pattern detector has to approximate it — on the same DNA, hand-computed windows
-are worth about four times what a convolutional network extracted — on a
-comparison where the network was given less sequence, which Part 5 now flags.
+are worth 4.3× what a convolutional network extracts from the same ±1,000 nt.
 
 **2. Imputation — column medians, from the training fold only.** Mundane but
 load-bearing: medians taken over all rows would leak the validation fold's
@@ -612,31 +609,93 @@ On the **same rows and label**, ±100 letters of raw flanking sequence is worth
 **+0.019 ρ** to the network; the hand-computed windowed composition is worth
 **+0.080**.
 
-> ⚠️ **That is not a matched comparison, and an earlier version of this report
-> described it as "a factor of 4.2 from the same DNA". It is not the same DNA.**
-> The network was given **±100 nt**; the hand-computed windows run out to
-> **±1,000 nt** (50 / 250 / 500 / 1,000 each side). Part of the hand features'
-> advantage is therefore simply *more sequence*, not a better instrument on the
-> same sequence. `seqnet.py`'s cached context stops at ±250 nt, so the matched
-> test — the same network given ±1,000 — **has not been run** and would need that
-> cache rebuilt first. Until it is, the honest claim is narrower: see below.
+**That comparison was unmatched, so we matched it.** An earlier version quoted a
+ratio "from the same DNA" when it was not: the network had ±100 nt and the hand
+features summarise out to ±1,000. `guide_index.csv` already stores 1,000 nt each
+side, so the test was run properly — the same architecture, the same five folds,
+the same 30 epochs, with only the amount of sequence changing
+(`results/seqnet_matched.csv`):
 
-What the unmatched result does support is the **length-scale** claim, which does
-not depend on the comparison. Splitting family A by distance: the ±10 nt of
-immediate context is worth **+0.049** and the 50–1,000 nt windows **+0.026**, so
-a third of the gain lives beyond anything a 378 nt input can see at all. The
-effect **peaks at 250–500 letters** and has faded by 1,000.
+| sequence given to the network | input width | ρ | CPU per fold |
+|---:|---:|---:|---:|
+| protospacer + PAM only | 23 nt | 0.4980 | 22 s |
+| ±100 nt | 223 nt | 0.5203 | 84 s |
+| **±250 nt** | 523 nt | **0.5247** | 184 s |
+| ±500 nt | 1,023 nt | 0.5214 | 372 s |
+| **±1,000 nt** | **2,023 nt** | **0.5190** | 686 s |
 
-So the signal is closer to "how GC-rich are the next 500 letters" than to a
-motif — a smooth average that a windowed mean computes exactly. Whether a CNN
-*given the same 1,000 nt* would also find it is an open question, and the
-expected answer is that it could in principle: nothing here shows a
-representational limit, only that hand-computed windows inject the right prior
-for free while a network would have to learn, from 33,567 noisy examples, that
-the correct summary of 500 positions is approximately their unweighted mean.
+**The curve is flat from ±100 and then declines.** Handing the network the exact
+DNA family A summarises buys it nothing — 0.5190 at ±1,000 against 0.5203 at
+±100, inside one fold standard deviation (0.011) — while costing 8× the compute.
 
-The effect **peaks at 250–500 letters** and has faded by 1,000, so there is no
-point looking further out.
+So the claim stands, now on matched input: **the windowed composition extracts
+about 4.3× what a convolutional network gets from the same 2,000 letters.**
+
+**And the matched test tells us which explanation is right.** It is *not* a
+receptive-field limitation: the sequence was there and the network did not use
+it. The context branch mean-pools over all positions, so it *can* represent a
+windowed average — it simply never finds it, from 33,567 examples against a
++0.08 effect, with a noisy label. The barrier is **inductive bias and sample
+efficiency, not representational capacity.** A windowed mean asserts "the right
+summary of these 500 positions is their unweighted average" as a prior; the
+network has to discover that, and at this sample size it does not.
+
+That is a narrower and more useful claim than "CNNs cannot find it". With far
+more data, or an architecture given pooling at the right scale, it presumably
+could. **The point is that the prior is free and the data is not.**
+
+The signal itself is a smooth compositional gradient: it **peaks at 250–500
+letters** and has faded by 1,000, which is also where the network peaks (±250).
+Splitting family A by distance, the ±10 nt of immediate context is worth
+**+0.049** and the 50–1,000 nt windows **+0.026**, so a third of the gain lives
+beyond what a 378 nt input can see at all. **Using the right instrument for the
+shape of the signal is the whole of SLICER's advantage.**
+
+#### Two features built to explain the asymmetry, and they do not
+
+The long-range asymmetry is strand-asymmetric, and GC content is symmetric under
+swapping the two strands — the wrong shape to explain it. So family J was built
+from three quantities that are not GC and not composition
+(`features/j_periodicity.py`, 24 columns over 50/250/500/1,000 nt each side):
+
+- **GC skew**, (G − C)/(G + C) — strand-asymmetric by construction, and in
+  *E. coli* it flips sign at the origin and terminus, so it carries replichore
+  information without the model being given a coordinate.
+- **A-tract phase power** — the share of spectral power of the A/T indicator
+  signal in the 9.5–11.5 bp band. A-runs spaced at the helical repeat bend the
+  duplex *in phase* and the bends add; the same bases at random spacing give the
+  same GC and no curvature. This is periodicity, not composition.
+- **Bendability phase power** — the same spectral measure on a dinucleotide
+  `bend_major` track.
+
+The spectral measure was validated before being trusted: a pure 10.5 bp sine
+scores 0.961, white noise 0.020, a 25 bp sine 0.000.
+
+**All 24 columns pass the Part 6 filter cleanly** — median R² from the
+position-specific k-mer basis is **−0.022**, maximum −0.011, none above 0.9. So
+they describe something genuinely outside the 20-mer.
+
+**And they are a null** (`ablation_jper*.csv`, 5 seeds × 5 folds):
+
+| arm | columns | ρ |
+|---|---:|---:|
+| baseline | 6,232 | 0.5272 ± 0.0022 |
+| + family J | 6,256 | **0.5264 ± 0.0007** |
+| + family J, rows shuffled (control) | 6,256 | 0.5273 ± 0.0006 |
+| family A alone | 6,580 | 0.6068 ± 0.0017 |
+| family A + family J | 6,604 | **0.6072 ± 0.0024** |
+
+Alone it is **−0.0008**, and its own permutation control scores *higher* — the
+signature of pure noise. On top of family A it adds **+0.0004**, a fifth of the
+seed spread. **Helical periodicity and GC skew, measured at four length scales
+on both sides, carry nothing this screen can see.**
+
+Worth stating as a result rather than a footnote, for two reasons. It is a
+**negative result on the most mechanistically motivated candidate left** — the
+one feature shaped like the effect it was built to explain — which makes the
+long-range asymmetry harder to explain, not easier. And it is the second case
+showing Part 6's rule only runs one way: passing the filter is necessary and not
+sufficient.
 
 ### 3. Why downstream matters more than upstream
 
@@ -874,6 +933,16 @@ holds? If not, is the outside information actually about the locus?
 | `i_shape` — DNA bendability | **largely yes** — median R² 0.52 from flank composition | little on top of flanks | **+0.001** on top of flanks | ✓ |
 | `a_flank` — flanking composition | **no** | genuinely new ⇒ should help | **+0.080** | ✓ |
 | `d_supercoiling` / `e_nucleoid` / `g_transcription` | **no**, each needs a measurement | new ⇒ should help | +0.045 / +0.016 / +0.015 | ✓, but see Part 7 |
+
+> ⚠️ **The rule is one-directional, and family J is the second case that proves
+> it.** A high R² from the k-mer basis reliably means a feature *cannot* help —
+> that direction has never failed. A low R² means only that it *may*; it is not a
+> prediction of success. `h_offtarget` (R² −0.022, Δρ +0.000) was the first
+> exception and was explained away as outside the rule's scope. **Family J
+> (R² −0.022, Δρ −0.001) is the second, and it is squarely inside the scope**: it
+> describes the flanking DNA, which is exactly where the one large effect lives.
+> So the forecast record is 8 of 8 for the "cannot help" direction and 7 of 9 for
+> the "should help" direction. Quote the rule as a filter, never as a predictor.
 
 **Eight of eight, once the rule is stated correctly.**
 
@@ -1649,14 +1718,62 @@ rule explaining why in a way that generalises.
    turned from an interpretation into a measurement.
 7. **The flank effect characterised** — a gradient rather than a motif, peaking at
    250–500 letters, downstream-weighted, transferring across enzyme and organism
-   at ~90% and across kingdoms at 0%.
-8. **The ceiling argument tested rather than assumed**, twice. The two-enzyme
+   at ~90% and across kingdoms at 0%. Shown on **matched input**: given the same
+   ±1,000 nt, a convolutional network extracts 4.3× less than a windowed mean,
+   and the barrier is inductive bias rather than receptive field.
+8. **Equal or better accuracy for three to four orders of magnitude less
+   computation**, measured rather than asserted — and this is the contribution
+   with the clearest practical consequence, so it belongs in the abstract.
+   Against crisprHAL 2 on identical rows, labels and folds, with both models
+   tuned to convergence on their own settings:
+
+   | | SLICER | crisprHAL 2 | ratio |
+   |---|---:|---:|---:|
+   | Spearman ρ, tuned | **0.7213** | 0.7040 | +0.0173 |
+   | **training FLOPs** | **1.79 × 10¹¹** | 4.21 × 10¹⁴ | **2,360×** |
+   | **CPU-seconds per fold** | **65.8** | ~10,000 | **~150×** |
+   | wall-clock per fold, 10 cores | 13.8 s | ~21 min | 91× |
+   | peak memory | 3.8 GB | 4.6 GB | 1.2× |
+   | hardware needed | a laptop | written for a GPU | — |
+
+   And **stripped to its minimum the same pipeline costs 7.5 CPU-seconds and
+   2.45 × 10¹⁰ FLOPs** — 17,200× fewer than crisprHAL — for −0.0125 ρ, by
+   dropping the feature-selection pass and training on the reduced column set.
+   A plain ridge regression on those columns costs **3.4 CPU-seconds** and still
+   reaches ρ 0.627, which is more than the convolutional network manages at any
+   input width.
+
+   Four honesty notes that must travel with those numbers. The comparison is
+   **CPU-to-CPU** and crisprHAL 2 as published is GPU-trained, so this measures
+   their architecture's CPU cost, not a laptop beating a GPU. **FLOPs flatter us
+   and wall-clock flatters them** — the ratio is 2,360× on arithmetic and 91× on
+   a ten-core wall clock, because our CPU-to-wall ratio is 4.8, so most of the
+   apparent speed is parallelism rather than less work. Their *tuned*
+   configuration is 3× more expensive again (1.25 × 10¹⁵ FLOPs), so the accuracy
+   they gain from tuning widens the cost gap while narrowing the accuracy one.
+
+   And **no single number is architecture-independent, FLOPs least of all for
+   this particular pair.** Arithmetic intensity — FLOPs per byte moved — is
+   **0.25 for our histogram construction and 64 for their convolutions**, against
+   the ~10–30 a modern CPU needs to be compute-bound. So their work is
+   compute-bound and ours is **memory-bandwidth-bound**: counting arithmetic
+   measures almost all of their cost and only a quarter of ours. The 2,360×
+   is therefore an upper bound on the true advantage, and the defensible practice
+   is to quote a panel — FLOPs, CPU-seconds on named hardware, bytes moved, and
+   peak memory — rather than to pick the flattering one.
+9. **Nine metrics, one ordering.** SLICER leads crisprHAL 2 on Spearman,
+   Kendall's τ, Pearson, R², calibration slope, top-decile precision, NDCG@10,
+   pick-percentile and within-gene pick-percentile — tuned and untuned alike. The
+   largest relative gap is **top-decile precision (0.299 against 0.268, +11%)**,
+   where the decision actually lives, against +2.5% on ρ. The most deflationary
+   is NDCG@10, which puts all four arms within 0.009 of each other.
+10. **The ceiling argument tested rather than assumed**, twice. The two-enzyme
    derivation rests on a false independence assumption — the disagreement between
    WT-SpCas9 and eSpCas9 is predictable at ρ 0.546, so it is enzyme biology, not
    noise. And the source paper's own replicate and tiling-library agreement puts
    the limit at ≈0.94–0.97 rather than 0.90–0.93, once the published score is
    recognised as a two-replicate mean.
-9. **Measured boundaries**: where the method stops, what the data cannot answer,
+11. **Measured boundaries**: where the method stops, what the data cannot answer,
    and why.
 
 ### Open

@@ -20,8 +20,9 @@ Needs `torch` (CPU is fine, ~2 min per fold at +/- 100 nt) and two files that
     data/interim/cv_folds.csv           the exact folds the tabular models used
 
     pip install torch --index-url https://download.pytorch.org/whl/cpu
-    python -m sgrna.seqnet --flank 0     # protospacer + PAM only
-    python -m sgrna.seqnet --flank 100   # plus 100 nt either side
+    python -m sgrna.seqnet --flank 0                      # protospacer + PAM only
+    python -m sgrna.seqnet --flank 100                    # plus 100 nt either side
+    python -m sgrna.seqnet --flank 1000 --source index    # the matched test
 """
 
 from __future__ import annotations
@@ -58,9 +59,33 @@ def encode(seqs, width) -> np.ndarray:
     return out
 
 
-def build(flank: int):
-    seq = pd.read_csv(INTERIM / "sequence_context.csv")
+def build(flank: int, source: str = "cache"):
+    """Encode protospacer + PAM with `flank` nt of genomic context each side.
+
+    `source="cache"` reads `sequence_context.csv`, which stores **250 nt** each
+    side and is what the original flank-0 and flank-100 arms used. Anything wider
+    needs `source="index"`, which reads the 1,000 nt flanks already present in
+    `guide_index.csv`. The two agree on 13,879 of 13,880 rows (the one
+    unlocated guide differs), so the arms are comparable across sources -- but
+    the default is left on the cache so the published numbers stay byte-for-byte
+    reproducible.
+    """
     folds = pd.read_csv(INTERIM / "cv_folds.csv")
+    if source == "index":
+        idx = pd.read_csv(INTERIM / "guide_index.csv")
+        seq = idx.rename(columns={"upstream": "up250", "downstream": "dn250"})
+        seq = seq[["sgRNAID", "protospacer", "pam", "up250", "dn250"]]
+        widest = int(seq["up250"].astype(str).str.len().max())
+        if flank > widest:
+            raise SystemExit(f"flank {flank} exceeds the {widest} nt stored in "
+                             f"guide_index.csv; rebuild it with a wider flank")
+    elif source == "cache":
+        seq = pd.read_csv(INTERIM / "sequence_context.csv")
+        if flank > 250:
+            raise SystemExit(f"flank {flank} exceeds the 250 nt in "
+                             f"sequence_context.csv; pass --source index")
+    else:
+        raise ValueError(f"unknown source {source!r}")
     seq = seq.dropna(subset=["protospacer"])
     # `s[-0:]` is the whole string, not the empty one -- so flank=0 has to be
     # handled explicitly or the "protospacer only" arm silently becomes
@@ -201,8 +226,9 @@ def run_fold(Xtr, ytr, Xva, yva, width, seed, flank=0, epochs=30, batch=128,
 
 
 def evaluate(flank: int, seeds=(41,), n_splits: int = 5, epochs: int = 30,
-             tag: str | None = None, verbose: bool = True) -> pd.DataFrame:
-    X, ids, folds = build(flank)
+             tag: str | None = None, source: str = "cache",
+             verbose: bool = True) -> pd.DataFrame:
+    X, ids, folds = build(flank, source=source)
     width = X.shape[2]
     tag = tag or (f"f{flank}" if flank else "proto")
     rows = []
@@ -236,10 +262,14 @@ def main(argv=None) -> int:
     ap.add_argument("--seeds", type=int, nargs="*", default=[41])
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--epochs", type=int, default=30)
+    ap.add_argument("--source", choices=["cache", "index"], default="cache",
+                    help="'cache' is the 250 nt sequence_context.csv the "
+                         "published arms used; 'index' reads the 1,000 nt "
+                         "flanks in guide_index.csv")
     ap.add_argument("--out", default=str(INTERIM.parent.parent / "results" / "seqnet.csv"))
     args = ap.parse_args(argv)
     df = evaluate(args.flank, seeds=tuple(args.seeds), n_splits=args.folds,
-                  epochs=args.epochs)
+                  epochs=args.epochs, source=args.source)
     import os
     hdr = not os.path.exists(args.out)
     df.to_csv(args.out, mode="a", header=hdr, index=False)

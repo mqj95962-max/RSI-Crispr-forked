@@ -109,7 +109,7 @@ def _curated():
 
 
 def _fit_eval(models, proc, cfg, s_tr, y_tr, s_va, y_va, seed, default_epochs,
-              verbose=True):
+              verbose=True, save_preds=None):
     import tensorflow as tf
 
     tf.keras.backend.clear_session()
@@ -121,6 +121,8 @@ def _fit_eval(models, proc, cfg, s_tr, y_tr, s_va, y_va, seed, default_epochs,
     m.train(proc.onehotencode(s_tr), y_tr, epochs=epochs,
             batch_size=cfg["batch_size"], verbose=0)
     pred = np.asarray(m.predict(proc.onehotencode(s_va), verbose=0)).ravel()
+    if save_preds:
+        pd.DataFrame({"y": y_va, "pred": pred}).to_csv(save_preds, index=False)
     return dict(spearman=float(spearmanr(y_va, pred).statistic),
                 r2=float(r2_score(y_va, pred)),
                 epochs=epochs,
@@ -225,7 +227,9 @@ def final(seed: int = 41, n_splits: int = 5, deadline_hours: float | None = None
             break
         res = _fit_eval(models, proc, cfg, seqs[tr], y[tr], seqs[va], y[va],
                         seed=seed + fold, default_epochs=default_epochs,
-                        verbose=verbose)
+                        verbose=verbose,
+                        save_preds=FINAL_PATH.parent /
+                        f"preds_crisprhal_tuned_fold{fold}.csv")
         row = {"model": "crisprHAL2_WT-SpCas9_tuned", "draw": draw,
                "fold": fold, "seed": seed, "n_train": len(tr),
                "n_val": len(va)}

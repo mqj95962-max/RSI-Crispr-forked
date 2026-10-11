@@ -115,6 +115,10 @@ def run(arm: str, seed: int = 41, n_splits: int = 5, epochs: int | None = None,
         t0 = time.time()
         m.train(X_tr, y_tr, epochs=epochs, batch_size=1024, verbose=2 if verbose else 0)
         pred = np.asarray(m.predict(X_va, verbose=0)).ravel()
+        if arm != "their_split":
+            pd.DataFrame({"y": y_va, "pred": pred, "fold": fold}).to_csv(
+                RESULTS_PATH.parent / f"preds_crisprhal_default_fold{fold}.csv",
+                index=False)
         row = dict(arm=arm, model="crisprHAL2_WT-SpCas9", seed=seed, fold=fold,
                    epochs=epochs, n_train=len(y_tr), n_val=len(y_va),
                    spearman=float(spearmanr(y_va, pred).statistic),

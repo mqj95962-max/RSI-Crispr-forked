@@ -16,6 +16,7 @@ F        f_methylation     Dam/Dcm motifs at PAM and seed       genome only
 G        g_transcription   TSS distance, strand, expression     RegulonDB + P1K
 H        h_offtarget       off-target burden, target copies     genome only
 I        i_shape           flank DNA bendability / deformability genome only
+J        j_periodicity     GC skew + helical-repeat periodicity  genome only
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from . import (
     g_transcription,
     h_offtarget,
     i_shape,
+    j_periodicity,
 )
 
 REGISTRY = {
@@ -44,10 +46,11 @@ REGISTRY = {
     "g_transcription": g_transcription,
     "h_offtarget": h_offtarget,
     "i_shape": i_shape,
+    "j_periodicity": j_periodicity,
 }
 
 ALL = tuple(REGISTRY)
 
 # Families that need nothing but the reference genome, so they always work.
 SELF_CONTAINED = ("a_flank", "c_folding", "d_mechanics", "f_methylation", "h_offtarget",
-                  "i_shape")
+                  "i_shape", "j_periodicity")
