@@ -55,6 +55,15 @@ Three results elsewhere are corollaries: sixteen model classes span only 0.116 �
 quadrupling the selected columns changes nothing; nothing correlates with the
 model's residuals above 0.031.
 
+**And the reduced set is portable** (`portability.py`), which matters for any
+move to another cohort. Of the 63 hand-named columns, 26 are computable from the
+20-mer and its PAM, 2 need gene annotation, and 34 are undecoded `V` columns — of
+which 19 are reconstructible (R² ≥ 0.95 against mono+di indicators) and **15 are
+not**. Dropping those 15 *costs nothing*: **412 columns score ρ 0.5271 ± 0.0011
+against the 427's 0.5249**, which is the full matrix's 0.5272 to three decimals.
+So **412 columns computable for any 20-mer match all 6,232**, with no lookup into
+the published matrix.
+
 *Limit:* "non-inferior by 0.005" is the claim, not "identical". Higher-order
 k-mers do carry a little — see Finding 8.
 
@@ -140,13 +149,44 @@ representational limit for CNNs.
 | read-depth / mappability artefact? | survives a high-uniqueness stratum, +0.078 → +0.051 |
 | gene ranking in disguise? | within-gene ρ 0.571 against 0.606 global; flanks worth **+0.061 inside genes** |
 
-*Mechanism, as a hypothesis.* Target GC correlates −0.201 with the score and
-flank GC +0.159; the effect survives a change of enzyme and of organism; and the
-model run backwards prefers GC-poor targets (35% against a 51% mean). That is
-consistent with a duplex-opening step limited by local GC. **It is not an
-intervention** — the assay measures depletion, not cutting — so it is stated as a
-hypothesis, and distinguishing a strand-invasion-limited from a
-hybridisation-limited step would need kinetic data.
+*Mechanism, as a hypothesis.* Target GC correlates **−0.201** with the score;
+the effect survives a change of enzyme and of organism; and the model run
+backwards prefers GC-poor targets (35% against a 51% mean). That is consistent
+with a duplex-opening step limited by local GC. **It is not an intervention** —
+the assay measures depletion, not cutting — so it is stated as a hypothesis, and
+distinguishing a strand-invasion-limited from a hybridisation-limited step would
+need kinetic data.
+
+**The GC account survives conditioning, which is the test that matters**
+(`gcstrata.py`). Flank GC's *marginal* association with the label is weak —
++0.044 for the ±500 nt mean, and no flank GC column at any window exceeds +0.051
+(Spearman) or +0.079 (Pearson). But target GC is a **suppressor**: it correlates
+−0.201 with the label and +0.176 with flank GC, so it masks the flank term.
+Partialling it out *raises* flank GC's association to **+0.082** — double the
+marginal value — and the sign is positive in all five target-GC strata.
+
+The full ablation inside each stratum, where target composition is near-constant
+by construction:
+
+| target GC | n | baseline ρ | + family A | Δ |
+|---|---:|---:|---:|---:|
+| 0.20–0.40 | 2,776 | 0.3353 | 0.4630 | **+0.128** |
+| 0.40–0.50 | 2,776 | 0.4045 | 0.4797 | +0.075 |
+| 0.50–0.55 | 2,775 | 0.4627 | 0.5221 | +0.059 |
+| 0.55–0.60 | 2,776 | 0.4760 | 0.5220 | +0.046 |
+| 0.60–0.85 | 2,776 | 0.4443 | 0.5023 | +0.058 |
+
+**Family A is not target GC in disguise** — it is worth between +0.046 and +0.128
+inside every stratum. *Limit:* the gain is largest where the target is GC-poor,
+but it is **not monotone** (the top stratum rises again), and it covaries with
+headroom — the GC-poor stratum has the lowest baseline and so the most room to
+gain. So the ordering is an observation, not a dose-response curve, and it should
+not be read as quantitative support for the duplex-opening account.
+
+*Withdrawn here:* an earlier version of this paragraph quoted **flank GC +0.159**.
+That figure does not reproduce against the published label by either correlation
+measure; −0.201 for target GC reproduces exactly. The conditional analysis above
+replaces it.
 
 ### 7. The long-range asymmetry depends on orientation, and that is open
 
@@ -311,11 +351,12 @@ Remaining before submission:
 
 | | item | cost |
 |---|---|---|
-| 1 | eSpCas9 final evaluation, once, frozen configs | ~1 h |
+| 1 | eSpCas9 final evaluation, once, frozen configs — **on hold**: a pivot to crisprHAL's cohort reclassifies eSpCas9 as cross-enzyme validation rather than an untouched holdout, so spending the one-shot evaluation now would spend it on the wrong question | ~1 h |
 | 2 | crisprHAL 2's search run to **its own** plateau, not extrapolated | 2–4 GPU-h, free Colab tier |
 | 3 | orientation controls: block bootstrap on the interaction, promoter and RBS separated, curated TSS/operon orientation (RegulonDB is already on disk), matched on distance-to-TSS and GC | Jacky |
-| 4 | human baseline re-tuned at the teammate's settings | ~1 h |
-| 5 | conditional test of the GC hypothesis within matched GC strata | ~1 h |
+| 4 | human baseline re-tuned at the teammate's settings — **blocked**: the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/` | ~1 h once supplied |
+| 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 6 |
+| 6 | sample-complexity curve repeated across folds and seeds | ~2 h |
 
 **A guide-design tool is not a deliverable.** The findings are the contribution,
 the field already has several predictors, and everything needed to build one
@@ -578,16 +619,60 @@ The non-additive families are **independent evidence for Finding 8**: they gain
 from exactly the higher-order structure the k-mer ladder found worth +0.0035 ρ
 once the selector was removed.
 
-## Appendix D — Papers this work builds on
+## Appendix D — Sources (APA 7th edition)
 
-| | what we use it for |
-|---|---|
-| Noshay et al., *NAR* 51:10147 (2023) | the feature matrix; their iRF re-run here at Pearson 0.4881 against their 0.5019 on a third of their rows |
-| Guo et al., *NAR* 46:7052 (2018) | the screen behind the label; Fig 2b/2c agreement statistics for the ceiling; the intergenic sub-library |
-| crisprHAL 2, *PeerJ* (2026) | the state of the art; their code and curated label, re-run here |
-| Ham, Browne et al., *Nat Commun* 14:5514 (2023) | the *C. rodentium* screen |
-| SantaLucia & Hicks (2004) | nearest-neighbour thermodynamics |
-| Lioy et al. (2018); GapR-seq GSE152880; RegulonDB v14.5; PRECISE-1K | positional feature sources |
+Browne, T. S., Edgell, D. R., & Gloor, G. B. (2026). Better data for better
+predictions: Data curation improves deep learning for sgRNA/Cas9 prediction.
+*PeerJ*, *14*, e20706. https://doi.org/10.7717/peerj.20706
+— the state of the art; code and curated label re-run here as the baseline.
+
+Guo, J., Wang, T., Guan, C., Liu, B., Luo, C., Xie, Z., Zhang, C., & Xing, X.
+(2018). Improved sgRNA design in bacteria via genome-wide activity profiling.
+*Nucleic Acids Research*, *46*(14), 7052–7069. https://doi.org/10.1093/nar/gky572
+— the screen behind the label; Figure 2b and 2c agreement statistics for the
+ceiling; the intergenic sub-library.
+
+Guo, M. S., Kawamura, R., Littlehale, M. L., Marko, J. F., & Laub, M. T. (2021).
+High-resolution, genome-wide mapping of positive supercoiling in chromosomes.
+*eLife*, *10*, e67236. https://doi.org/10.7554/eLife.67236
+— GapR-seq; positive-supercoiling density (GEO accession GSE152880).
+
+Ham, D. T., Browne, T. S., Banglorewala, P. N., Wilson, T. L., Michael, R. K.,
+Gloor, G. B., & Edgell, D. R. (2023). A generalizable Cas9/sgRNA prediction
+model using machine transfer learning with small high-quality datasets. *Nature
+Communications*, *14*(1), 5514. https://doi.org/10.1038/s41467-023-41143-7
+— the *C. rodentium* screen used for cross-organism transfer.
+
+Lioy, V. S., Cournac, A., Marbouty, M., Duigou, S., Mozziconacci, J., Espéli, O.,
+Boccard, F., & Koszul, R. (2018). Multiscale structuring of the *E. coli*
+chromosome by nucleoid-associated and condensin proteins. *Cell*, *172*(4),
+771–783.e18. https://doi.org/10.1016/j.cell.2017.12.027
+— Hi-C contact structure and nucleoid-associated protein dependence.
+
+Noshay, J. M., Walker, T., Alexander, W. G., Klingeman, D. M., Romero, J.,
+Walker, A. M., Prates, E., Eckert, C., Irle, S., Kainer, D., & Jacobson, D. A.
+(2023). Quantum biological insights into CRISPR-Cas9 sgRNA efficiency from
+explainable-AI driven feature engineering. *Nucleic Acids Research*, *51*(19),
+10147–10161. https://doi.org/10.1093/nar/gkad736
+— the feature matrix decoded here; their iRF re-runs in our harness at Pearson
+0.4881 against their reported 0.5019, on a third of their rows.
+
+SantaLucia, J., & Hicks, D. (2004). The thermodynamics of DNA structural motifs.
+*Annual Review of Biophysics and Biomolecular Structure*, *33*(1), 415–440.
+https://doi.org/10.1146/annurev.biophys.32.110601.141800
+— nearest-neighbour thermodynamic parameters.
+
+Sastry, A. V., Gao, Y., Szubin, R., Hefner, Y., Xu, S., Kim, D., Choudhary, K. S.,
+Yang, L., King, Z. A., & Palsson, B. O. (2019). The *Escherichia coli*
+transcriptome mostly consists of independently regulated modules. *Nature
+Communications*, *10*(1), 5536. https://doi.org/10.1038/s41467-019-13483-w
+— the iModulon decomposition behind the PRECISE expression compendium.
+
+**Two database citations still need their canonical form**, because Crossref
+does not resolve them from the version strings we use and they should not be
+guessed: **RegulonDB v14.5** (release citation) and **PRECISE-1K** (the 1,035-run
+compendium, successor to Sastry et al. 2019). Everything above was verified
+against Crossref metadata rather than transcribed from memory.
 
 ## Appendix E — Withdrawn claims
 
