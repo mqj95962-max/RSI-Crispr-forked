@@ -59,10 +59,19 @@ model's residuals above 0.031.
 move to another cohort. Of the 63 hand-named columns, 26 are computable from the
 20-mer and its PAM, 2 need gene annotation, and 34 are undecoded `V` columns — of
 which 19 are reconstructible (R² ≥ 0.95 against mono+di indicators) and **15 are
-not**. Dropping those 15 *costs nothing*: **412 columns score ρ 0.5271 ± 0.0011
-against the 427's 0.5249**, which is the full matrix's 0.5272 to three decimals.
-So **412 columns computable for any 20-mer match all 6,232**, with no lookup into
-the published matrix.
+not**. Dropping those 15 *costs nothing* — all three arms from one run, same rows
+and folds:
+
+| arm | columns | ρ |
+|---|---:|---:|
+| reduced | 427 | 0.5249 ± 0.0014 |
+| **portable** | **412** | **0.52713 ± 0.0011** |
+| published full | 6,232 | 0.52716 ± 0.0022 |
+
+Dropping the 15 is **+0.0022 ρ**, i.e. slightly *better*, and the portable arm
+sits **0.00003 ρ** from the full matrix. So **412 columns computable for any
+20-mer match all 6,232**, with no lookup into the published matrix — which is the
+property a move to another cohort actually needs.
 
 *Limit:* "non-inferior by 0.005" is the claim, not "identical". Higher-order
 k-mers do carry a little — see Finding 8.
