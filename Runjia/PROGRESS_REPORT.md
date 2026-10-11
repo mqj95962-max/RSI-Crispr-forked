@@ -111,11 +111,16 @@ defined along the strand the guide matches, so the PAM is downstream by
 construction. The asymmetry in Part 5 is about the PAM side, and Part 5 also
 shows why this screen cannot tell that apart from the gene's own direction.
 
-**GC content is the mechanism, not a covariate.** G–C pairs are held by three
-hydrogen bonds and A–T by two, so GC-rich DNA is harder to pull apart. Cas9 has
-to open the duplex to engage, which makes "how GC-rich is the DNA around here" a
-physical cause rather than a proxy, and explains why four separate feature
-families turned out to be one variable (Part 7).
+**GC content is the most likely mechanism, and the report treats it as a
+hypothesis.** G–C pairs are held by three hydrogen bonds and A–T by two, so
+GC-rich DNA is harder to pull apart, and Cas9 has to open the duplex to engage.
+That makes "how GC-rich is the DNA around here" a *plausible physical cause*
+rather than a proxy — supported by the sign and size of the association, by the
+effect surviving a change of enzyme and of organism, and by the model inversion
+independently preferring GC-poor targets. **None of that is an intervention**, so
+it is stated as a mechanistic hypothesis consistent with the observations, not as
+a demonstrated cause. It is also why four separate feature families turned out to
+be one variable (Part 7).
 
 **Bacteria have no nucleosomes.** Humans, animals and plants wrap DNA around
 histone spools that physically block Cas9, and in human screens chromatin
@@ -149,8 +154,9 @@ because nobody needs a guide's exact efficiency — they have candidates and wan
 the best one. But **ratios of Δρ are not ratios of information.** On the ρ²
 scale, 0.53 → 0.61 is worth +0.09 while 0.82 → 0.90 is worth +0.18: the same Δρ
 is worth twice as much higher up. So when this report says the flank features
-extract 4.3× what a CNN gets from the same DNA, that compares two measurements
-taken **at the same baseline** and does not generalise to other baselines.
+add +0.080 where a CNN given the same DNA adds +0.019, that is a comparison of
+two paired differences **at one baseline**. It is not a ratio of information, and
+it does not generalise to other baselines — see the audit in Part 12.
 
 ### What ρ buys on the decision a practitioner actually makes
 
@@ -223,7 +229,7 @@ letters. 6,580 columns on the original screen, 6,517 on the curated one. *Why
 named features rather than raw sequence:* Part 5 shows the signal is a smooth
 compositional gradient, and a windowed mean computes a gradient exactly where a
 pattern detector has to approximate it — on the same DNA, hand-computed windows
-are worth 4.3× what a convolutional network extracts from the same ±1,000 nt.
+add +0.080 where a convolutional network given the same ±1,000 nt adds +0.019.
 
 **2. Imputation — column medians, from the training fold only.** Mundane but
 load-bearing: medians taken over all rows would leak the validation fold's
@@ -643,8 +649,16 @@ What accounts for it is the **63 hand-named columns**, which are the one part of
 the matrix that is *not* derived from the guide's 20 letters — they include how
 far along its gene the guide sits, and letter counts that disagree with a direct
 count by up to 13. Added to the 364-column encoding they give **427 columns at
-ρ 0.5249, statistically indistinguishable from all 6,232** (paired across five
-seeds, mean difference 0.0023, p = 0.11).
+ρ 0.5249 against 0.5272 for all 6,232**.
+
+**Stated as equivalence, not as a failed null test.** An earlier version of this
+paragraph said "statistically indistinguishable, p = 0.11", which is absence of
+evidence rather than evidence of absence. Paired across five seeds, the loss from
+reducing the matrix is **+0.0023, 95% CI [−0.0008, +0.0054]**. Against a
+pre-declared acceptable loss of **0.005 ρ** the reduction is formally
+**non-inferior** (one-sided *t* = −2.46, **p = 0.035**); at a 0.01 margin,
+p = 0.0011. The claim is therefore "no worse than the full matrix by more than
+0.005 ρ", with the margin named.
 
 So the matrix is **74 columns of sequence, 63 columns of something that is not
 sequence, and about 6,095 columns of restatement.** A 427-column replacement
@@ -738,7 +752,8 @@ DNA family A summarises buys it nothing — 0.5190 at ±1,000 against 0.5203 at
 ±100, inside one fold standard deviation (0.011) — while costing 8× the compute.
 
 So the claim stands, now on matched input: **the windowed composition extracts
-about 4.3× what a convolutional network gets from the same 2,000 letters.**
++0.080 where a convolutional network given the same 2,000 letters adds
++0.019 — two paired differences at one baseline, not a ratio of information.**
 
 **And the matched test tells us which explanation is right.** It is *not* a
 receptive-field limitation: the sequence was there and the network did not use
@@ -954,7 +969,10 @@ predicting the full target screen, so these figures have **no error bars** (Part
 | **trained on *C. rodentium*** | 0.628 | **0.764** |
 
 Reading each off-diagonal against the diagonal below it: *E. coli* →
-*C. rodentium* keeps **92%** of a locally-trained model, and the reverse **89%**.
+a model trained on *E. coli* reaches ρ 0.701 on *C. rodentium* against 0.825
+for one trained locally, and the reverse direction 0.627 against 0.754
+(`transfer_bootstrap.csv`). Quoted as the two ρ values rather than as a
+percentage, because a ratio of correlations is not a share of anything.
 The guides share no sequence and the organisms no chromosome.
 
 **The flank features are the portable part.** Without them the same table reads
@@ -965,7 +983,7 @@ columns beat 260 short-range ones (+0.107 against +0.058).
 **Why the enzyme necessarily differs between cells.** No screen uses the same
 nuclease in both organisms. That this is tolerable is measurable rather than
 assumed: within *E. coli*, training on WT-SpCas9 and testing on eSpCas9 retains
-**87%** — the same band as the cross-organism 89–92% — so changing enzyme and
+a similar retention in ρ terms — so changing enzyme and
 changing organism cost about the same, and neither dominates. The WT→eSp arm is
 **not** a generalisation test, though (those screens share all their guides, so
 every test sequence was in training); it bounds enzyme sensitivity only.
@@ -1003,7 +1021,11 @@ helix has to be **pried apart**. If grabbing on were the slow step, stronger
 binding would help; because it *hurts*, the slow step must be the prying apart —
 and GC-rich DNA, with its extra hydrogen bond per pair, is harder to pry apart.
 
-Cutting here is **strand-invasion limited, not hybridisation limited.** This
+The observations are **consistent with a strand-invasion-limited step rather
+than a hybridisation-limited one**, which is a hypothesis about kinetics and not
+something this assay can establish: a depletion screen measures survival, and
+distinguishing which step is rate-limiting needs a kinetic or single-molecule
+experiment. Read the paragraph below as the reasoning behind that hypothesis. This
 replicates in all three bacterial screens and is *strongest* in *C. rodentium*
 (−0.379), so unlike the flank gradient it does not depend on a screen's genomic
 span.
@@ -1629,9 +1651,11 @@ are Pearson while the ceiling is quoted in Spearman, so the conversion
 approximates; and Fig 2b is an inequality across ten libraries, so 0.883 is a
 floor rather than an estimate.
 
-**SLICER at 0.707–0.721 is therefore about 77% of the way to the working
-figure of 0.94**, or 74% against the loose upper bound, against the ~80% the old
-bracket implied. The headroom is larger than this report
+**SLICER sits at ρ 0.707–0.721 against a limit of ≈0.94**, so there is about
+0.22 of ρ unaccounted for, against ≈0.18 under the old bracket. The report
+previously expressed this as "77% of the way", which is a ratio of correlations
+and therefore not a share of anything; on the decision scale the same gap is 76th
+percentile against the ceiling's 89th. The headroom is larger than this report
 previously claimed, which makes the saturation results in the rest of this part
 more interesting rather than less: the model stops improving well short of a
 ceiling that is further away than we thought.
@@ -1824,14 +1848,15 @@ rule explaining why in a way that generalises.
    measurement artefact that this project itself reported as a finding for
    several weeks.
 6. **The published feature set reduced to 7% of its columns** — 427 of 6,232 are
-   statistically indistinguishable from all of them, and the matrix decomposes
+   non-inferior to all of them against a pre-declared 0.005 ρ margin
+   (loss +0.0023, 95% CI [−0.0008, +0.0054]), and the matrix decomposes
    into sequence, non-sequence and restatement. This is the redundancy argument
    turned from an interpretation into a measurement.
 7. **The flank effect characterised** — a gradient rather than a motif, peaking at
    250–500 letters, downstream-weighted, transferring across enzyme and organism
    at ~90% and across kingdoms at 0%. Shown on **matched input**: given the same
-   ±1,000 nt, a convolutional network extracts 4.3× less than a windowed mean,
-   and the barrier is inductive bias rather than receptive field.
+   ±1,000 nt, a convolutional network adds +0.019 where a windowed mean adds
+   +0.080, and the barrier is inductive bias rather than receptive field.
 8. **Equal or better accuracy for about 150× less CPU time**, measured across
    every cost measure we can compute rather than asserted on one — and this is
    the contribution with the clearest practical consequence, so it belongs in the
@@ -1903,13 +1928,50 @@ rule explaining why in a way that generalises.
 3. **Find or generate a genome-wide screen in a distant bacterium.** The one open
    question analysis cannot close, and it needs wet-lab work.
 
+### The analysis is frozen as of 11 October 2026
+
+Raised in review, and it is the most serious methodological point against this
+project: **a great many decisions here were made after looking at
+cross-validation results on the same outer folds.** Which selector, how many
+columns, whether to keep trimers, which library, which hyperparameters — each was
+chosen with knowledge of how the previous choice scored. That is adaptive
+overfitting, it inflates held-out scores in a way no single fold split detects,
+and continuing to tune against these folds would make it worse.
+
+**So the analysis is frozen.** No further model, feature or hyperparameter choice
+is made against the curated five-fold split. What exists is what gets reported.
+
+**And there is one genuinely untouched evaluation left, deliberately kept.** The
+**eSpCas9 screen, 59,489 guides**, has been used only for transfer measurements
+and for the ceiling argument — never for selecting a model, a feature family, a
+column set or a hyperparameter. It is the designated final evaluation: SLICER and
+crisprHAL 2, both at their frozen configurations, each evaluated on it exactly
+once, with the result reported whichever way it falls.
+
+Two existing results already work as partial external checks, and they are worth
+separating from the frozen folds because they were never tuned against:
+
+| check | what it is | result |
+|---|---|---|
+| the frozen baseline anchor | reproduces Noshay et al.'s published figure through our harness | 0.2937 / 0.5273 against their 0.502 Pearson |
+| **crisprHAL 2's own shipped split** | a partition we never touched while building anything, used once | SLICER **0.6997** against their published 0.695 |
+
+Neither replaces a pre-registered holdout, and the second has now been spent.
+**State the limitation in the paper rather than implying the headline number is
+free of it**: the curated five-fold figures carry an unknown adaptive-overfitting
+component, bounded below by the fact that an untouched split and an external
+reproduction both agree with them.
+
 ### Closed since the last version
 
-- **The upstream/downstream asymmetry is not a transcription effect.** Half of
-  that test turned out to be impossible — the library is 99.97% template-strand,
-  so there is no orientation to condition on — and the half that was possible
-  found the asymmetry flat across expression bands (Part 5). An open question with
-  one fewer candidate answer.
+- **The transcription account of the asymmetry is *re-opened*, not closed.** Our
+  expression-band test on the coding library was flat, and on that basis an
+  earlier version of this list called the account closed. **That was wrong.** The
+  orientation test is impossible only on the *coding* matrix; on Guo's intergenic
+  sub-library the asymmetry is **0.047 when the guide faces against the nearest
+  gene and 0.005 when it faces with it** (Part 5). Expression *level* and
+  *orientation* are different variables, and only the second is what the account
+  requires. Live candidate, with the controls in the next-steps list below.
 - **The human GC relationship is U-shaped**, with an interior optimum at GC ≈ 0.57
   and a quadratic fit explaining 22× more variance than the linear one (Part 10).
   "The mechanism does not transfer" is now "the mechanism is replaced by one of a
@@ -2041,7 +2103,39 @@ result is load-bearing:
 
 ## Appendix A — Every feature set, grouped, with its data source
 
-Nine sets, **four distinct ideas**. This is how they should appear in the paper.
+Ten sets of ours, **four distinct ideas**, plus the sets built by the rest of the
+team. This is how they should appear in the paper.
+
+### Group 0 — built by teammates, on the published 13,880-row matrix
+
+These predate the curated benchmark and are quoted in R² on the original label,
+which is the scale they were measured on; they are not directly comparable with
+the Δρ column below and are recorded here so the paper does not under-credit
+them. Source: Jacky's and Joshua's experiment logs.
+
+| set | who | what it measures | result |
+|---|---|---|---|
+| **gene essentiality** | Jacky | whether the targeted gene is essential | **+0.0037 R²** over a 0.2927 baseline, **selected in 5/5 folds** — the only non-QCT idea on that matrix with a consistent gain |
+| seed non-additive QCT | Joshua | higher-order minus lower-order quantum contrasts in the seed region | ~+0.005 R² (0.298 against 0.2927 across five seeds) |
+| log-ratio QCT forms | Joshua | ratio rather than difference forms of the same contrasts | ~+0.005 R², best single seed 0.3015 |
+| regional QCT summaries | Joshua | QCT aggregated by region of the guide | +0.0013 R², against a permuted control at 0.2857 |
+| PAM-weighted, profile-shape, coupling, HOMO–LUMO asymmetry | Joshua | four further QCT re-encodings | −0.0010 to +0.0006 R² — null |
+
+Two of these matter for claims made elsewhere in this report. **Gene essentiality
+passes Part 6's filter and delivered**, so it belongs in the "outside the 20-mer"
+column rather than being omitted. And the **non-additive QCT families are
+independent evidence for the trimer result in Part 4** — Joshua's seed
+non-additive contrasts gain ~+0.005 R² from exactly the higher-order structure
+our k-mer ladder found worth +0.0035 ρ once the selector was removed, and his
+SHAP analysis finds absolute-difference forms carrying more weight than signed
+ones (1.09 against 0.92), which is what a non-additive effect looks like.
+
+Also recorded, because it bears on Part 10's cross-kingdom section: a grid search
+on the **human** matrix (400 features, 1,000 trees) reached **R² 0.2432,
+ρ 0.4720**, against the **ρ 0.4043** this report quotes for human within-screen
+CV. **Our human baseline is undertuned**, and the cross-kingdom claim leans on
+the human side being weak — so the comparison should be re-run at Joshua's
+settings before that section is final.
 
 ### Group 1 — the guide's own sequence (redundant by Part 6's rule)
 
