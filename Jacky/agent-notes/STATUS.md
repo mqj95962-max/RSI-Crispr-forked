@@ -1,7 +1,7 @@
 # Work-plan status
 
-Last updated after orientation Δ bootstrap CI.
-Reply notes: `RUNJIA_REPLY_2026-10-10.md`.
+Last updated after orientation controls (promoter/RBS, TSS/operon, matching).
+Reply notes: `RUNJIA_REPLY_2026-10-10.md`. Controls: `ORIENTATION_CONTROLS.md`.
 
 ## Process agreement — `Runjia/sgrna/`
 
@@ -43,7 +43,7 @@ edits are welcome — they just need to be visible.
 | 2A.1 flank vs dCas9 abundance | need control-arm counts from SRA |
 | 1.3 / 1.6 SRA or replicate training | per-guide replicates not in Excel |
 | 2B.3 bootstrap CI on Δ asymmetry | **done** — opposite CI excludes 0; Δ borderline on s6_good | `results/intergenic_orientation_delta_ci.json` |
-| Better orientation label (TSS/operon) | optional deepen |
+| Part 4 orientation controls | **done** — TSS Δ 0.051 [0.020, 0.082]; gene Δ fails dist+GC match; lead with TSS | `ORIENTATION_CONTROLS.md` |
 
 ## How to re-run
 
@@ -52,4 +52,6 @@ export RSI09_ROOT=/workspace/Runjia
 python3 Jacky/agent-notes/scripts/workplan.py --all
 python3 Jacky/agent-notes/scripts/run_reca_and_orientation.py
 python3 Jacky/agent-notes/scripts/run_intergenic_orientation.py
+python3 Jacky/agent-notes/scripts/run_orientation_ci.py
+python3 Jacky/agent-notes/scripts/run_orientation_controls.py
 ```
