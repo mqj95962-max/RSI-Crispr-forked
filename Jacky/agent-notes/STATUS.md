@@ -1,6 +1,7 @@
 # Work-plan status
 
-Last updated after orientation Δ bootstrap CI.
+Last updated after orientation controls.
+Canonical folder: `Jacky/orientation-controls/`.
 Reply notes: `RUNJIA_REPLY_2026-10-10.md`.
 
 ## Process agreement — `Runjia/sgrna/`
