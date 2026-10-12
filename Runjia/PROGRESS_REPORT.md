@@ -514,34 +514,55 @@ complexity**, because it says nothing about how the computation is done:
 | ρ ≥ 0.66 | **8,000** | 13,880 |
 | ρ ≥ 0.68 | **13,880** | 20,000 |
 
-About half the data at every absolute threshold. Read it as **two saturating
-curves approaching their own asymptotes at different rates**, not as a shrinking
-gap: both saturate at full size (last 6,853 guides buy +0.004 and +0.007) and the
-asymptotes are close (0.694, 0.688). **This is not evidence of a higher
-ceiling** — they are within 0.007, inside the fold spread — it is evidence of
-reaching the ceiling on less evidence.
+About half the data at every absolute threshold.
 
-**⚠ The table above is fold 1 only, and fold 1 is the hardest of the five.** A
-claim of the form "needs half the labelled guides" has to survive the choice of
-test set, and this one had never been asked to. `sample_complexity.py` now takes
-a fold and both curves run over all five. SLICER is done, 5 folds × 2 seeds:
+**The table above was fold 1 only, and fold 1 is the hardest fold for both
+models.** A claim of the form "needs half the labelled guides" has to survive the
+choice of test set, and this one had never been asked to. It now has:
+`sample_complexity.py` takes a fold and both curves run over all five.
 
-| guides | fold 1 | mean of 5 folds | sd across folds |
-|---:|---:|---:|---:|
-| 4,000 | 0.6374 | **0.6501** | 0.0085 |
-| 8,000 | 0.6672 | **0.6817** | 0.0084 |
-| 13,880 | 0.6844 | **0.6985** | 0.0082 |
-| 20,000 | 0.6904 | **0.7046** | 0.0080 |
-| 26,853 | 0.6944 | **0.7082** | 0.0080 |
+| guides | SLICER | sd | crisprHAL 2 | sd |
+|---:|---:|---:|---:|---:|
+| 4,000 | **0.6501** | 0.0095 | 0.5235 | 0.0138 |
+| 8,000 | **0.6817** | 0.0081 | 0.6323 | 0.0146 |
+| 13,880 | **0.6985** | 0.0081 | 0.6733 | 0.0092 |
+| 20,000 | **0.7046** | 0.0076 | 0.6879 | 0.0054 |
+| 26,853 | **0.7082** | 0.0076 | 0.6950 | 0.0072 |
 
-Fold 1 is the lowest of the five at every size and understates SLICER by about
-**0.014 ρ** at full size, so the published curve was conservative rather than
-flattering. **crisprHAL's folds 2–5 are still running**, and until they land no
-revised threshold table is quoted here: setting a five-fold mean against a
-fold-1 curve would reproduce exactly the error this rerun exists to remove.
-crisprHAL's folds may move by a similar amount, in which case the thresholds
-stand — or by more, in which case the "about half the data" claim narrows. That
-is the honest state of it.
+**The claim survives, and at one threshold it strengthens:**
+
+| guides needed to reach | SLICER | crisprHAL 2 | was (fold 1) |
+|---|---:|---:|---|
+| ρ ≥ 0.62 | **4,000** | 8,000 | unchanged |
+| ρ ≥ 0.66 | **8,000** | 13,880 | unchanged |
+| ρ ≥ 0.68 | **8,000** | 20,000 | was 13,880 vs 20,000 |
+| ρ ≥ 0.70 | **20,000** | never reached | new |
+
+At ρ ≥ 0.68 the ratio goes from 1.4× to **2.5×**, because fold 1 understated
+SLICER by ~0.014 ρ while barely moving crisprHAL. SLICER reaches ρ 0.70 on
+20,000 guides; crisprHAL does not reach it on all 26,853.
+
+**One of our own caveats does not survive.** The previous text said the
+asymptotes were "close (0.694, 0.688) … within 0.007, inside the fold spread" and
+that this was "not evidence of a higher ceiling". Paired across the five folds at
+full size:
+
+| | value |
+|---|---:|
+| mean paired difference | **+0.0133 ρ** |
+| sd across folds | 0.0055 |
+| paired *t* | t = 5.36, **p = 0.0058** |
+| folds favouring SLICER | **5 / 5** |
+
+So at the data we have, the two are *not* indistinguishable. **The honest
+statement is narrower than "higher ceiling"**: neither curve has converged — the
+last 6,853 guides still buy +0.004 and +0.007 — so this is a gap at full
+available data, not a proven difference in asymptote. It is also the same gap the
+head-to-head reports, not an independent finding.
+
+*Limit:* SLICER averages two seeds per fold, crisprHAL one, so crisprHAL's
+per-fold values are noisier; the pairing is by fold, which is valid, but a second
+crisprHAL seed would tighten it.
 
 *Protocol note:* the module's printed summary used to report only "share of each
 model's own best", which reads as a data-efficiency claim and is not one — two
