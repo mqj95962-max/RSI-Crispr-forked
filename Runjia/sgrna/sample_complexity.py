@@ -161,8 +161,24 @@ def summary():
     print("\n== Spearman against training size, fixed test set ==")
     print(piv.round(4).to_string())
     if piv.shape[1] == 2:
+        # Absolute thresholds are what the report quotes and the only form that
+        # compares the two models on one scale. "Share of each model's own best"
+        # is printed second and labelled as diagnostic, because it is a
+        # statement about each curve's own shape -- two models can both reach
+        # 95% of themselves at the same n while being far apart in rho, and
+        # quoting it as a data-efficiency claim invites exactly that confusion.
+        print("\n== training guides needed to reach an ABSOLUTE rho (reportable) ==")
+        for thr in (0.62, 0.66, 0.68):
+            line = {}
+            for col in piv.columns:
+                hit = piv.index[piv[col] >= thr]
+                line[col] = int(hit.min()) if len(hit) else None
+            print(f"  rho >= {thr:.2f}: " +
+                  "  ".join(f"{k} {v}" for k, v in line.items()))
+
         full = piv.max()
-        print("\n== training guides needed to reach a given share of each model's own best ==")
+        print("\n== diagnostic only, NOT a data-efficiency claim: "
+              "share of each model's own best ==")
         for frac in (0.90, 0.95, 0.99):
             line = {}
             for col in piv.columns:

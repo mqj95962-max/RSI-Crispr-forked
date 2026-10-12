@@ -63,19 +63,29 @@ model's residuals above 0.031.
 move to another cohort. Of the 63 hand-named columns, 26 are computable from the
 20-mer and its PAM, 2 need gene annotation, and 34 are undecoded `V` columns — of
 which 19 are reconstructible (R² ≥ 0.95 against mono+di indicators) and **15 are
-not**. Dropping those 15 *costs nothing* — all three arms from one run, same rows
-and folds:
+not**. Dropping those 15 *costs nothing*, and the ladder below says where to stop.
+All arms from one protocol, 5 seeds × 5 folds, same rows:
 
-| arm | columns | ρ |
-|---|---:|---:|
-| reduced | 427 | 0.5249 ± 0.0014 |
-| **portable** | **412** | **0.52713 ± 0.0011** |
-| published full | 6,232 | 0.52716 ± 0.0022 |
+| arm | columns | ρ | vs full matrix |
+|---|---:|---:|---:|
+| mononucleotide only | 74 | 0.5081 ± 0.0010 | −0.0191 |
+| mono + dinucleotide | 364 | 0.5189 ± 0.0009 | −0.0083 |
+| reduced | 427 | 0.5249 ± 0.0014 | −0.0023 |
+| **portable** | **412** | **0.52713 ± 0.0011** | **−0.00003** |
+| published full | 6,232 | 0.52716 ± 0.0022 | — |
 
-Dropping the 15 is **+0.0022 ρ**, i.e. slightly *better*, and the portable arm
-sits **0.00003 ρ** from the full matrix. So **412 columns computable for any
-20-mer match all 6,232**, with no lookup into the published matrix — which is the
-property a move to another cohort actually needs.
+**412 is the stopping point.** Dropping the 15 non-portable columns is +0.0022 ρ,
+i.e. slightly *better* than the 427, and lands **0.00003 ρ** from all 6,232. Going
+further down to the 364 sequence indicators alone *does* cost something — **0.0083
+ρ** — so the 48 portable hand-named columns earn their place rather than surviving
+by inertia. **412 columns computable for any 20-mer plus the reference genome
+match all 6,232**, with no lookup into the published matrix, which is the property
+a move to another cohort actually needs.
+
+*Already in force on the curated cohort.* The curated arms carry 6,517 columns =
+6,169 reconstructable + 348 flank, so the 63 hand-named columns are **already
+absent** there. Any claim about "the 427" on crisprHAL's rows was therefore never
+about the columns actually used; the portable 412 is what the claim should name.
 
 *Limit:* "non-inferior by 0.005" is the claim, not "identical". Higher-order
 k-mers do carry a little — see Finding 8.
