@@ -48,9 +48,16 @@ OUT = config.RESULTS / "sample_complexity.csv"
 SIZES = (4000, 8000, 13880, 20000, 26853)
 
 
-def _fixed_split(n: int, seed: int = 41):
-    """Fold 1 of the shared 5-fold split: the same test set as every other arm."""
-    tr, va = next(iter(KFold(5, shuffle=True, random_state=seed).split(np.arange(n))))
+def _fixed_split(n: int, seed: int = 41, fold: int = 1):
+    """Fold `fold` of the shared 5-fold split: the same test sets as every other arm.
+
+    Originally this returned fold 1 only, which made the curve a statement about
+    one test set. A claim of the form "model A needs half the labelled guides"
+    has to survive the choice of test set, so the fold is now a parameter and
+    the summary aggregates over it.
+    """
+    splits = list(KFold(5, shuffle=True, random_state=seed).split(np.arange(n)))
+    tr, va = splits[fold - 1]
     return tr, va
 
 
@@ -64,7 +71,7 @@ def _append(row: dict):
     df = pd.DataFrame([row])
     if OUT.exists() and OUT.stat().st_size:
         prev = pd.read_csv(OUT)
-        key = ["model", "seed", "n_train"]
+        key = ["model", "seed", "fold", "n_train"]
         prev = prev[~(prev[key].astype(str)
                       .apply(tuple, axis=1)
                       .isin([tuple(str(row[k]) for k in key)]))]
@@ -72,7 +79,7 @@ def _append(row: dict):
     df.to_csv(OUT, index=False)
 
 
-def slicer(sizes=SIZES, seeds=(41, 42), verbose: bool = True):
+def slicer(sizes=SIZES, seeds=(41, 42), folds=(1, 2, 3, 4, 5), verbose: bool = True):
     """SLICER's curve: selection and champion refitted at every training size."""
     import lightgbm as lgb
 
@@ -81,15 +88,16 @@ def slicer(sizes=SIZES, seeds=(41, 42), verbose: bool = True):
     from .tune import DEFAULT
 
     X, y, names = _assemble("curated_flank", verbose=verbose)
-    tr_all, va = _fixed_split(len(y))
     done = set()
     if OUT.exists() and OUT.stat().st_size:
         p = pd.read_csv(OUT)
-        done = set(zip(p["model"], p["seed"], p["n_train"]))
+        done = set(zip(p["model"], p["seed"], p.get("fold", 1), p["n_train"]))
 
-    for seed in seeds:
+    for fold in folds:
+      tr_all, va = _fixed_split(len(y), fold=fold)
+      for seed in seeds:
         for n, idx in _nested_subsets(tr_all, sizes, seed).items():
-            if ("SLICER", seed, n) in done:
+            if ("SLICER", seed, fold, n) in done:
                 continue
             t0 = time.time()
             X_tr, X_va = _impute(X[idx], X[va])
@@ -100,19 +108,19 @@ def slicer(sizes=SIZES, seeds=(41, 42), verbose: bool = True):
                                   **DEFAULT)
             m.fit(X_tr[:, top], y[idx])
             pred = m.predict(X_va[:, top])
-            row = dict(model="SLICER", seed=seed, n_train=int(n),
+            row = dict(model="SLICER", seed=seed, fold=fold, n_train=int(n),
                        n_test=int(len(va)),
                        spearman=float(spearmanr(y[va], pred).statistic),
                        r2=float(r2_score(y[va], pred)),
                        fit_seconds=round(time.time() - t0, 1))
             _append(row)
             if verbose:
-                print(f"  SLICER n={n:6d} seed {seed}: rho "
+                print(f"  SLICER fold {fold} n={n:6d} seed {seed}: rho "
                       f"{row['spearman']:.4f}  ({row['fit_seconds']:.0f}s)",
                       flush=True)
 
 
-def crisprhal(sizes=SIZES, seeds=(41,), verbose: bool = True):
+def crisprhal(sizes=SIZES, seeds=(41,), folds=(1, 2, 3, 4, 5), verbose: bool = True):
     """crisprHAL 2's curve: their architecture, their defaults, our split."""
     import tensorflow as tf
 
@@ -125,16 +133,17 @@ def crisprhal(sizes=SIZES, seeds=(41,), verbose: bool = True):
     hal = pd.concat([_read("train"), _read("test")]).drop_duplicates("protospacer")
     seqs = hal.set_index("protospacer")["seq"].reindex(protos).to_numpy()
 
-    tr_all, va = _fixed_split(len(y))
-    X_va = proc.onehotencode(seqs[va])
     done = set()
     if OUT.exists() and OUT.stat().st_size:
         p = pd.read_csv(OUT)
-        done = set(zip(p["model"], p["seed"], p["n_train"]))
+        done = set(zip(p["model"], p["seed"], p.get("fold", 1), p["n_train"]))
 
-    for seed in seeds:
+    for fold in folds:
+      tr_all, va = _fixed_split(len(y), fold=fold)
+      X_va = proc.onehotencode(seqs[va])
+      for seed in seeds:
         for n, idx in _nested_subsets(tr_all, sizes, seed).items():
-            if ("crisprHAL 2", seed, n) in done:
+            if ("crisprHAL 2", seed, fold, n) in done:
                 continue
             tf.keras.backend.clear_session()
             tf.keras.utils.set_random_seed(seed)
@@ -143,14 +152,14 @@ def crisprhal(sizes=SIZES, seeds=(41,), verbose: bool = True):
             m.train(proc.onehotencode(seqs[idx]), y[idx],
                     epochs=default_epochs, batch_size=1024, verbose=0)
             pred = np.asarray(m.predict(X_va, verbose=0)).ravel()
-            row = dict(model="crisprHAL 2", seed=seed, n_train=int(n),
+            row = dict(model="crisprHAL 2", seed=seed, fold=fold, n_train=int(n),
                        n_test=int(len(va)),
                        spearman=float(spearmanr(y[va], pred).statistic),
                        r2=float(r2_score(y[va], pred)),
                        fit_seconds=round(time.time() - t0, 1))
             _append(row)
             if verbose:
-                print(f"  crisprHAL n={n:6d} seed {seed}: rho "
+                print(f"  crisprHAL fold {fold} n={n:6d} seed {seed}: rho "
                       f"{row['spearman']:.4f}  ({row['fit_seconds']/60:.1f} min)",
                       flush=True)
 
@@ -194,11 +203,14 @@ def main(argv=None) -> int:
     ap.add_argument("--model", choices=["slicer", "crisprhal", "none"],
                     default="none")
     ap.add_argument("--seeds", type=int, nargs="*", default=None)
+    ap.add_argument("--folds", type=int, nargs="*", default=None)
     a = ap.parse_args(argv)
     if a.model == "slicer":
-        slicer(seeds=tuple(a.seeds) if a.seeds else (41, 42))
+        slicer(seeds=tuple(a.seeds) if a.seeds else (41, 42),
+               folds=tuple(a.folds) if a.folds else (1, 2, 3, 4, 5))
     elif a.model == "crisprhal":
-        crisprhal(seeds=tuple(a.seeds) if a.seeds else (41,))
+        crisprhal(seeds=tuple(a.seeds) if a.seeds else (41,),
+                  folds=tuple(a.folds) if a.folds else (1, 2, 3, 4, 5))
     summary()
     return 0
 
