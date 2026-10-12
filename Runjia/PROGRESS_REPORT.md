@@ -10,8 +10,12 @@ columns are an elaborate spelling of 20 letters — 427 of them do the same job 
 all 6,232 — and that explained why eight imported feature families added almost
 nothing. The signal the matrix lacks is outside the guide: **DNA composition in
 windows of 50–1,000 nt around the cut site is worth +0.080 ρ**, the largest effect
-found here, a smooth compositional gradient rather than a motif, and not
-recoverable by a convolutional network given the same DNA. The resulting model
+found here, and a smooth compositional gradient rather than a motif. The part
+that *decides the comparison* is long-range: on the ±189/166 nt span the state of
+the art already reads, its convolutions beat our windowed composition by 0.025,
+and our lead comes from the 250–1,000 nt windows its input never reaches.
+**The contribution is access to long-range context, not a better encoding of the
+same bases.** The resulting model
 reaches **ρ 0.721 against 0.704** for the published state of the art with both
 tuned, on identical folds and on the prior model's own split, for **~150× less
 CPU time** and about **half the training data**.
@@ -147,6 +151,35 @@ representable. The barrier is **inductive bias and sample efficiency**: the prio
 "the right summary of 500 positions is their unweighted mean" is free to assert
 and expensive to learn from 33,567 noisy examples. Nothing here shows a
 representational limit for CNNs.
+
+**But a *tuned* CNN is not so easily beaten on the DNA it actually holds, and
+this is the result that bounds the claim.** crisprHAL 2's released rows are 378
+nt for a 23 nt target — **189 nt upstream, 166 downstream** — so its network
+already sees that span. Restricting family A to the columns that fit inside it
+(the 50 nt windows and the near-cut sequence and quantum columns; the
+250/500/1,000 nt windows reach past their input and are dropped) gives a
+like-for-like contest in which neither model holds sequence the other lacks:
+
+| arm | flank columns | ρ | vs crisprHAL 2 |
+|---|---:|---:|---:|
+| no flank | 0 | 0.5440 | — |
+| near-cut only (±10 nt) | 260 | 0.6178 | −0.079 |
+| **matched to their span (±189 / ±166)** | **282** | **0.6724 ± 0.0094** | **−0.025** |
+| full family A | 348 | **0.7072** | **+0.010** |
+
+**Inside their own receptive span, their convolutions beat our windowed
+composition by 0.025.** Our lead is not a better encoding of the same bases: it
+comes from the 250–1,000 nt windows their input never reaches, worth
+0.7072 − 0.6724 = **+0.035** on top of a matched-span representation.
+
+*What this costs and what it buys.* It costs the reading that windowed means are
+simply a smarter encoding than convolution — on equal DNA they are not. It buys
+a cleaner statement of the contribution: **the signal is long-range, and the
+advantage is access to it**, not a representational trick. It also makes the
+in-house CNN of the table above the weaker comparison it always was — a tuned
+CNN does considerably better than ours on the same span, so "CNNs cannot learn
+this" was never the right conclusion, and only the sample-efficiency reading
+survives.
 
 ### 6. The effect belongs to the DNA, and transfers
 
@@ -453,8 +486,9 @@ at the same time; run-to-run spread for one arm is ~0.3 GB.
 configuration, 17,200× below crisprHAL — for −0.0125 ρ, by dropping the
 feature-selection pass (86% of the FLOPs, and its only output is an ordering) and
 training on the reduced columns. A plain **ridge** regression on those columns
-costs **3.4 CPU-seconds** and reaches ρ 0.627, still above the convolutional
-network at any input width. Peak memory falls to 0.65 GB only if the reduced
+costs **3.4 CPU-seconds** and reaches ρ 0.627, still above **our in-house**
+convolutional control at any input width (not above crisprHAL 2 — see
+Finding 5). Peak memory falls to 0.65 GB only if the reduced
 matrix is what gets *stored*; subsetting after loading saves 14%.
 
 ### Is there an architecture-independent measure of cost?
@@ -588,6 +622,35 @@ because ten random candidates may not contain a great one.
 **Report ρ and R² together.** A LightGBM with a robust loss scored R² 0.192 with
 ρ 0.568 — the same model looking broken on one metric and respectable on the
 other.
+
+## Appendix C0 — Reproducibility: versions, seeds and protocol
+
+Recorded so a rerun is a rerun, not an approximation.
+
+| | |
+|---|---|
+| Python | 3.12.15 |
+| numpy / pandas / scipy | 2.5.3 / 3.0.6 / 1.18.1 |
+| scikit-learn | 1.9.1 |
+| LightGBM / XGBoost / CatBoost | 4.7.0 / 3.4.1 / 1.2.10 |
+| SHAP | 0.52.0 |
+| PyTorch (the CNN controls) | 2.14.1 |
+
+**Seeds.** `config.SEEDS = (41, 42, 43, 44, 45)`; `config.N_SPLITS = 5`. Ablations
+use all five seeds × five folds (25 fits per arm). The head-to-head against
+crisprHAL 2 uses seed 41 only, because each of their fits costs ~21 min. The
+shift-distance null and the GC-strata test use three seeds × five folds. Every
+seed is passed explicitly to the model, the selector and the fold splitter, so
+no arm depends on global RNG state.
+
+**Selector.** `config.SELECTOR = "xgboost"` — the throwaway model whose only job
+is to rank columns; its predictions are never used. Feature selection is fitted
+**inside the training split of each fold**, never on the full data.
+
+**Resumability.** Every fold is written to `results/folds_<tag>.csv` as it
+finishes and a fold already recorded there is skipped, so a long run can be
+rebuilt over several sittings without recomputing work — and so that a crash
+loses one fold rather than an experiment.
 
 ## Appendix C — Feature sets and data sources
 

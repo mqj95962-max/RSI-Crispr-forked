@@ -171,6 +171,15 @@ def _assemble(arm: str, verbose: bool = True):
     SUBSET = {
         "curated_local": lambda c: (".seq." in c) or (".qct." in c),
         "curated_longrange": lambda c: (".comp." in c) or (".win." in c),
+        # The matched-width arm. Their input spans 189 nt upstream and 166
+        # downstream, so their network already *sees* this DNA. Keeping only
+        # flank columns that fit inside that span asks the sharper question:
+        # does encoding the same bases as windowed composition extract what
+        # their convolutions miss, with neither model holding sequence the
+        # other lacks? The 250/500/1000 nt windows reach past their input and
+        # are dropped; the 50 nt windows and the near-cut columns remain.
+        "curated_matched": lambda c: (".seq." in c) or (".qct." in c)
+                                     or (".up50." in c) or (".dn50." in c),
     }
 
     if arm in ("curated_flank",) or arm in SUBSET:
