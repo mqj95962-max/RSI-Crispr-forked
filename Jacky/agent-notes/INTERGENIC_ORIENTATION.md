@@ -85,18 +85,29 @@ pattern supported; don’t over-claim a precise Δ. Artefacts:
 
 ### Caveats (state in the paper)
 
-1. Orientation is vs **nearest gene**, not a curated operon/TSS annotation —
-   weaker than an ideal transcription-direction label.
+1. Nearest-gene orientation is a proxy; **prefer RegulonDB TSS** (see controls).
 2. Intergenic labels are a different biological context (promoter/RBS targets).
-3. Single seed, 100 kb grouped CV; Δ CI is borderline for s6_good.
+3. Single seed, 100 kb grouped CV; nearest-gene Δ CI is borderline for s6_good.
 4. Does not by itself identify polymerase traffic vs other gene-asymmetric
    chromosomal features.
 5. OOF-pooled asymmetry point estimates differ slightly from the fold-mean
    table above (same sign/pattern).
 
+### Controls (Part 4 item 3) — DONE
+
+Full write-up: `ORIENTATION_CONTROLS.md`.
+
+- **TSS orientation (RegulonDB, sequence-anchored):** Δ = **0.051 [0.020, 0.082]**,
+  P(Δ≤0)=0 — stronger and cleaner than nearest gene.
+- Promoter and RBS show the same sign; split Δs are underpowered.
+- Matching on distance + flank GC **kills the nearest-gene Δ** but only
+  attenuates the TSS Δ (P=0.041; 95% CI just includes 0).
+- **Lead with TSS, not nearest gene**, in the paper.
+
 ## What changes in the progress report
 
 Replace Part 5’s “conditioning on orientation is impossible on this screen”
 with: impossible **on the coding matrix**; on intergenic guides the test runs
-and **asymmetry depends on orientation**. Re-open transcription/orientation as
-a live candidate for the long-range effect, with the caveats above.
+and **asymmetry depends on orientation relative to the nearest TSS**.
+Re-open transcription/orientation as a live candidate for the long-range
+effect, with the caveats above. Part 4 item 3 can be marked done.
