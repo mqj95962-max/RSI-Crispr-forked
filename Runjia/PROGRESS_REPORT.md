@@ -519,8 +519,35 @@ curves approaching their own asymptotes at different rates**, not as a shrinking
 gap: both saturate at full size (last 6,853 guides buy +0.004 and +0.007) and the
 asymptotes are close (0.694, 0.688). **This is not evidence of a higher
 ceiling** — they are within 0.007, inside the fold spread — it is evidence of
-reaching the ceiling on less evidence. *Limit:* one fixed test fold, one seed for
-crisprHAL; should be repeated across folds.
+reaching the ceiling on less evidence.
+
+**⚠ The table above is fold 1 only, and fold 1 is the hardest of the five.** A
+claim of the form "needs half the labelled guides" has to survive the choice of
+test set, and this one had never been asked to. `sample_complexity.py` now takes
+a fold and both curves run over all five. SLICER is done, 5 folds × 2 seeds:
+
+| guides | fold 1 | mean of 5 folds | sd across folds |
+|---:|---:|---:|---:|
+| 4,000 | 0.6374 | **0.6501** | 0.0085 |
+| 8,000 | 0.6672 | **0.6817** | 0.0084 |
+| 13,880 | 0.6844 | **0.6985** | 0.0082 |
+| 20,000 | 0.6904 | **0.7046** | 0.0080 |
+| 26,853 | 0.6944 | **0.7082** | 0.0080 |
+
+Fold 1 is the lowest of the five at every size and understates SLICER by about
+**0.014 ρ** at full size, so the published curve was conservative rather than
+flattering. **crisprHAL's folds 2–5 are still running**, and until they land no
+revised threshold table is quoted here: setting a five-fold mean against a
+fold-1 curve would reproduce exactly the error this rerun exists to remove.
+crisprHAL's folds may move by a similar amount, in which case the thresholds
+stand — or by more, in which case the "about half the data" claim narrows. That
+is the honest state of it.
+
+*Protocol note:* the module's printed summary used to report only "share of each
+model's own best", which reads as a data-efficiency claim and is not one — two
+curves can both reach 95% of themselves at the same n while being far apart in
+ρ. It now leads with absolute thresholds and labels the own-best figures
+diagnostic.
 
 ### Would renting a TPU settle the tuning asymmetry? Yes, and it should not be a budget item
 
