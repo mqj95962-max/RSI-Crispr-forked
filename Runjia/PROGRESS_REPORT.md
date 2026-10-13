@@ -240,7 +240,7 @@ That figure does not reproduce against the published label by either correlation
 measure; −0.201 for target GC reproduces exactly. The conditional analysis above
 replaces it.
 
-### 7. The long-range asymmetry depends on orientation, and that is open
+### 7. The long-range asymmetry depends on orientation — and it is transcription-start-site orientation, not nearest-gene
 
 The PAM side is worth more than the other side (+0.072 against +0.027;
 count-matched +0.0790 against +0.0782, so it is the side and not the column
@@ -248,15 +248,45 @@ budget). Short range has a mechanistic account from PAM-first engagement. Long
 range does not, and two candidates have been tested:
 
 - **Replication** — ruled out. No sign flip between replichores (0.0493, 0.0483).
-- **Transcription** — *live*. Expression level does not scale the asymmetry on the
-  coding library, but orientation does on Guo's intergenic sub-library, where both
-  strands exist by design: **0.047 against the nearest gene, 0.005 with it**
-  (n = 8,954; a stricter set gives 0.064 against −0.015). That is what a
-  transcription account predicts and the opposite of pure PAM geometry.
+- **Transcription** — *supported, with the right annotation*. Expression level
+  does not scale the asymmetry on the coding library, but orientation does on
+  Guo's intergenic sub-library, where both strands exist by design.
 
-*Limit:* orientation is defined against the nearest gene rather than a curated
-operon; promoter and RBS targets are a different biological context; one seed, no
-interval on the interaction yet. Controls listed in Part 4.
+**The controls are now done** (Jacky; `Jacky/orientation-controls/`). Δ is
+opposite-minus-same asymmetry, with a 2,000× block bootstrap over 47 genomic
+blocks, primary set n = 8,954:
+
+| orientation defined against | opposite | same | **Δ [95% CI]** | P(Δ≤0) |
+|---|---:|---:|---|---:|
+| **RegulonDB TSS** | 0.061 | 0.011 | **0.051 [0.020, 0.082]** | **0.000** |
+| RegulonDB operon | 0.053 | 0.031 | 0.023 [−0.008, 0.055] | 0.085 |
+| nearest gene | 0.040 | 0.014 | 0.026 [−0.006, 0.058] | 0.054 |
+| nearest gene, matched on distance + flank GC | 0.029 | 0.022 | **0.007 [−0.024, 0.038]** | **0.337** |
+| TSS, matched on distance + flank GC | 0.048 | 0.023 | 0.025 [−0.003, 0.053] | 0.041 |
+
+**Three things changed, two of them against us.**
+
+1. **Lead with TSS, not nearest gene.** Against a curated TSS the interaction is
+   unambiguous — Δ 0.051 with a CI clear of zero.
+2. **The nearest-gene version — which is what this report previously quoted — is
+   largely a cohort confound.** Matched on distance-to-gene and flank GC it
+   collapses to 0.007 (P = 0.34). Orientation relative to the nearest gene was
+   partly standing in for *where* those guides sit.
+3. **Even TSS attenuates by half under the same matching** to Δ 0.025, and its
+   95% CI then just includes zero while the one-sided P is 0.041. The honest
+   phrasing is **"survives matching directionally, borderline at 95%"** — not
+   "significant".
+
+*Also corrected:* the figures previously quoted here, "0.047 against the nearest
+gene, 0.005 with it", were **unweighted point estimates**. The block bootstrap
+over 47 genomic blocks puts the same comparison at 0.040 against 0.014, Δ 0.026.
+The earlier numbers were not wrong, but they were the optimistic form of a
+quantity that needed an interval, and the interval includes zero.
+
+*Still limited:* promoter and RBS guides show the **same sign** (Δ 0.024 and
+0.038) but their splits are underpowered, so no kind-specific claim is made;
+operon strand is weaker than TSS and stays supporting rather than lead. **Part 4
+item 3 is closed.**
 
 ### 8. Higher-order k-mers help, but only once feature selection is removed
 
@@ -405,7 +435,7 @@ Remaining before submission:
 |---|---|---|
 | 1 | eSpCas9 final evaluation, once, frozen configs — **on hold**: a pivot to crisprHAL's cohort reclassifies eSpCas9 as cross-enzyme validation rather than an untouched holdout, so spending the one-shot evaluation now would spend it on the wrong question | ~1 h |
 | 2 | crisprHAL 2's search run to **its own** plateau, not extrapolated | 2–4 GPU-h, free Colab tier |
-| 3 | orientation controls: block bootstrap on the interaction, promoter and RBS separated, curated TSS/operon orientation (RegulonDB is already on disk), matched on distance-to-TSS and GC | Jacky |
+| 3 | ~~orientation controls~~ | **done** — Jacky, Finding 7 |
 | 4 | human baseline re-tuned at the teammate's settings — **blocked**: the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/` | ~1 h once supplied |
 | 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 6 |
 | 6 | sample-complexity curve repeated across folds and seeds | ~2 h |
@@ -740,6 +770,7 @@ under-credit them.
 | set | who | result |
 |---|---|---|
 | **gene essentiality** | Jacky | **+0.0037 R²** over 0.2927, **selected in 5/5 folds** — the only non-QCT idea on that matrix with a consistent gain, and it passes Finding 3's screen |
+| **orientation controls** | Jacky | closes Part 4 item 3 and **rewrites Finding 7**: curated RegulonDB TSS replaces nearest gene as the orientation variable (Δ 0.051 [0.020, 0.082]), and the nearest-gene version we had been quoting is shown to be largely a distance/GC cohort confound (Δ 0.007, P = 0.34 after matching). Block bootstrap over 47 genomic blocks, promoter/RBS separated, operon compared |
 | seed non-additive QCT | Joshua | ~+0.005 R²; absolute-difference forms carry more SHAP than signed (1.09 against 0.92) |
 | log-ratio QCT forms | Joshua | ~+0.005 R², best seed 0.3015 |
 | regional QCT summaries | Joshua | +0.0013 R², against a permuted control at 0.2857 |
