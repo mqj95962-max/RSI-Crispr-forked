@@ -212,6 +212,45 @@ CNN does considerably better than ours on the same span, so "CNNs cannot learn
 this" was never the right conclusion, and only the sample-efficiency reading
 survives.
 
+**And then we gave their architecture the same reach, which is the test that
+decides it.** Their input width is a parameter, so crisprHAL 2 was retrained at
+four widths on the same rows, label and fold. cuDNN cannot allocate the GRU
+workspace at 2,023 nt and their published batch of 1,024, so every width was
+re-run at batch 256; the 378 nt arm at both batches brackets that cost at
+**−0.011**, a fifth of the effect below.
+
+| crisprHAL 2 input | ρ (batch 256, fold 1) | vs their 378 nt design point |
+|---:|---:|---:|
+| 23 nt (guide + PAM) | 0.5494 | −0.131 |
+| **378 nt (as published)** | **0.6799** | — |
+| 1,023 nt | 0.6602 | **−0.020** |
+| 2,023 nt | 0.6299 | **−0.050** |
+
+**Their model peaks at the width it was designed for and declines monotonically
+beyond it.** Handed the DNA family A reads, it gets worse, not better — roughly
+7× its across-fold sd. The head-to-head on the same fold:
+
+| DNA both models see | SLICER | crisprHAL 2 | lead |
+|---|---:|---:|---|
+| guide + PAM only | 0.5473 | 0.5494 | **tied** (0.002) |
+| their 378 nt span | 0.6568 | 0.6799 | crisprHAL **+0.023** |
+| ±1,000 nt | **0.6944** | 0.6299 | **SLICER +0.065** |
+
+So the three input widths tell three different stories, and only the last one is
+ours: on the guide alone the two architectures are **indistinguishable**; on
+their design width **theirs is better**; and at the reach family A uses, **ours
+is better by more than either of those gaps** — because width helps us and hurts
+them.
+
+*This partially restores a claim withdrawn above, and the restored version is
+narrower.* "Not recoverable by a convolutional network given the same DNA" was
+withdrawn because the only CNN tested at width was our own weak one. What is now
+supported is: **crisprHAL 2, at its published hyperparameters, is degraded by
+input wider than it was designed for.** Not "CNNs cannot learn this" — its 48
+epochs and every other setting were tuned at 378 nt, and **a re-tune at each
+width is the control we have not run.** One fold, one seed. State that limit
+beside the result.
+
 ### 6. The effect belongs to the DNA, and transfers
 
 | test | result |
@@ -404,7 +443,16 @@ quoted with a score.
 with a texture-preserving null; not a motif, not mappability, not gene ranking;
 transfers across enzyme and organism and not across kingdoms (Findings 4–7).
 
-**3. A simple representation that exploits it competitively and cheaply.**
+**3. A simple representation that exploits it competitively and cheaply — and
+an architecture result that comes with it.** Given the *same* DNA, the two
+models are indistinguishable on the guide alone and crisprHAL 2 is better on its
+own 378 nt span; given family A's ±1,000 nt reach, crisprHAL 2 **degrades**
+(0.6799 → 0.6299) while SLICER improves, so SLICER leads by 0.065 at matched
+input. The contribution is therefore not a faster model but a representation of
+long-range context that a tuned convolutional network does not extract at this
+sample size (Finding 5).
+
+**3b. The headline comparison, stated plainly.**
 ρ 0.721 against 0.704 with both models tuned, 0.6997 against 0.6940 on the prior
 model's own split, for ~150× less CPU time and about half the training data —
 leading on nine metrics tuned and eight of nine untuned (Appendix B).
