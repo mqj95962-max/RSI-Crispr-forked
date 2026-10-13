@@ -30,8 +30,18 @@
 # ============================================================================
 
 # --- cell 1 ---------------------------------------------------------------
-# !pip -q install tensorflow==2.17.0
+# Colab ships TensorFlow already, so do NOT pin a version -- Colab's Python is
+# often too new for older releases and the install will fail. Just check what is
+# there. crisprHAL declares no TF requirement; we run it locally on 2.19.1 with
+# Keras 3.15.1, and anything from 2.19 up should behave. The 378 nt positive
+# control below is what actually certifies the environment: if it reproduces
+# ~0.697, the TF version is fine, whatever it says here.
+#
+# import tensorflow as tf; print("tensorflow", tf.__version__)
 # !git clone -q https://github.com/tbrowne5/crisprHAL.git /content/crisprHAL
+#
+# Only if the import fails outright:
+# !pip -q install "tensorflow>=2.19"    (then Runtime -> Restart session)
 
 # --- cell 2: upload crisprhal_widewindow_input.csv.gz ----------------------
 # from google.colab import files; files.upload()
