@@ -375,6 +375,14 @@ concentrate importance almost identically (44 and 37 columns for half of it).
 
 ### 11. The label's ceiling is ≈0.94, not 0.90
 
+**⚠ This ceiling was derived for the *published* label and has not been
+re-derived for the curated one we now train on.** The arithmetic below uses Guo's
+replicate statistics and the published score's two-replicate geometric mean;
+crisprHAL 2's curation changes the label's noise properties by design — that is
+the whole claim of their paper — so the curated label's ceiling is probably
+*higher* and is currently unmeasured. Treat 0.937 as inherited, not established,
+until it is recomputed.
+
 Two screens of the same library agree at ρ 0.810, which naively gives 0.90 — but
 the disagreement is **predictable at ρ 0.546**, so it is enzyme biology, not
 noise. Using the source paper's own agreement statistics instead, and accounting
@@ -441,8 +449,15 @@ compressed into a biology paper.
 - **One organism and two relatives.** No genome-wide Cas9-cutting screen exists
   outside *Enterobacteriaceae*; what exists elsewhere is CRISPRi, a different
   measured quantity. Closing this needs wet-lab work.
-- **The label is survival, not cutting**, and is a folded Z-score of a
-  two-replicate Cas9/dCas9 ratio. Every "efficiency" number is that composite.
+- **The label is survival, not cutting**, and we train on **crisprHAL 2's curated
+  score**, not the published one. Verified: our target is **bit-identical** to
+  their released `y` on all 33,567 guides, so the head-to-head compares two models
+  on one quantity. But the two cohorts' labels are **different quantities** —
+  Noshay's `cut_score` runs 0 to 48.05 with no negative values, crisprHAL's runs
+  −9.05 to +6.21 with 47.5% negative. They agree in rank at ρ 0.945 on the 8,617
+  overlapping guides and give target GC the same sign (−0.147 against −0.201), so
+  nothing downstream reverses — but **every number in this report belongs to one
+  label or the other and they are not interchangeable.**
 - **The long-range mechanism is unidentified.** Orientation is a live candidate
   with one ruled-out alternative; the most mechanistically motivated feature built
   to explain it (GC skew and helical periodicity) is a null.
@@ -476,12 +491,43 @@ Remaining before submission:
 | 3 | ~~orientation controls~~ | **done** — Jacky, Finding 6 |
 | 4 | human baseline re-tuned at the teammate's settings — **blocked**: the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/` | ~1 h once supplied |
 | 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 5 |
-| 6 | sample-complexity curve repeated across folds and seeds | ~2 h |
+| 6 | ~~sample-complexity curve repeated across folds and seeds~~ | **done** — Appendix B |
+| 7 | re-tune crisprHAL 2 at **each input width** — the control a reviewer will ask for on Finding 4, since its hyperparameters were tuned at 378 nt | 2–4 GPU-h |
+| 8 | re-derive the **ceiling for the curated label** — the 0.937 figure is inherited from the published one (Finding 11) | ~1 h once the replicate statistics are located |
+
+**Paper writing is deferred until the claims are validated.** The shared Google
+Doc is **frozen as of 13 October 2026** and is no longer kept in sync; this
+report is the single maintained document. Resuming the draft is a decision to
+take once items 1, 2, 7 and 8 are closed, not before.
 
 **A guide-design tool is not a deliverable.** The findings are the contribution,
 the field already has several predictors, and everything needed to build one
 later exists (`featurise.matrix()` turns any 20-mer into the published
-representation). It should not compete with finishing the paper.
+representation).
+
+### What the pivot re-opens
+
+Many choices were made under two constraints that no longer bind: the 13,880-row
+published matrix, and Noshay's iRF as the baseline. Each of the following was
+settled under those constraints and is **not** automatically valid on crisprHAL's
+33,567-row curated cohort. None is known to be wrong; all are untested there.
+
+| decision | made under | why it may differ now |
+|---|---|---|
+| **the 412/427-column reduced set** | non-inferiority on the *published* matrix and label | column selection was never re-run on the curated cohort, which already excludes the 63 hand-named columns. The right reduced set there may not be this one |
+| **the ceiling, 0.937** | Guo's replicate statistics for the published label | crisprHAL's curation changes the label's noise by design; the curated ceiling is probably higher and is unmeasured |
+| **`n_features` = 300** | selector sweep on 6,232 published columns | the curated arms carry 6,517 columns including family A. "Quadrupling changes nothing" was measured on the old matrix |
+| **grouped CV by `arc5` / 100 kb block** | 13,880 guides, within-gene variance share 0.845 | 33,567 guides change the block occupancy; the variance share should be recomputed |
+| **champion hyperparameters** | 627 draws against the old cohort | tuned before the cohort moved. Re-tuning now conflicts with the freeze — the tension needs a deliberate decision, not a default |
+| **the family Δρ table** | published matrix and label | family A doubles on the curated cohort (+0.080 → +0.164). The others have not been re-measured, so their *relative* ranking is unverified |
+| **"sixteen model classes span 0.116 ρ"** | published matrix, no family A | the boosting-over-ridge margin was measured without the one feature family that matters |
+| **Noshay's iRF as baseline anchor** | the only available comparator | now provenance only; crisprHAL 2 is the baseline |
+
+**The honest framing is that the model layer moved cohorts and the
+interpretation layer did not.** The label description in Part 3 was wrong for
+exactly this reason until 13 October — it described the published score while we
+trained on the curated one. That is the shape of error to look for in the rest of
+this list.
 
 ## Part 5 — What the control phase changed
 
