@@ -600,6 +600,7 @@ settled under those constraints and is **not** automatically valid on crisprHAL'
 | decision | made under | why it may differ now |
 |---|---|---|
 | **the 412/427-column reduced set** | non-inferiority on the *published* matrix and label | column selection was never re-run on the curated cohort, which already excludes the 63 hand-named columns. The right reduced set there may not be this one |
+| **the published Δρ levels** | Noshay's 13,880 rows | **explained, not just re-measured.** The 3.3× inflation is the row population: the 24,950 guides only crisprHAL publishes have 1.34× the label spread and a 2.5× stronger flank-GC correlation. The published matrix understated the effect (Appendix B2a) |
 | **the ceiling, 0.937** | Guo's replicate statistics for the published label | crisprHAL's curation changes the label's noise by design; the curated ceiling is probably higher and is unmeasured |
 | **`n_features` = 300** | selector sweep on 6,232 published columns | partly answered by the selector control (Appendix B3): on the curated base, selecting 300 and using **all 6,199** columns differ by 0.0005 ρ, so 300 is not starving the model *there*. Still unmeasured for the wide arms — family A brings the count to 6,517 |
 | **grouped CV by `arc5` / 100 kb block** | 13,880 guides, within-gene variance share 0.844 | **re-measured — it moved.** 0.844 → **0.713** on the curated cohort: gene identity explains 29% of the label there against 16% here, so gene-grouped CV constrains the model *more*, not less (Appendix B) |
@@ -1056,12 +1057,14 @@ The reason is what each cohort is: Noshay's rows target a gene panel, while
 crisprHAL's curated release is genome-wide — 4,013 genes at 7.5 guides each. More
 genes, fewer guides in each, and more of the variance sits between them.
 
-This does not invalidate a figure already reported, because the grouped arms were
-always reported alongside the random ones. It does mean **the gap between random
-and gene-grouped CV should be larger on this cohort than the published-matrix
-experience suggests**, and any claim that "grouping barely changes anything" is
-now a claim about the wrong cohort. The grouped ablation has not been re-run
-here; it is the next thing to run, not something to assume.
+**The prediction that follows from this is wrong, which is why it was tested.**
+Twice the between-gene variance should mean a larger gap between random and
+gene-grouped CV. The gap is *smaller*: grouping cost `e_nucleoid` 42% of its gain
+on the published matrix and 12% here, `g_transcription` 36% and 21%
+(Appendix B3). The missing variable is **guides per gene** — 7.5 here against
+11.3 — because between-gene variance sets how much a locus-memorising model could
+win while guides per gene sets how well it can learn each locus's mean. Both
+moved, in opposite directions, and only the measurement says which won.
 
 Gene assignment is by coordinate on NC_000913.2 against the reference gene
 table, not from either dataset's own annotation, so both cohorts are measured the
@@ -1321,23 +1324,69 @@ supplies dense continuous summaries is now measured against a weaker comparison,
 and the weaker the base, the more any such family is worth. It predicts
 multiplication with the ordering preserved, which is what is observed.
 
-**What would settle it.** Two experiments, and neither has been expensive:
+**All four were tested, and the answer is the rows.** Each row below holds
+everything else fixed and changes one thing:
 
-1. **Row count against row identity** (`why_inflation.py`, running): re-run the
-   curated ablation on a random **13,880-row subsample of the curated cohort**,
-   three draws. Label, population and base held fixed; only the count changes. If
-   the curated Δρ survives at 13,880 rows, count is not the cause and the answer
-   is the base and the population; if it falls back toward +0.09, count is.
-2. **The base, directly**: add the 48 portable hand-named columns back to the
-   curated base and re-measure family A and `d_mechanics`. If the inflation is
-   the missing summaries, it should largely disappear. **Not run** — it is the
-   cheapest remaining test of the most likely explanation, and it should be next.
+| candidate | test | effect on family A's Δρ |
+|---|---|---:|
+| the **label** | same 8,617 rows, published base, swap `cut_score` for the curated score | **+0.004** (+0.0892 → +0.0936) |
+| **row count** | random 13,880-row subsamples of the curated cohort, 3 draws | **−0.003** (+0.1672 ± 0.0027 against +0.1638 at 33,567) |
+| the **base** | add 41 dense guide-only summary columns to the curated base, then measure family A on top | **+0.013** (+0.1638 → +0.1504) |
+| **which rows** | the remainder of a +0.084 gap | **≈ +0.070** |
 
-**Until (2) is run, the honest statement is that the curated Δρ column measures
-each family against a base weaker than the published one, by an amount nobody
-has quantified.** The ordering is trustworthy; the levels are a property of the
-comparison as much as of the features. That is also why Appendix B3 refuses to
-compare the two columns as levels.
+Row count is not merely small, it is **absent**: at the published cohort's own
+row count, the curated cohort still gives family A **+0.167**. The base matters a
+little — giving the base `b_energy`, `c_folding` and `d_mechanics`'s 22 dense
+guide-only columns raises it from 0.5445 to 0.5692 and takes 0.013 off family
+A — which is 8% of the gap, not the explanation. The label is 5%.
+
+**The 24,950 guides crisprHAL has and Noshay never published are a different
+population, and the flank effect is 2.5× stronger in them.** The cleanest form of
+this needs no model at all — the marginal rank correlation between a single
+flank-GC column and activity:
+
+| rows | label | `up500.gc` | `up50.gc` | `dn500.gc` |
+|---|---|---:|---:|---:|
+| the 8,617 **shared** | Noshay's `cut_score` | +0.069 | +0.056 | +0.052 |
+| the 8,617 **shared** | crisprHAL's score | +0.067 | +0.060 | +0.054 |
+| the 24,950 **crisprHAL-only** | crisprHAL's score | **+0.172** | **+0.150** | **+0.180** |
+
+**Same rows, two labels: identical. Different rows, same label: 2.5× to 3.5×.**
+That is the whole answer to the original objection, in a statistic with no
+selector, no tree and no folds in it.
+
+*What is different about those rows, as far as we can see.* They are not an
+obviously different class of gene — 6.9% essential against 8.0%, 6.8 guides per
+gene against 7.4. What differs is **dynamic range**: within the same curated
+label, the added rows have **1.34×** the label spread (sd 3.46 against 2.58) and
+**1.21×** the flank-GC spread (0.052 against 0.043). A correlation is
+scale-invariant, so spread alone changes nothing — but spread in the *signal*
+with the noise floor unchanged raises reliability, and attenuation is
+multiplicative in exactly the way the family table is. Noshay published the
+subset of the screen with the least room to measure anything in.
+
+*What would separate "more dynamic range" from "different biology" properly:*
+the per-guide read counts, which give a noise variance per row and hence a
+reliability per subset. We do not have them, and they are in the same PeerJ
+supplement nobody has read. Until then, "the added rows have more dynamic range,
+and that is sufficient to explain a 2–2.5× attenuation difference" is as far as
+this goes.
+
+**So the premise of the objection was right.** If curation had only removed noise
+from the label, the columns should not have changed behaviour — and the label
+change is worth 0.004. What changed behaviour is that crisprHAL's release is a
+**different and wider draw from the Guo screen**, four fifths of which Noshay
+never published, and in which the effect this project is about is simply easier
+to see.
+
+*Consequence for the findings, and it is a favourable one.* The published matrix
+**understated** the flanking-context effect, because it is the narrower,
+lower-range subset. The curated figures are the ones that describe genome-wide
+guide design; the published figures describe a 1,222-gene panel. Nothing in
+Part 1 needs weakening, and Finding 3's effect size needs *raising* when it is
+restated on this cohort — but the restatement has to carry this appendix with it,
+because a reader comparing +0.080 to +0.164 across cohorts without it will think
+the model got better.
 
 ## Appendix B3 — The family ablations on the curated cohort, and what they measure
 
@@ -1563,9 +1612,15 @@ so the Δρ columns compare and the ρ columns do not.
 
 ### How to read these numbers, and how not to
 
-**They are not comparable to the published Δρ column as levels.** The two cohorts
-have different baselines (0.544 against 0.527), different labels and different
-base representations. The *ordering* transfers (ρ = 0.97); the magnitudes do not.
+**They are not comparable to the published Δρ column as levels, and the reason is
+now known.** The two cohorts have different baselines (0.544 against 0.527),
+different labels and different base representations — but none of those is what
+tripled the table. **The rows are** (Appendix B2a): the label is worth 0.004, the
+row count nothing, the weaker base 0.013, and the remaining ~0.070 of family A's
++0.084 gap belongs to the 24,950 guides crisprHAL publishes and Noshay did not,
+in which a single flank-GC column's marginal correlation with activity is 2.5×
+higher. The *ordering* transfers (ρ = 0.97); the magnitudes describe a different
+and wider population.
 
 **They are not clean estimates of each family's biological contribution.** A
 family that supplies dense summaries is rewarded for its shape as well as its

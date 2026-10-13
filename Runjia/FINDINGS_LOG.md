@@ -3748,3 +3748,43 @@ in a table built for a different purpose.
 out, why the design rules that out, and what would be believed without it. The
 third line is the useful one; several of these controls exist because the thing
 they rule out was believed for weeks.
+
+## 13 October 2026 (night) — why the family table tripled: it is the rows
+
+All four candidate causes tested, each holding the others fixed. Family A's gap
+between cohorts is +0.080 → +0.164, i.e. +0.084:
+
+    the label        same 8,617 rows, swap cut_score for the curated score   +0.004
+    row count        random 13,880-row subsamples of the curated cohort      -0.003
+    the base         41 dense guide-only summary columns added to the base   +0.013
+    which rows       the remainder                                          ~+0.070
+
+**Row count is absent, not small.** At the published cohort's own row count the
+curated cohort gives family A **+0.1672 ± 0.0027** across three draws, against
++0.1638 at 33,567. **The base matters a little** — giving it `b_energy`,
+`c_folding` and `d_mechanics`'s 22 guide-only columns raises the base from
+0.5445 to 0.5692 and takes 0.013 off family A, 8% of the gap. **The label is 5%.**
+
+**The decisive statistic has no model in it.** Marginal rank correlation of
+`up500.gc` with activity: on the 8,617 shared rows it is +0.069 under Noshay's
+label and +0.067 under crisprHAL's — identical. On the 24,950 rows only
+crisprHAL publishes it is **+0.172**. Same rows two labels: nothing. Different
+rows same label: 2.5×.
+
+**What is different about those rows:** not gene class (6.9% essential against
+8.0%, 6.8 guides per gene against 7.4) but **dynamic range** — within the same
+label, 1.34× the label spread (sd 3.46 against 2.58) and 1.21× the flank-GC
+spread. Correlation is scale-invariant, so spread alone is inert; spread in the
+signal with the noise floor unchanged raises reliability, and attenuation is
+multiplicative in the way the table is. Noshay published the subset of the Guo
+screen with the least room to measure anything in. Separating "more range" from
+"different biology" properly needs per-guide read counts for a per-subset
+reliability — in the PeerJ supplement, still unread.
+
+**So the objection's premise was right and its conclusion is the finding.**
+Removing noise from the label did not change how the columns behave, because it
+is worth 0.004. What changed is that crisprHAL's release is a wider draw from the
+same screen, four fifths of which Noshay never published, in which the effect is
+easier to see. **The published matrix understated the flanking-context effect**,
+so the curated levels are the ones that describe genome-wide guide design and
+Finding 3's effect size goes up rather than down when restated there.
