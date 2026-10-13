@@ -3689,3 +3689,62 @@ the explanation.
 This is the second time in one day that a family-level number turned out to be a
 different quantity than its label (the first was `i_shape`'s +0.001). Both were
 caught by reading a column list rather than by running anything new.
+
+## 13 October 2026 (evening) — gene-grouped on the curated cohort, and why the table inflated
+
+**All eleven families re-run with whole genes held out** (30,203 guides in 4,013
+gene groups, baseline ρ 0.5584). **The three largest effects lose nothing.**
+`a_flank` retains 96% of its gain, `d_supercoiling` 94%, `i_shape` 94%.
+
+The reading depends on a calibration that was not obvious before running it:
+**the guide-only families set the grouping tax.** `b_energy`, `c_folding` and
+`f_methylation` are functions of the guide, so a change of split cannot
+invalidate them, yet they retain only 94% in aggregate. That 6% is what holding
+out whole genes costs for reasons unrelated to memorisation. Against it,
+`e_nucleoid` (88%) and `g_transcription` (79%) carry a real locus component of 6
+and 15 points — the expected direction and the expected two families — and
+`j_periodicity` (64%) and `h_offtarget` (23%) lose most of gains worth +0.011 and
++0.001.
+
+**Less memorisation than the published cohort showed**, where grouping cost
+`e_nucleoid` 42% and `g_transcription` 36%, despite the curated cohort having
+twice the between-gene variance share. The resolution: 7.5 guides per gene
+against 11.3. Between-gene variance sets how much a locus-memorising model could
+win; guides per gene sets how well it can learn each locus's mean. They moved
+oppositely and the second won — not derivable from the variance share, which is
+the argument for running controls rather than reasoning about them.
+
+**Why the whole table inflated ~3×, narrowed to two candidates.** Four things
+changed with the cohort and two are now eliminated:
+
+* **the label** — at fixed rows (the 8,617 shared), family A is +0.0892 against
+  `cut_score` and +0.0936 against the curated score. A 0.004 move. *Not it.*
+* **row count** — on a random **13,880-row subsample of the curated cohort**,
+  family A is **+0.170** and `d_mechanics` **+0.105**, i.e. the full-cohort
+  figures (+0.164, +0.099) at the published cohort's row count. *Not it.*
+* **which rows** (genome-wide against a 1,222-gene panel) and **the base**
+  (6,169 sparse indicators with none of the published base's 63 hand-named
+  summaries) — one or both. `base_enrichment.py` is running the base test:
+  give the curated base 41 dense guide-only summary columns that carry no
+  information beyond the 20-mer, and see how much of family A's +0.164 survives.
+
+So the answer to "surely removing noise shouldn't change behaviour" is that
+**noise removal is the one thing that provably did not do it.** Written up in
+Appendix B2a, including the two mechanisms by which noise removal *could* have
+changed behaviour qualitatively (a hard selection budget makes feature inclusion
+a threshold operation, and a read-count filter is not spatially random because
+abundance is not).
+
+**Bug 12, caught by a sanity check and not by the code.** The gene-grouped run
+wrote its results into `ablation_curated.csv`, the random-row table, destroying
+it — a leftover `to_csv(OUT)` in the family loop that my earlier patch to
+`_write(rows, OUT_)` had missed. Noticed because the "random" column of a
+comparison table came back holding the grouped numbers. Recovered from the
+committed copy. The lesson is the same as the other three silent failures: the
+run reported success, and the only signal was a number that did not look right
+in a table built for a different purpose.
+
+**Also written: Appendix A now gives every control three lines** — what it rules
+out, why the design rules that out, and what would be believed without it. The
+third line is the useful one; several of these controls exist because the thing
+they rule out was believed for weeks.

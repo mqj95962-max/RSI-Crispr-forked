@@ -166,9 +166,11 @@ def run(families=FAMILIES, seeds=None, n_splits=None, n_features=300,
         if verbose:
             print(f"  {fam:>16}: rho {rho:.4f}   delta {rho - base_rho:+.4f}  "
                   f"({len(fnames)} cols)", flush=True)
-        pd.DataFrame(rows).to_csv(OUT, index=False)
+        # Must be OUT_, not OUT: a leftover raw write here sent the
+        # gene-grouped results into the random-row table and destroyed it.
+        _write(rows, OUT_)
 
-    out = pd.DataFrame(rows)
+    out = pd.read_csv(OUT_)
     if verbose:
         print()
         print(out.round(4).to_string(index=False))

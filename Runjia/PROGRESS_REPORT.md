@@ -291,6 +291,19 @@ beside the result.
 | read-depth / mappability artefact? | survives a high-uniqueness stratum, +0.078 → +0.051 |
 | gene ranking in disguise? | within-gene ρ 0.571 against 0.606 global; flanks worth **+0.061 inside genes** |
 
+*Why these five and not other tests.* Each removes one way the effect could be
+an artefact of this dataset rather than a property of the DNA. A new **enzyme**
+changes the protein but keeps the genome, so a surviving effect is not about
+SpCas9's idiosyncrasies. A new **organism** changes the genome too, so a
+surviving effect is not about *E. coli*'s composition; the **human** arm going
+negative is the control on that control, since a model transferring everywhere
+would be evidence of a methodological artefact rather than of biology. The
+**uniqueness stratum** removes the mappability explanation by restricting to
+guides whose reads cannot be misassigned. The **within-gene** comparison removes
+the gene-ranking explanation by asking the question entirely inside genes, where
+"which gene" is constant. Nothing here is an intervention, so all five together
+still only rule things out.
+
 *Mechanism, as a hypothesis.* Target GC correlates **−0.201** with the score;
 the effect survives a change of enzyme and of organism; and the model run
 backwards prefers GC-poor targets (35% against a 51% mean). That is consistent
@@ -432,7 +445,14 @@ The largest between-model gap on any kind of column goes from 31 points to 0.3.
 
 "Drop the top features and refit" returns ≈0 on the full matrix for every model,
 which this project reported for weeks as evidence that no model had found the
-real features. It is not: at a **matched share of attributed importance** (~35%),
+real features. It is not — and the fix is to match what is removed rather than
+how many columns are removed. **Why the naive version fails:** on a matrix where
+6,095 columns restate 20 variables, dropping the top *k* columns removes almost
+no information, because near-duplicates remain to carry it. The probe then
+reports ≈0 for every model and every representation, which is a property of the
+redundancy, not of the attributions. Equalising the *share of attributed
+importance* removed makes the comparison about what each representation actually
+loses. At a matched share (~35%),
 the full matrix loses 0.002 and the 775-column reduced set loses **0.015** — six
 times the damage for the same share of the explanation removed, while both
 concentrate importance almost identically (44 and 37 columns for half of it).
@@ -558,7 +578,7 @@ Remaining before submission:
 | 6 | ~~sample-complexity curve repeated across folds and seeds~~ | **done** — Appendix B |
 | 7 | re-tune crisprHAL 2 at **each input width** — the control a reviewer will ask for on Finding 4, since its hyperparameters were tuned at 378 nt | 2–4 GPU-h |
 | 8 | re-derive the **ceiling for the curated label** — the 0.937 figure is inherited from the published one (Finding 11) | ~1 h once the replicate statistics are located |
-| 9 | re-run the **gene-grouped ablation** on the curated cohort — gene identity explains 29% of the curated label against 16% of the published one (Appendix B), so the random-against-grouped gap measured there does not transfer | ~2 h |
+| 9 | ~~re-run the gene-grouped ablation on the curated cohort~~ | **done** — all eleven families, Appendix B3. The three largest effects lose nothing beyond the 6% grouping tax; `e_nucleoid` and `g_transcription` carry a real locus component of 6 and 15 points |
 
 **Paper writing is deferred until the claims are validated.** The shared Google
 Doc is **frozen as of 13 October 2026** and is no longer kept in sync; this
@@ -650,37 +670,218 @@ provenance. Nothing here should appear in the main text of a paper.
 
 ## Appendix A — Controls and nulls
 
-**Permutation floors.** Every family with a gain was re-run with its rows
-shuffled. Family A's shuffled control scores **0.5264** against a 0.5272
-baseline — i.e. zero — and `j_periodicity`'s control scores *higher* than the
-real thing, which is the signature of noise.
+Every control here is written the same way: **what it rules out**, **why the
+design rules that out** rather than merely gesturing at it, and **what would be
+believed without it**. The third line is the one worth reading — several of these
+controls exist because the thing they rule out was, for a while, believed.
 
-**The texture-preserving null for family A** (`shiftnull.py`). Row shuffling
-destroys genomic autocorrelation as well as the pairing, so it tests a weaker
-null than claimed. Instead each guide is re-assigned the flank track read from a
-position offset by a **circular chromosome shift**: same track, wrong place, so
-every column's marginal, smoothness and long-range autocorrelation are preserved
-exactly. Verified on `dn500.gc` — mean moves 0.5103 → 0.497–0.508 while its
+### Nulls — is the pairing between feature and label real?
+
+**Permutation floors.** Every family with a gain was re-run with its feature rows
+shuffled against the labels.
+*Why it works:* shuffling destroys the guide↔feature correspondence while
+preserving each column's marginal distribution and the model's capacity exactly,
+so the arm measures how much ρ a selector and a boosted tree can manufacture
+from 300 columns of correctly-shaped noise. That floor is not zero and has to be
+measured rather than assumed.
+*Without it:* family A's +0.080 would rest on the assumption that a 6,580-column
+search cannot overfit a 13,880-row training split. The measured floor is
+**0.5264 against a 0.5272 baseline** — i.e. zero — and `j_periodicity`'s
+shuffled arm scores *higher* than its real one, which is what a null family
+looks like from the inside.
+
+**The texture-preserving null for family A** (`shiftnull.py`). Each guide is
+re-assigned the flank track read from a position offset by a **circular
+chromosome shift**: the same track, at the wrong place.
+*Why it works:* row shuffling tests a weaker null than family A's claim.
+Family A asserts that *this* guide's local DNA predicts *this* guide's activity;
+row shuffling breaks that but also destroys genomic autocorrelation, so it
+cannot distinguish "local DNA matters" from "DNA-like texture at the right
+smoothness matters". A circular shift preserves every column's marginal, its
+smoothness and its long-range autocorrelation exactly, and breaks only the
+alignment. Verified on `dn500.gc`: the mean moves 0.5103 → 0.497–0.508 while the
 correlation with the aligned track falls 1.00 / 0.41 / 0.05 / −0.03 at 0 / 1 kb /
 100 kb / 2 Mb.
+*Without it:* the family A result would be compatible with a model that has
+learned the *texture* of bacterial DNA rather than anything about the cut site.
 
-**One shift would not have been enough**, and that is why it is swept: at 1 kb
-the shifted columns are still 0.41 correlated with the real ones. Sweeping turns
-the control into a measurement — Δρ against shift distance is the autocorrelation
-length of the effect, independent of the window sizes family A happens to use.
-Results in Finding 3. Grouped CV (100 kb blocks) throughout, because a positional
-feature under random KFold can score by locus recognition and the shifted arms
-would inherit that too.
+**One shift would not have been enough**, which is why the shift is swept. At
+1 kb the shifted columns are still 0.41 correlated with the real ones, so a
+single 1 kb control would have reported a spurious residual effect and a single
+2 Mb control would have proved only that a distant genome position is
+uninformative. Sweeping converts the control into a measurement: Δρ against
+shift distance **is** the autocorrelation length of the effect, read off
+independently of the window sizes family A happens to use. Results in Finding 3.
+Grouped CV (100 kb blocks) throughout, because a positional feature under random
+KFold can score by locus recognition and the shifted arms would inherit that too.
 
 **Negative controls from the source experiment.** Available for exactly one
-family: the dCas9 arm of the same screen, which is why the "supercoiling" result
-could be overturned by its own control rather than by an argument.
+family: the dCas9 / no-antibody arm of the GapR-seq experiment.
+*Why it works:* it is the same assay with the biology removed, so a feature that
+predicts equally well from the control track is measuring the assay, not the
+phenomenon the track is named after.
+*Without it:* `d_supercoiling`'s +0.045 would still be reported as supercoiling.
+It is **DNA read density**, and the family was overturned by its own control
+rather than by an argument — which is the only reason it was overturned at all.
 
-**Grouped cross-validation.** The screen puts ~20 guides in every gene, so plain
-KFold lets a model score by recognising a locus rather than reading a guide —
-84.5% of label variance is *within* gene, so the remaining ~15% is learnable by
-memorising addresses. Anything positional is reported under `arc5` or 100 kb
-blocks.
+### Splits — is the gain prediction, or address memorisation?
+
+**Grouped cross-validation.** Anything positional is reported under `arc5`,
+100 kb blocks, or whole genes held out.
+*Why it works:* the screen puts several guides in every gene, and guides in one
+gene share a locus. Plain KFold therefore puts guides from the same gene on both
+sides of the split. For a sequence feature that is harmless, because the
+sequences differ; for anything positional it is not, because those columns
+*identify* the locus, and a model can be rewarded at validation time for
+learning "guides around here score about this much". Holding out whole groups
+removes that route entirely, since no held-out gene contributes a training row.
+*Without it:* the positional families' gains would be indistinguishable from
+locus recognition, and the share of label variance that lies *between* genes is
+exactly the budget available for that trick — **16% on the published matrix, 29%
+on the curated one** (`cohort_groups.py`).
+*And the control needs its own calibration.* Families that are functions of the
+guide cannot be invalidated by a change of split, so whatever *they* lose under
+grouping is the cost of the harder partition rather than memorisation. They lose
+6% in aggregate, which sets the benchmark the positional families are read
+against — `a_flank`, `d_supercoiling` and `i_shape` lose nothing beyond it,
+`e_nucleoid` and `g_transcription` lose 6 and 15 points more (Appendix B3).
+Without that calibration every family would appear to lose something.
+
+**Why gene-grouping became necessary on the curated cohort, specifically.** The
+grouped arms on the published matrix were a precaution against a small risk:
+with 84.4% of label variance inside genes, only ~15% was available to memorise.
+The curated cohort is **genome-wide** — 4,013 genes at 7.5 guides each, against a
+1,222-gene panel at 11.3 — so gene identity explains **29%** of its label, nearly
+twice as much. The risk the control guards against roughly doubled when the
+cohort moved, while every curated family number was measured under random KFold.
+That is why the re-run was not optional, and the result is in Appendix B3: the
+families keep 79–96% of their gains, so the inflation is not memorisation. **A
+control that had not been run would have left the single largest table in the
+report resting on the assumption that the published cohort's grouping behaviour
+transferred — and the variance share says it does not.**
+
+### Matching — is the comparison fair?
+
+**Matched-span head-to-head against crisprHAL 2.** crisprHAL is also run at our
+window widths, and SLICER at theirs.
+*Why it works:* the two models differ in architecture *and* in how much DNA they
+read, and a head-to-head at each side's native width cannot separate them.
+Equalising the input DNA leaves architecture as the only difference, in both
+directions: at their span our windowed composition loses by 0.025; at ±1,000 nt
+we lead by 0.065.
+*Without it:* "we out-encode a tuned deep model" — which was claimed, and is
+false. The honest claim is access to DNA they never see, and it is narrower and
+much harder to attack.
+
+**Distance- and GC-matched orientation comparison, with a block bootstrap**
+(Jacky).
+*Why it works:* opposite-orientation guides are not a random sample of
+same-orientation guides — they sit at different distances from the gene and in
+different GC. Matching on distance and flank GC compares like with like, and
+bootstrapping over 47 genomic blocks rather than over rows accounts for the fact
+that nearby guides are not independent observations, which is what sets the
+interval width honestly.
+*Without it:* "0.047 against the nearest gene" stands. After matching it is
+**0.007 [−0.024, 0.038]**, P = 0.34 — a cohort confound. The effect is real
+against a curated **TSS** (Δ 0.051 [0.020, 0.082]), which is a different and
+better-specified claim.
+
+**The conditional GC test, within matched target-GC strata.**
+*Why it works:* flank GC and target GC are correlated, so a marginal association
+between flank GC and activity could be target GC seen through it. Binning on
+target GC and measuring inside each bin removes that path by construction.
+*Without it:* the GC account would rest on a marginal correlation. Conditioning
+*raises* the association, +0.044 marginal → **+0.082** partial, positive in all
+five strata — the signature of a suppressor relationship, and the opposite of
+what a confound looks like.
+
+### Instruments — is the measurement measuring what its name says?
+
+**The selector control: 300 columns against all of them.**
+*Why it works:* every arm selects 300 columns from its candidate pool, so an arm
+with more candidates could gain simply by being given more to choose from.
+Re-running with selection switched off removes the budget as a variable.
+*Without it:* `d_mechanics`'s +0.099 on a base starved of dense columns would be
+open to the obvious objection. It is not selection: **+0.0988 selecting 300,
++0.0993 using all 6,199**.
+
+**The reconstructibility probe: each of a family's columns predicted out of fold
+from the base.**
+*Why it works:* "this feature is a deterministic function of the 20-mer" is a
+claim about the feature's *inputs*, and reading the builder is the fast way to
+check it — but a probe makes it quantitative and catches columns whose inputs
+nobody read. A column the base predicts at R² = 1.0000 adds no information; one
+it predicts at R² ≈ 0 is reading something the base does not contain.
+*Without it:* the claim that `d_mechanics` adds no new DNA stands, and its
++0.099 remains the report's headline evidence that representation beats
+information. Eight of its thirty columns came back at **R² ≈ 0** — flanking-DNA
+thermodynamics — and they carry +0.097 of the +0.099 (Finding 2). **This control
+cost the report its most quotable claim, and it is the single most useful thing
+run in two days.**
+
+**The guide-only / flank-only decomposition** (`no_information.py`) is the
+follow-up that same probe demanded: split the family by what its columns read and
+run both halves against the same base. +0.011 for the 22 protospacer columns,
++0.097 for the 8 flank columns. *Why it works:* the two halves share the base,
+the rows, the folds and the selection budget, so the only difference is reach.
+
+**The faithfulness positive control.**
+*Why it works:* an attribution method that assigns importance to real features
+and to permuted ones alike is uninformative, so the probe is calibrated by
+feeding it a known null and checking what it reports. At a **matched share of
+attributed importance** (~35%), permuted columns score 0.258 against real
+columns' 0.581.
+*Without it:* the standard faithfulness probe's output on a redundant matrix
+would read as a measurement rather than as the uninterpretable number it is
+(Finding 10).
+
+**TOST non-inferiority with a pre-declared margin.**
+*Why it works:* "the reduced set is as good" cannot be established by failing to
+reject a difference — absence of significance is not evidence of equivalence.
+Declaring a 0.005 ρ margin *before* the test and then showing the confidence
+interval falls inside it is the form of claim the data can actually support.
+*Without it:* "427 ≈ 6,232" would be an argument from a non-significant p-value,
+which is the most common error in this literature.
+
+**The attenuation ceiling** (Spearman–Brown on replicate statistics).
+*Why it works:* a model's ρ cannot exceed the label's own reliability, so the
+ceiling is a property of the measurement and has to be estimated from replicates
+rather than from model performance.
+*Without it:* "the model is out of material" would be a claim about the model.
+With it, it is a claim about how much signal the label contains — and the figure
+is **inherited from the published label and not yet re-derived for the curated
+one**, which is Part 4 item 8.
+
+### Guards — did the computation actually run?
+
+Four failures in two days produced plausible numbers, or destroyed real ones,
+from code that reported success. These are not controls in the experimental sense; they are the
+assertions that should have existed first.
+
+* **crisprHAL's `train()` catches its own exceptions and returns `None`
+  identically on success and failure.** A wide-window run scored ρ 0.0434 in
+  0.36 min on an untrained network and passed every sanity check that was being
+  applied — finite, right length, non-degenerate. Fixed by calling `model.fit`
+  and `model.predict` directly. *The guard that works:* assert the loss moved.
+* **`n_features=None` resolves to `config.N_FEATURES`**, so a "no selection" arm
+  silently selected 300. Caught only because the two arms agreed to sixteen
+  decimal places — i.e. by a coincidence that was too perfect, not by design.
+  *The guard that works:* pass `X.shape[1]` explicitly and assert the column
+  count used.
+* **A grouped run wrote its results into the random-row table and destroyed
+  it** — a leftover raw `to_csv(OUT)` in a loop whose other writes had been
+  routed to the grouped output. Recovered from the committed copy. Noticed only
+  because a comparison table's "random" column came back holding the grouped
+  numbers. *The guard that works:* one output path per run, resolved once.
+* **`b_energy` wrote a block with 33,567 rows and zero feature columns** and
+  reported success, because its builder catches import errors per guide and then
+  drops the error column. It would have scored Δρ = 0.000 and read as a clean
+  null. *The guard that works, and is now in place:* refuse to write or read a
+  block with no populated feature column.
+
+The shape they share: **a computation that fails and reports a number of exactly
+the kind expected.** Every one would have entered the report as a result, and two
+of them as negative results, which attract the least scrutiny of all.
 
 ## Appendix B — Questions asked along the way, and the answers
 
@@ -1063,6 +1264,81 @@ combined differently from Guo's. That is in the PeerJ paper, which **nobody on
 this project has read the methods of**. Since we now train on their label, that
 is a gap worth closing before the paper describes it.
 
+### Why the columns behave *qualitatively* differently after curation
+
+The objection is the right one: if curation only removed noise, every family's
+gain should have been scaled by a single attenuation factor and nothing should
+have changed in kind. `i_shape` should not have looked like a null and then like
+a third-largest effect; `d_mechanics` should not have gone from +0.020 to +0.099.
+Noise removal does not reorganise a table.
+
+**It did not only remove noise. Four things changed at once, and three of them
+are not about noise at all.**
+
+| what changed | is it noise removal? |
+|---|---|
+| the **label** — crisprHAL's read-count-filtered score replaces `cut_score` | yes |
+| **which rows** — not nested: 8,617 shared, 24,950 only crisprHAL, 5,263 only Noshay; genome-wide (4,013 genes at 7.5 guides) against a panel (1,222 at 11.3) | no — a different draw |
+| **how many rows** — 13,880 → 33,567, 2.4× | no |
+| the **base representation** — the curated base is the 6,169 regenerated columns and carries **none** of the published base's 63 hand-named summaries | no — a different comparison |
+
+**The part that is noise removal is nearly inert, and this is measured.** At
+fixed rows — the 8,617 both cohorts share, published base, same folds — swapping
+the label moves family A from **+0.0892** against `cut_score` to **+0.0936**
+against the curated score. A **0.004** move, against a cohort move of +0.080 →
++0.164. Whatever tripled the table, it was not the label, and the attenuation
+argument is bounded at a few per cent of the effect rather than 230% of it.
+
+**Still, noise removal *can* change behaviour in kind, and it is worth being
+precise about why**, because the intuition that it cannot is the thing that makes
+this surprising. Two reasons:
+
+*Feature selection and tree splitting are not continuous in signal-to-noise.* A
+family is only worth anything if its columns are selected into the top 300 and
+then split on. Both are threshold operations. A weak-but-real column sitting just
+below the selector's cut contributes **exactly zero**, not a small amount; drop
+the label noise slightly and the same column crosses the threshold and
+contributes its full value. So a small change in reliability can produce a step
+change in measured Δρ. This is the mechanism by which "just less noise" shows up
+as a qualitative difference, and it is specific to a pipeline with a hard
+selection budget — which ours has, at 300.
+
+*Label noise is not uniform across rows, so removing noisy rows is not a
+null operation on the covariates.* A read-count filter removes
+low-abundance guides preferentially, and abundance is **not** spatially random —
+we measured that directly when `d_supercoiling`'s gain turned out to be DNA read
+density rather than supercoiling. A filter on read count is therefore a filter
+that touches the joint distribution of every positional feature and the label,
+not just the label's variance. That is a change of population, and it is the one
+the table is most likely responding to.
+
+**The pattern in the data points at the fourth row of that table.** The
+inflation is nearly uniform — rank correlation 0.97 between the published and
+curated columns, median 3.3× — and a uniform multiplier is the signature of
+something that changed the *scale of the measurement*, not the biology. The base
+losing its 63 hand-named dense columns does exactly that: every family that
+supplies dense continuous summaries is now measured against a weaker comparison,
+and the weaker the base, the more any such family is worth. It predicts
+multiplication with the ordering preserved, which is what is observed.
+
+**What would settle it.** Two experiments, and neither has been expensive:
+
+1. **Row count against row identity** (`why_inflation.py`, running): re-run the
+   curated ablation on a random **13,880-row subsample of the curated cohort**,
+   three draws. Label, population and base held fixed; only the count changes. If
+   the curated Δρ survives at 13,880 rows, count is not the cause and the answer
+   is the base and the population; if it falls back toward +0.09, count is.
+2. **The base, directly**: add the 48 portable hand-named columns back to the
+   curated base and re-measure family A and `d_mechanics`. If the inflation is
+   the missing summaries, it should largely disappear. **Not run** — it is the
+   cheapest remaining test of the most likely explanation, and it should be next.
+
+**Until (2) is run, the honest statement is that the curated Δρ column measures
+each family against a base weaker than the published one, by an amount nobody
+has quantified.** The ordering is trustworthy; the levels are a property of the
+comparison as much as of the features. That is also why Appendix B3 refuses to
+compare the two columns as levels.
+
 ## Appendix B3 — The family ablations on the curated cohort, and what they measure
 
 Every Δρ in Appendix C was measured on the published 13,880-row matrix. The model
@@ -1223,6 +1499,68 @@ reason, and all three failures were silent:
 and `build_curated_features.run` refuses to write one, because the failure mode
 is not a crash — it is a plausible-looking zero.
 
+### Under gene-grouped cross-validation: the gains are not locus memorisation
+
+Every number above is from random KFold, and on this cohort that needed
+checking rather than assuming — gene identity explains **29%** of the curated
+label against 16% of the published one, so there is nearly twice as much
+available to memorise (Appendix A). All eleven families were therefore re-run
+with **whole genes held out**: `curated_ablation --grouping gene`, the 30,203
+guides that fall inside an annotated gene, 4,013 gene groups, 5 seeds × 5 folds,
+baseline ρ 0.5584.
+
+| family | reach | random-row Δρ | **gene-grouped Δρ** | retained |
+|---|---|---:|---:|---:|
+| `a_flank` | flanks | +0.164 | **+0.157** | 96% |
+| `d_supercoiling` | external | +0.139 | **+0.131** | 94% |
+| `i_shape` | flanks | +0.120 | **+0.112** | 94% |
+| `d_mechanics` | guide + flanks | +0.099 | **+0.092** | 92% |
+| `e_nucleoid` | external | +0.072 | **+0.063** | 88% |
+| `g_transcription` | external | +0.058 | **+0.046** | 79% |
+| `b_energy` | guide | +0.019 | +0.017 | 91% |
+| `c_folding` | guide | +0.014 | +0.014 | 97% |
+| `j_periodicity` | position | +0.011 | +0.007 | 64% |
+| `f_methylation` | guide | +0.008 | +0.007 | 93% |
+| `h_offtarget` | genome | +0.001 | +0.000 | 23% |
+
+**The guide-only families calibrate the control, which is what makes the rest of
+the column readable.** `b_energy`, `c_folding` and `f_methylation` are functions
+of the guide, so grouping *cannot* invalidate them — a sequence feature does not
+become less true when the split changes. They nevertheless retain only **94% in
+aggregate**, and that 6% is the **grouping tax**: holding out whole genes is a
+harder task for reasons that have nothing to do with memorisation (less locus
+diversity in training, and 4,013 groups split five ways is a coarser partition
+than 30,203 rows split five ways). Without that calibration a family retaining
+94% would read as having lost 6% to memorisation, when the right reading is that
+it lost nothing.
+
+Against the 94% benchmark:
+
+* **`a_flank` (96%), `d_supercoiling` (94%) and `i_shape` (94%) lose nothing at
+  all.** The three largest effects in the table survive gene-grouping intact.
+* **`e_nucleoid` (88%) and `g_transcription` (79%)** carry a real locus
+  component, 6 and 15 percentage points beyond the tax. Both read external
+  tracks indexed by position, so this is the expected direction and the expected
+  families.
+* **`j_periodicity` (64%) and `h_offtarget` (23%)** lose most of their gain, but
+  their gains are +0.011 and +0.001. Large relative losses of nothing.
+
+**This is a smaller memorisation component than the published cohort showed**,
+where grouping cost `e_nucleoid` 42% of its gain and `g_transcription` 36%. The
+apparent paradox — twice the between-gene variance, half the memorisation — is
+resolved by what else changed: the curated cohort has **7.5 guides per gene
+against 11.3**. Between-gene variance sets how much a locus-memorising model
+*could* win; guides per gene sets how well it can *learn* each locus's mean. The
+two moved in opposite directions, and the measurement says the second dominated.
+That is not something that could have been reasoned out from the variance share
+alone, which is the argument for running the control rather than arguing about
+it.
+
+*Caveat on levels.* The grouped arms run on 30,203 guides, not 33,567, because
+3,364 fall outside every annotated gene and were dropped rather than given
+singleton groups. Its baseline is accordingly different (0.5584 against 0.5445),
+so the Δρ columns compare and the ρ columns do not.
+
 ### How to read these numbers, and how not to
 
 **They are not comparable to the published Δρ column as levels.** The two cohorts
@@ -1371,7 +1709,7 @@ against Crossref metadata rather than transcribed from memory.
 
 ## Appendix E — Withdrawn claims
 
-Twenty-seven claims have been withdrawn and eleven bugs found. They are not listed
+Twenty-seven claims have been withdrawn and twelve bugs found. They are not listed
 here, so that this document reads as a statement rather than a diary; they are in
 `docs/FINDINGS_LOG.md` in date order and in `local/MISCONCEPTIONS.md`, outside
 the repo, with the cause of each.
