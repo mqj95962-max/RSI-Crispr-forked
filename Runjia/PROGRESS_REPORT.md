@@ -1208,7 +1208,12 @@ loses one fold rather than an experiment.
 
 ## Appendix C — Feature sets and data sources
 
-### Ours — ten families, four distinct ideas
+### Ours — eleven families, four distinct ideas
+
+Δρ below is on the **published** 13,880-row matrix, which is what these were
+built against. All eleven have since been re-measured on the curated cohort,
+where the ordering is nearly identical and every figure is about three times
+larger — Appendix B3 has that table and the reason.
 
 | set | what it measures | source | Δρ |
 |---|---|---|---:|
