@@ -104,26 +104,61 @@ about the columns actually used; the portable 412 is what the claim should name.
 **A consequence that is often stated as a theorem, and is false.** If the matrix
 encodes the 20-mer losslessly, it is tempting to conclude that *any* deterministic
 function of the 20-mer adds nothing to a model trained on it. **That holds for an
-unconstrained learner and not for ours** — and the gap is large. `d_mechanics` is
-nearest-neighbour duplex thermodynamics, a sum of dinucleotide parameters and
-therefore a function of the guide by construction. On the curated cohort it is
-worth **+0.099 ρ** (0.5443 → 0.6432), and that is **not** a feature-selection
-artefact: using every column rather than selecting 300 gives the same gain,
-+0.0993 against +0.0988 (`results/selector_control.csv`).
+unconstrained learner and not for ours.** Three families on the curated cohort
+are built from the guide and nothing else, and all three pay: `b_energy`
+**+0.019**, `c_folding` **+0.014**, and the guide-only part of `d_mechanics`
+(below). None of this is a feature-selection artefact — on the full
+`d_mechanics` arm, using every column rather than selecting 300 gives the same
+gain, +0.0993 against +0.0988 (`results/selector_control.csv`).
 
-`d_mechanics` is not a special case. Two more families are functions of the
-guide alone and both pay: `b_energy`, the CRISPRoff free-energy decomposition of
-the 23-mer, is worth **+0.019**, and `c_folding`, ViennaRNA folding of the spacer
-and its scaffold, **+0.014**. Three families, no new DNA between them, +0.019 to
-+0.099.
+*Correction, 13 October — the clean cases are the other two.* **Eight of
+`d_mechanics`'s thirty columns are not functions of the 20-mer at all**:
+`eng.mech.flank.{up,dn}{25,100}` are duplex thermodynamics of the flanking DNA,
+which the base does not contain. So its +0.099 mixes this claim with family A's
+mechanism. Found by reconstructing each column from the base's 364 mono- and
+dinucleotide indicators out of fold:
 
-**So a feature can add no information and still add a great deal of
-performance.** A depth-limited gradient-boosted tree over one-hot indicators
-cannot cheaply compute "sum of position-wise energies"; handed that sum
-precomputed, it gains 0.099. **The distance between what a representation
-*contains* and what a model can *use* is the whole value of feature
-engineering**, and it is the mechanism behind family A as well — see Finding 3
-and Appendix B3.
+| `d_mechanics` columns | out-of-fold R² from the base |
+|---|---:|
+| 9 ΔG/ΔH/ΔS sums over the protospacer and its windows | **1.0000** |
+| 4 melting temperatures | 0.997–0.9995 |
+| 7 stacking and slide summaries (means, sd, extrema, argmax) | 0.20–0.98 |
+| **8 flank thermodynamics (±25, ±100 nt)** | **−0.006 to +0.042** |
+
+The nine exact ones are the arithmetic the argument needs, and the probe
+recovers them to four decimals. The eight flank columns are new DNA.
+
+**Split into its two halves, `d_mechanics` says the opposite of what it was
+quoted for** (`no_information.py`, same base, same 5 × 5 protocol):
+
+| arm | columns | ρ | Δρ |
+|---|---:|---:|---:|
+| base | 6,169 | 0.5445 | — |
+| + the 22 **protospacer** columns | 6,191 | 0.5555 | **+0.0110** |
+| + the 8 **flank** columns | 6,177 | 0.6418 | **+0.0973** |
+| + all 30 | 6,199 | 0.6437 | +0.0991 |
+
+**Eight columns of flanking-DNA thermodynamics carry 98% of the gain, and the
+22 columns that cannot carry information are worth +0.011.** The arm that was
+the report's cleanest case for representation-over-information was mostly family
+A's effect wearing another family's name.
+
+So the effect is real and it is **small**. Three independent guide-only
+measurements now agree on its size: `d_mechanics`'s protospacer half **+0.011**,
+`c_folding` (ViennaRNA on the spacer and its scaffold) **+0.014**, and
+`b_energy` (CRISPRoff on the 23-mer) **+0.019**. A deterministic function of the
+guide buys a depth-limited tree one to two hundredths of a correlation — not a
+tenth.
+
+**So a feature can add no information and still add performance — about
++0.015 of it.** A depth-limited gradient-boosted tree over one-hot indicators
+cannot cheaply compute "sum of position-wise energies", and handed that sum
+precomputed it gains; the gain is consistent across three families and an order
+of magnitude below what family A's access to new DNA is worth (+0.164). **The
+distance between what a representation *contains* and what a model can *use* is
+real and it is not where this project's effect size lives.** What does the work
+is access to DNA outside the 20-mer — Finding 3, and the reason the head-to-head
+against crisprHAL turns on input width rather than on encoding.
 
 What survives of the original claim is narrower: a deterministic function of the
 20-mer adds no **information**, so it cannot raise the ceiling, and it is a poor
@@ -577,8 +612,9 @@ cost, because the cost was not small.
 | the reduced representation | **412 columns** computable from any 20-mer land 0.00003 ρ from all 6,232 — portability, not just sufficiency |
 | orientation | against a curated RegulonDB TSS, Δ **0.051 [0.020, 0.082]** with the interval clear of zero (Jacky) |
 | data efficiency | survives all five folds; the ρ ≥ 0.68 ratio goes **1.4× → 2.5×** |
+| the flanking-context thesis | the family table on the curated cohort sorts by **how far outside the 20-mer a family can see**: nothing confined to the guide clears +0.019, nothing above +0.05 is confined to it. Arrived at by withdrawing a claim that pointed the other way (Appendix B3) |
 
-### What it cost — five claims withdrawn in four days
+### What it cost — six claims withdrawn in four days
 
 | withdrawn | replaced by |
 |---|---|
@@ -587,6 +623,7 @@ cost, because the cost was not small.
 | "0.047 against the nearest gene, 0.005 with it" | unweighted point estimates; the block bootstrap gives Δ 0.026 with an interval including zero, and it **collapses to 0.007 under distance+GC matching** |
 | "the asymptotes are close … not evidence of a higher ceiling" | paired across five folds the gap is **+0.0133 ρ, p = 0.0058, 5/5 folds** — our own caveat was an artefact of measuring one fold |
 | "427 columns are the portable set" | 412; and the curated cohort never carried the 63 hand-named columns at all |
+| "`d_mechanics` adds no new DNA and is worth +0.099 — representation beats information" | 8 of its 30 columns are **flanking-DNA** thermodynamics and carry +0.097 of it. The representation effect is **+0.011 to +0.019**, agreed across three guide-only families |
 
 ### What that means
 
@@ -1113,16 +1150,42 @@ for it.
 **Supply is not sufficient, which is the useful part.** `j_periodicity` supplies
 24 dense continuous columns — as many as `d_supercoiling`'s 26 — and returns
 +0.011 against +0.139. Column shape buys a family the *chance* to help; what it
-measures decides whether it does. A single rank correlation across eleven
-families would not have separated those two claims, and the pair that breaks it
-is the evidence that content still matters.
+measures decides whether it does.
 
-**This is the same effect as family A, with the confound removed.** Family A
-mixes summarisation with new DNA. `d_mechanics`, `b_energy` and `c_folding` add
-**no new DNA at all** — each is a function of the guide the base already encodes
-losslessly — and they move ρ by +0.099, +0.019 and +0.014. That is the cleanest
-available demonstration that **representation matters independently of
-information**, and it is the mechanism the flanking result depends on.
+**And supply is not the whole account.** Dense continuous columns and reach
+beyond the 20-mer are themselves correlated — a family that measures something
+about 2 kb of DNA naturally reports it as real numbers — so ρ = 0.882 is not
+evidence that shape is the operative variable. The section below separates
+them, and reach wins.
+
+### What it measures, second answer: how far outside the 20-mer a family can see
+
+The shape account above is a correlation, and it is confounded. Sorting the same
+eleven families by **what DNA or data they are allowed to read** separates them
+better than any property of their columns:
+
+| reach | families | curated Δρ |
+|---|---|---|
+| the 20-mer and its PAM only | `b_energy`, `c_folding`, `d_mechanics` (22 of 30 cols) | **+0.011 to +0.019** |
+| a short flank as well | `f_methylation` (±20 nt at the PAM) | +0.008 |
+| the flanking DNA | `a_flank` (±1,000 nt), `i_shape`, `d_mechanics` (8 of 30) | **+0.097 to +0.164** |
+| the rest of the genome, or external measurement | `d_supercoiling`, `e_nucleoid`, `g_transcription` | +0.058 to +0.139 |
+| position on the chromosome | `j_periodicity`, `h_offtarget` | +0.001 to +0.011 |
+
+**Nothing confined to the 20-mer exceeds +0.019, and nothing above +0.05 is
+confined to it.** Access to information outside the guide is necessary for a
+large gain here and not sufficient — `j_periodicity` and `h_offtarget` read the
+whole chromosome and return nothing. That is a sharper statement than the column
+shape correlation, it is the same conclusion Finding 3 reaches from the other
+direction, and it survives the correction that produced it.
+
+*What this appendix said until 13 October.* That `d_mechanics` adds **no new DNA
+at all** and is therefore "the cleanest available demonstration that
+representation matters independently of information" at +0.099. Eight of its
+thirty columns are flanking-DNA thermodynamics, and those eight carry +0.097 of
+the +0.099 (Finding 2). The representation effect is real at **+0.011 to +0.019**
+across three guide-only arms; the claim was inflated nine-fold by a family whose
+column list nobody had read.
 
 **Family G is the one family carrying genuinely new non-sequence information**
 — RegulonDB TSS positions and PRECISE-1K expression, neither computable from the
@@ -1308,7 +1371,7 @@ against Crossref metadata rather than transcribed from memory.
 
 ## Appendix E — Withdrawn claims
 
-Twenty-six claims have been withdrawn and eleven bugs found. They are not listed
+Twenty-seven claims have been withdrawn and eleven bugs found. They are not listed
 here, so that this document reads as a statement rather than a diary; they are in
 `docs/FINDINGS_LOG.md` in date order and in `local/MISCONCEPTIONS.md`, outside
 the repo, with the cause of each.

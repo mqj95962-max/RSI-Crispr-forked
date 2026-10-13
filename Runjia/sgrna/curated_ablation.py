@@ -26,6 +26,8 @@ import pandas as pd
 from . import config
 
 OUT = config.RESULTS / "ablation_curated.csv"
+GROUPED_OUT = {"gene": config.RESULTS / "ablation_curated_gene.csv",
+               "block100k": config.RESULTS / "ablation_curated_block.csv"}
 FAMILIES = ("a_flank", "b_energy", "c_folding", "d_mechanics", "d_supercoiling",
             "e_nucleoid", "f_methylation", "g_transcription", "h_offtarget",
             "i_shape", "j_periodicity")
@@ -59,20 +61,57 @@ def _block(fam: str, protos: np.ndarray):
 ORDER = ("baseline",) + FAMILIES
 
 
-def _write(rows):
+def _groups(kind: str, protos: np.ndarray):
+    """Group label per curated guide, and the rows that have one.
+
+    Grouping by gene is the arm that matters on this cohort: gene identity
+    explains 29% of the curated label against 16% of the published one
+    (`cohort_groups.py`), so plain KFold has more to leak here, not less.
+    Guides that fall outside every annotated gene -- 3,364 of 33,567 -- have no
+    gene group, and they are dropped rather than given singleton groups, which
+    would leave each of them in its own fold and defeat the point. **Every arm
+    then runs on the same subset, baseline included**, so the deltas stay
+    internally comparable even though their levels are not comparable to the
+    random-row table.
+    """
+    from .build_curated_features import load_index
+
+    idx = load_index(verbose=False).set_index(config.ID_COL)
+    if kind == "gene":
+        g = idx["gene_name"].reindex(protos)
+    elif kind == "block100k":
+        g = (pd.to_numeric(idx["left"], errors="coerce") // 100_000).reindex(protos)
+    else:
+        raise ValueError(f"unknown grouping {kind!r}")
+    ok = g.notna().to_numpy()
+    return g.to_numpy(dtype=object), ok
+
+
+def _write(rows, out=None):
     """Write the table in family order, whatever order the runs happened in."""
     df = pd.DataFrame(rows)
     df["_k"] = df["family"].map({f: i for i, f in enumerate(ORDER)})
-    df.sort_values("_k").drop(columns="_k").to_csv(OUT, index=False)
+    df.sort_values("_k").drop(columns="_k").to_csv(out or OUT, index=False)
 
 
 def run(families=FAMILIES, seeds=None, n_splits=None, n_features=300,
-        force_baseline: bool = False, verbose: bool = True):
+        force_baseline: bool = False, grouping: str | None = None,
+        verbose: bool = True):
     from .run_ablation import cross_validate
 
     seeds = list(seeds or config.SEEDS)
     n_splits = n_splits or config.N_SPLITS
     X, y, names, protos = _base()
+
+    OUT_ = OUT if grouping is None else GROUPED_OUT[grouping]
+    tag_prefix = "curabl" if grouping is None else f"curabl{grouping[:4]}"
+    groups = None
+    if grouping is not None:
+        groups, ok = _groups(grouping, protos)
+        X, y, protos, groups = X[ok], y[ok], protos[ok], groups[ok]
+        if verbose:
+            print(f"  grouping by {grouping}: {ok.sum():,} of {len(ok):,} guides "
+                  f"in {len(np.unique(groups)):,} groups")
     if verbose:
         print(f"  curated cohort: {X.shape[0]:,} guides, {X.shape[1]:,} base columns")
 
@@ -80,7 +119,7 @@ def run(families=FAMILIES, seeds=None, n_splits=None, n_features=300,
     # a run of one family must not discard the rest of the table -- the first
     # version of this rewrote OUT from scratch every time, which would have
     # silently deleted eight measured families to add one.
-    prev = (pd.read_csv(OUT) if OUT.exists() and OUT.stat().st_size
+    prev = (pd.read_csv(OUT_) if OUT_.exists() and OUT_.stat().st_size
             else pd.DataFrame(columns=["family"]))
     rows = [r for r in prev.to_dict("records")
             if r["family"] not in ("baseline",) + tuple(families)]
@@ -94,15 +133,15 @@ def run(families=FAMILIES, seeds=None, n_splits=None, n_features=300,
     else:
         res = cross_validate(X, y, names, ["base"] * len(names),
                              n_features=n_features, seeds=seeds,
-                             n_splits=n_splits, verbose=False,
-                             tag="curabl_baseline", experiment="baseline")
+                             n_splits=n_splits, verbose=False, groups=groups,
+                             tag=f"{tag_prefix}_baseline", experiment="baseline")
         base_rho = res["summary"]["spearman"]["mean"]
         base = dict(family="baseline", n_cols=X.shape[1], spearman=base_rho,
                     spearman_sd=res["summary"]["spearman"]["sd"], d_spearman=0.0)
         if verbose:
             print(f"  {'baseline':>16}: rho {base_rho:.4f}", flush=True)
     rows.insert(0, base)
-    _write(rows)
+    _write(rows, OUT_)
 
     for fam in families:
         try:
@@ -111,11 +150,15 @@ def run(families=FAMILIES, seeds=None, n_splits=None, n_features=300,
             if verbose:
                 print(f"  {fam:>16}: skipped -- {exc}", flush=True)
             continue
+        # `_block` is called with the (already subset) protospacers, so the
+        # family block comes back subset too -- masking it again was an
+        # off-by-cohort IndexError on the first grouped run.
         Xa = np.hstack([X, v])
         res = cross_validate(Xa, y, names + fnames,
                              ["base"] * len(names) + [fam] * len(fnames),
                              n_features=n_features, seeds=seeds, n_splits=n_splits,
-                             verbose=False, tag=f"curabl_{fam}", experiment=fam)
+                             verbose=False, groups=groups,
+                             tag=f"{tag_prefix}_{fam}", experiment=fam)
         rho = res["summary"]["spearman"]["mean"]
         rows.append(dict(family=fam, n_cols=Xa.shape[1], spearman=rho,
                          spearman_sd=res["summary"]["spearman"]["sd"],
@@ -129,7 +172,7 @@ def run(families=FAMILIES, seeds=None, n_splits=None, n_features=300,
     if verbose:
         print()
         print(out.round(4).to_string(index=False))
-        print(f"written -> {OUT}")
+        print(f"written -> {OUT_}")
     return out
 
 
@@ -180,6 +223,8 @@ def main(argv=None) -> int:
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--seeds", type=int, nargs="*", default=None)
     ap.add_argument("--n-features", type=int, default=300)
+    ap.add_argument("--grouping", choices=["gene", "block100k"], default=None,
+                    help="hold out whole genes (or 100 kb blocks) instead of rows")
     ap.add_argument("--shape-audit", action="store_true",
                     help="only audit column shape against the measured deltas")
     ap.add_argument("--force-baseline", action="store_true",
@@ -190,7 +235,7 @@ def main(argv=None) -> int:
         return 0
     fams = tuple(a.families) if a.families else FAMILIES
     run(families=fams, seeds=a.seeds, n_features=a.n_features,
-        force_baseline=a.force_baseline)
+        force_baseline=a.force_baseline, grouping=a.grouping)
     return 0
 
 

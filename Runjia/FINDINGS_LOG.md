@@ -3646,3 +3646,46 @@ coordinate for both cohorts; on the published rows it agrees with Noshay's own
 annotation for 97.7% of guides and gives the same share to three decimals, which
 is what makes the comparison a cohort effect rather than a method effect.
 `python -m sgrna.cohort_groups`.
+
+## 13 October 2026 (later still) — withdrawn claim 27, the biggest one today
+
+**`d_mechanics` does not add "no new DNA at all", and its +0.099 was not a
+measurement of representation.** Eight of its thirty columns —
+`eng.mech.flank.{up,dn}{25,100}.{dG37,dG_per_bp}` — are duplex thermodynamics of
+the flanking DNA, which the base representation does not contain. Found by
+reconstructing each column out of fold from the base's 364 mono- and
+dinucleotide indicator columns: nine ΔG/ΔH/ΔS sums came back at R² = **1.0000**,
+four melting temperatures at 0.997–0.9995, and the eight flank columns at
+**−0.006 to +0.042**. A column that the base predicts at R² ≈ 0 is not a
+function of the 20-mer.
+
+Split into halves (`no_information.py`, same base, same 5 seeds × 5 folds):
+
+    base                                 0.5445
+    + 22 protospacer columns             0.5555   +0.0110
+    + 8 flank columns                    0.6418   +0.0973
+    + all 30                             0.6437   +0.0991
+
+**Eight columns of flanking DNA carry 98% of the gain.** The arm the report
+called "the cleanest available demonstration that representation matters
+independently of information" was mostly family A's effect under another
+family's name, and the claim was inflated about nine-fold.
+
+**What survives, and it is consistent.** The representation effect is real and
+small, with three independent guide-only measurements agreeing:
+`d_mechanics`'s protospacer half +0.011, `c_folding` +0.014, `b_energy` +0.019.
+A deterministic function of the guide buys a depth-limited tree one to two
+hundredths of a correlation. Family A's access to new DNA is worth +0.164.
+
+**The replacement account of the curated table is better than the one it
+replaces.** Sorting the eleven families by *how far outside the 20-mer they can
+see*: nothing confined to the guide exceeds +0.019, and nothing above +0.05 is
+confined to it. Necessary, not sufficient — `j_periodicity` and `h_offtarget`
+read the whole chromosome and return +0.011 and +0.001. The dense-continuous
+column correlation (ρ = 0.882) is confounded with reach, since a family
+measuring 2 kb of DNA reports it as real numbers, so it is no longer offered as
+the explanation.
+
+This is the second time in one day that a family-level number turned out to be a
+different quantity than its label (the first was `i_shape`'s +0.001). Both were
+caught by reading a column list rather than by running anything new.
