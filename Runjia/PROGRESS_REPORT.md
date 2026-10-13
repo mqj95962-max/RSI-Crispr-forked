@@ -91,32 +91,52 @@ about the columns actually used; the portable 412 is what the claim should name.
 *Limit:* "non-inferior by 0.005" is the claim, not "identical". Higher-order
 k-mers do carry a little — see Finding 8.
 
-### 3. A feature that restates what the model has cannot help — one direction only
+### 3. A feature whose columns the 20-mer already determines cannot help — a screen, not a law
 
 Out-of-fold R² of predicting each new column from position-specific mono- and
-dinucleotide indicators, against that family's measured gain:
+dinucleotide indicators of the protospacer, over all eleven families:
 
-| family | R² from the 20-mer | Δρ |
-|---|---:|---:|
-| `b_energy` (CRISPRoff ΔG) | **0.984** | +0.007 |
-| `d_mechanics` (duplex stability) | **0.845** | +0.020 |
-| `c_folding` | 0.297 | +0.007 |
-| `f_methylation` | 0.141 | +0.004 |
-| `a_flank` | −0.012 | **+0.080** |
-| `d_supercoiling` | −0.013 | +0.045 |
-| `e_nucleoid` | −0.016 | +0.016 |
-| `g_transcription` | −0.016 | +0.015 |
-| `h_offtarget` | −0.022 | +0.000 |
-| `j_periodicity` | −0.022 | −0.001 |
+| family | columns | median R² | **share of columns with R² > 0.9** | Δρ |
+|---|---:|---:|---:|---:|
+| `b_energy` (CRISPRoff ΔG) | 10 | 0.984 | **70%** | +0.007 |
+| `d_mechanics` (duplex stability) | 30 | 0.845 | **50%** | +0.020 |
+| `c_folding` | 9 | 0.297 | 0% | +0.007 |
+| `f_methylation` | 17 | 0.141 | 0% | +0.004 |
+| `a_flank` | 322 | −0.012 | 0% | **+0.080** |
+| `d_supercoiling` | 26 | −0.013 | 0% | +0.045 → artefact |
+| `g_transcription` | 18 | −0.016 | 0% | +0.015 |
+| `e_nucleoid` | 20 | −0.016 | 0% | +0.016 |
+| `i_shape` | 152 | −0.017 | 0% | +0.001 |
+| `j_periodicity` | 24 | −0.021 | 0% | −0.001 |
+| `h_offtarget` | 7 | −0.022 | 0% | +0.000 |
 
+**Read the last-but-one column, not the median.** The structure is binary: two
+families contain columns the 20-mer *determines*, and nine contain none.
+`c_folding` and `f_methylation` have middling medians but **no** determined
+column — their medians average weak partial fits and detect nothing.
 Nearest-neighbour thermodynamics is a sum over adjacent pairs, so binding energy
-is a 2nd-order quantity the matrix already holds. Importing CRISPRoff was
+is a second-order quantity the matrix already holds: importing CRISPRoff was
 importing the matrix back into itself.
 
-*The rule runs one way.* **High R² ⇒ cannot help has held 8 times out of 8.**
-Low R² is a *filter*, not a prediction: `h_offtarget` and `j_periodicity` both
-pass it and deliver nothing, so the "should help" direction is 7 of 9. Quote it
-as a screen, never as a forecast.
+**Why the nine null families agree so closely.** Out-of-fold R² against a target
+with no relationship to the basis is not 0 but a small negative set by the basis
+size and the row count, not by the target. All nine land between −0.012 and
+−0.022 with 10th percentiles of −0.019 to −0.022: they are sitting on a shared
+null floor, which is what "no relationship" looks like rather than a defect.
+
+*Status of this rule.* **A qualitative screen, and it is not quoted with a
+score.** Of the two families whose columns are determined, neither produced a
+material gain, and that is the direction worth using: if a candidate's columns
+are individually reconstructible from the 20-mer, do not build it. The converse
+has no force — `h_offtarget`, `i_shape` and `j_periodicity` all pass the screen
+and deliver nothing.
+
+*Withdrawn here:* earlier versions scored this rule as "8 times out of 8" in one
+direction and "7 of 9" in the other. **Neither count is supportable.** Only four
+families have positive R² at all, no threshold for "high" was ever declared, and
+`d_mechanics` — unambiguously high at 0.845 — returned +0.020, the second-largest
+gain in the table. The counts were doing rhetorical work the design cannot carry;
+the screen stands on its mechanism, not on a tally.
 
 ### 4. The DNA around the cut site predicts cutting — the one large effect
 
@@ -374,8 +394,10 @@ So SLICER at ρ 0.707–0.721 leaves **about 0.22 of ρ unaccounted for**.
 
 **1. A published representation decoded, and shown to be redundant.** 99% of it
 regenerates from sequence; 427 of 6,232 columns are non-inferior to all of them;
-and the redundancy yields a one-line screen for whether a candidate feature can
-help, correct 8 of 8 in the direction it is reliable (Findings 1–3).
+and the redundancy yields a screen for whether a candidate feature is worth
+building — if its columns are individually reconstructible from the 20-mer, the
+model already holds it (Findings 1–3). The screen is qualitative; it is not
+quoted with a score.
 
 **2. Genomic flanking context identified and validated as the main new signal.**
 +0.080 ρ, the largest effect here; a spatially local compositional gradient, shown
