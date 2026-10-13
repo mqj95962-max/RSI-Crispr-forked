@@ -23,7 +23,8 @@ CPU time** and about **half the training data**.
 **How this document is organised.** Part 1 is the findings, each with the
 evidence it rests on and the limit of what it supports. Part 2 states the three
 contributions. Part 3 is where the work stops. Part 4 is the freeze and what
-remains. Everything that supports a finding without being one — control
+remains. Part 5 is what the control phase changed, including the claims it
+cost us. Everything that supports a finding without being one — control
 experiments, extension questions, clarifications, the full cost panel — is in the
 appendices. Protocols and per-fold numbers are in `../results/RESULTS.md`; the
 chronological record, including withdrawn claims, is in `FINDINGS_LOG.md`.
@@ -444,6 +445,49 @@ Remaining before submission:
 the field already has several predictors, and everything needed to build one
 later exists (`featurise.matrix()` turns any 20-mer into the published
 representation). It should not compete with finishing the paper.
+
+## Part 5 — What the control phase changed
+
+Work resumed on **2 October** after a pause following family A's discovery
+(12–13 September) and the first head-to-head (15 September). From **10–13
+October** the work was almost entirely adversarial: nulls, matched comparisons,
+conditional tests and robustness checks aimed at the claims already made rather
+than at new ones. It is worth stating separately what that bought and what it
+cost, because the cost was not small.
+
+### What survived, and got stronger
+
+| claim | what the control added |
+|---|---|
+| family A is real and local | a **texture-preserving** null, not just row shuffling: aligned +0.0769, 1 kb retains 8%, ≥10 kb is null. Converts a control into a measurement of the effect's autocorrelation length |
+| the GC account | conditioning *raises* flank GC's association (+0.044 marginal → **+0.082** partial), positive in all five target-GC strata, and family A is worth +0.046 to +0.128 inside every stratum |
+| the reduced representation | **412 columns** computable from any 20-mer land 0.00003 ρ from all 6,232 — portability, not just sufficiency |
+| orientation | against a curated RegulonDB TSS, Δ **0.051 [0.020, 0.082]** with the interval clear of zero (Jacky) |
+| data efficiency | survives all five folds; the ρ ≥ 0.68 ratio goes **1.4× → 2.5×** |
+
+### What it cost — five claims withdrawn in four days
+
+| withdrawn | replaced by |
+|---|---|
+| "flank GC +0.159" | does not reproduce by either correlation measure; the conditional analysis (+0.082 partial) replaces it |
+| "not recoverable by a convolutional network given the same DNA" | **matched to crisprHAL's own 189/166 nt span, their convolutions beat our windowed composition by 0.025.** Our lead is the 250–1,000 nt windows they cannot see |
+| "0.047 against the nearest gene, 0.005 with it" | unweighted point estimates; the block bootstrap gives Δ 0.026 with an interval including zero, and it **collapses to 0.007 under distance+GC matching** |
+| "the asymptotes are close … not evidence of a higher ceiling" | paired across five folds the gap is **+0.0133 ρ, p = 0.0058, 5/5 folds** — our own caveat was an artefact of measuring one fold |
+| "427 columns are the portable set" | 412; and the curated cohort never carried the 63 hand-named columns at all |
+
+### What that means
+
+**The three contributions survive; several of the sentences supporting them did
+not.** The decoding and the flanking-context effect came through every control
+intact or stronger. What changed is the *framing* of the third: we do not
+out-encode a tuned deep model on DNA both sides hold, we have access to DNA it
+never sees. That is a narrower claim and a much harder one to attack.
+
+Four of the five withdrawals were caught by **our own tests**, and the fifth —
+the nearest-gene orientation confound — by a teammate's. None were caught by
+re-reading the text. The pattern from Appendix E holds: the data needed was
+already on disk, and the bottleneck was that nobody had asked the number to
+defend itself.
 
 ---
 ---
