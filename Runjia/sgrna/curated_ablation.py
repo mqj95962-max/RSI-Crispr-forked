@@ -56,8 +56,18 @@ def _block(fam: str, protos: np.ndarray):
     return v[:, keep], [c for c, k in zip(b.columns, keep) if k]
 
 
+ORDER = ("baseline",) + FAMILIES
+
+
+def _write(rows):
+    """Write the table in family order, whatever order the runs happened in."""
+    df = pd.DataFrame(rows)
+    df["_k"] = df["family"].map({f: i for i, f in enumerate(ORDER)})
+    df.sort_values("_k").drop(columns="_k").to_csv(OUT, index=False)
+
+
 def run(families=FAMILIES, seeds=None, n_splits=None, n_features=300,
-        verbose: bool = True):
+        force_baseline: bool = False, verbose: bool = True):
     from .run_ablation import cross_validate
 
     seeds = list(seeds or config.SEEDS)
@@ -66,16 +76,33 @@ def run(families=FAMILIES, seeds=None, n_splits=None, n_features=300,
     if verbose:
         print(f"  curated cohort: {X.shape[0]:,} guides, {X.shape[1]:,} base columns")
 
-    rows = []
-    res = cross_validate(X, y, names, ["base"] * len(names), n_features=n_features,
-                         seeds=seeds, n_splits=n_splits, verbose=False,
-                         tag="curabl_baseline", experiment="baseline")
-    base_rho = res["summary"]["spearman"]["mean"]
-    rows.append(dict(family="baseline", n_cols=X.shape[1], spearman=base_rho,
-                     spearman_sd=res["summary"]["spearman"]["sd"], d_spearman=0.0))
-    if verbose:
-        print(f"  {'baseline':>16}: rho {base_rho:.4f}", flush=True)
-    pd.DataFrame(rows).to_csv(OUT, index=False)
+    # Families arrive over days as their blocks get rebuilt on this cohort, so
+    # a run of one family must not discard the rest of the table -- the first
+    # version of this rewrote OUT from scratch every time, which would have
+    # silently deleted eight measured families to add one.
+    prev = (pd.read_csv(OUT) if OUT.exists() and OUT.stat().st_size
+            else pd.DataFrame(columns=["family"]))
+    rows = [r for r in prev.to_dict("records")
+            if r["family"] not in ("baseline",) + tuple(families)]
+
+    done_base = prev[prev["family"] == "baseline"]
+    if len(done_base) and not force_baseline:
+        base = done_base.iloc[0].to_dict()
+        base_rho = float(base["spearman"])
+        if verbose:
+            print(f"  {'baseline':>16}: rho {base_rho:.4f}  (cached)", flush=True)
+    else:
+        res = cross_validate(X, y, names, ["base"] * len(names),
+                             n_features=n_features, seeds=seeds,
+                             n_splits=n_splits, verbose=False,
+                             tag="curabl_baseline", experiment="baseline")
+        base_rho = res["summary"]["spearman"]["mean"]
+        base = dict(family="baseline", n_cols=X.shape[1], spearman=base_rho,
+                    spearman_sd=res["summary"]["spearman"]["sd"], d_spearman=0.0)
+        if verbose:
+            print(f"  {'baseline':>16}: rho {base_rho:.4f}", flush=True)
+    rows.insert(0, base)
+    _write(rows)
 
     for fam in families:
         try:
@@ -106,15 +133,64 @@ def run(families=FAMILIES, seeds=None, n_splits=None, n_features=300,
     return out
 
 
+SHAPE_OUT = config.RESULTS / "ablation_curated_shape.csv"
+
+
+def shape_audit(verbose: bool = True) -> pd.DataFrame:
+    """Is a family's gain explained by how many dense continuous columns it supplies?
+
+    The curated base is 6,169 sparse indicators with none of the published
+    base's 63 hand-named summaries, so a family that restores dense continuous
+    columns may be paid for its *shape* rather than its content. That was an
+    eyeball reading of four families; this measures it across all ten.
+
+    A column counts as dense continuous if it takes more than ten distinct
+    values on the cohort -- crude, but it separates real-valued summaries from
+    motif indicators and small counts without a hand-made list.
+    """
+    abl = pd.read_csv(OUT).set_index("family")
+    rows = []
+    for fam in abl.index:
+        if fam == "baseline":
+            continue
+        path = config.INTERIM / "features" / f"{fam}_curated.csv"
+        if not path.exists():
+            continue
+        d = pd.read_csv(path).drop(columns=[config.ID_COL])
+        d = d.loc[:, ~d.isna().all()]
+        cont = int((d.nunique() > 10).sum())
+        rows.append(dict(family=fam, n_cols=d.shape[1], continuous=cont,
+                         continuous_frac=round(cont / d.shape[1], 3),
+                         d_spearman=float(abl.loc[fam, "d_spearman"])))
+    out = pd.DataFrame(rows).sort_values("d_spearman", ascending=False)
+    out.to_csv(SHAPE_OUT, index=False)
+    if verbose:
+        from scipy.stats import spearmanr
+        r = spearmanr(out["continuous"], out["d_spearman"])
+        print(out.round(4).to_string(index=False))
+        print(f"\n  rho(dense continuous columns, delta rho) = {r.statistic:.3f}"
+              f"   p = {r.pvalue:.4f}   n = {len(out)}")
+        print(f"written -> {SHAPE_OUT}")
+    return out
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--families", nargs="*", default=None)
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--seeds", type=int, nargs="*", default=None)
     ap.add_argument("--n-features", type=int, default=300)
+    ap.add_argument("--shape-audit", action="store_true",
+                    help="only audit column shape against the measured deltas")
+    ap.add_argument("--force-baseline", action="store_true",
+                    help="re-measure the base representation instead of reusing it")
     a = ap.parse_args(argv)
+    if a.shape_audit:
+        shape_audit()
+        return 0
     fams = tuple(a.families) if a.families else FAMILIES
-    run(families=fams, seeds=a.seeds, n_features=a.n_features)
+    run(families=fams, seeds=a.seeds, n_features=a.n_features,
+        force_baseline=a.force_baseline)
     return 0
 
 

@@ -111,6 +111,12 @@ worth **+0.099 ρ** (0.5443 → 0.6432), and that is **not** a feature-selection
 artefact: using every column rather than selecting 300 gives the same gain,
 +0.0993 against +0.0988 (`results/selector_control.csv`).
 
+`d_mechanics` is not a special case. Two more families are functions of the
+guide alone and both pay: `b_energy`, the CRISPRoff free-energy decomposition of
+the 23-mer, is worth **+0.019**, and `c_folding`, ViennaRNA folding of the spacer
+and its scaffold, **+0.014**. Three families, no new DNA between them, +0.019 to
++0.099.
+
 **So a feature can add no information and still add a great deal of
 performance.** A depth-limited gradient-boosted tree over one-hot indicators
 cannot cheaply compute "sum of position-wise energies"; handed that sum
@@ -517,6 +523,7 @@ Remaining before submission:
 | 6 | ~~sample-complexity curve repeated across folds and seeds~~ | **done** — Appendix B |
 | 7 | re-tune crisprHAL 2 at **each input width** — the control a reviewer will ask for on Finding 4, since its hyperparameters were tuned at 378 nt | 2–4 GPU-h |
 | 8 | re-derive the **ceiling for the curated label** — the 0.937 figure is inherited from the published one (Finding 11) | ~1 h once the replicate statistics are located |
+| 9 | re-run the **gene-grouped ablation** on the curated cohort — gene identity explains 29% of the curated label against 16% of the published one (Appendix B), so the random-against-grouped gap measured there does not transfer | ~2 h |
 
 **Paper writing is deferred until the claims are validated.** The shared Google
 Doc is **frozen as of 13 October 2026** and is no longer kept in sync; this
@@ -539,10 +546,10 @@ settled under those constraints and is **not** automatically valid on crisprHAL'
 |---|---|---|
 | **the 412/427-column reduced set** | non-inferiority on the *published* matrix and label | column selection was never re-run on the curated cohort, which already excludes the 63 hand-named columns. The right reduced set there may not be this one |
 | **the ceiling, 0.937** | Guo's replicate statistics for the published label | crisprHAL's curation changes the label's noise by design; the curated ceiling is probably higher and is unmeasured |
-| **`n_features` = 300** | selector sweep on 6,232 published columns | the curated arms carry 6,517 columns including family A. "Quadrupling changes nothing" was measured on the old matrix |
-| **grouped CV by `arc5` / 100 kb block** | 13,880 guides, within-gene variance share 0.845 | 33,567 guides change the block occupancy; the variance share should be recomputed |
+| **`n_features` = 300** | selector sweep on 6,232 published columns | partly answered by the selector control (Appendix B3): on the curated base, selecting 300 and using **all 6,199** columns differ by 0.0005 ρ, so 300 is not starving the model *there*. Still unmeasured for the wide arms — family A brings the count to 6,517 |
+| **grouped CV by `arc5` / 100 kb block** | 13,880 guides, within-gene variance share 0.844 | **re-measured — it moved.** 0.844 → **0.713** on the curated cohort: gene identity explains 29% of the label there against 16% here, so gene-grouped CV constrains the model *more*, not less (Appendix B) |
 | **champion hyperparameters** | 627 draws against the old cohort | tuned before the cohort moved. Re-tuning now conflicts with the freeze — the tension needs a deliberate decision, not a default |
-| **the family Δρ table** | published matrix and label | family A doubles on the curated cohort (+0.080 → +0.164). The others have not been re-measured, so their *relative* ranking is unverified |
+| **the family Δρ table** | published matrix and label | **closed — all eleven families re-measured on the curated cohort** (Appendix B3). The *ordering* transfers almost exactly (rank ρ 0.97); every family inflates, median 3.3×. So the published table is still a guide to which families matter, and not to how much |
 | **"sixteen model classes span 0.116 ρ"** | published matrix, no family A | the boosting-over-ridge margin was measured without the one feature family that matters |
 | **Noshay's iRF as baseline anchor** | the only available comparator | now provenance only; crisprHAL 2 is the baseline |
 
@@ -791,6 +798,40 @@ folds; the head-to-head uses one seed because each crisprHAL fit costs ~21 min.
 Power, for reference: ~5 folds resolve an effect of 0.013, ~20 folds resolve
 0.005, and 0.002 would need ~100 — out of reach at crisprHAL's cost.
 
+### Does grouped cross-validation still mean the same thing after the cohort moved?
+
+No, and the direction is the uncomfortable one. Every grouped-CV argument rests
+on one number: the share of label variance lying **within** genes rather than
+between them. If nearly all of it is within, a model cannot score by memorising
+which gene a guide sits in, and a random split and a gene-grouped split measure
+nearly the same thing.
+
+| cohort | guides placed in a gene | genes | guides/gene | within-gene share |
+|---|---:|---:|---:|---:|
+| published (13,880 rows) | 13,829 | 1,222 | 11.3 | **0.843** |
+| curated (33,567 rows) | 30,203 | 4,013 | 7.5 | **0.713** |
+| published, 100 kb blocks | 13,879 | 47 | 295 | 0.980 |
+| curated, 100 kb blocks | 33,567 | 47 | 714 | 0.973 |
+
+**Gene identity explains 16% of the published label and 29% of the curated one.**
+The reason is what each cohort is: Noshay's rows target a gene panel, while
+crisprHAL's curated release is genome-wide — 4,013 genes at 7.5 guides each. More
+genes, fewer guides in each, and more of the variance sits between them.
+
+This does not invalidate a figure already reported, because the grouped arms were
+always reported alongside the random ones. It does mean **the gap between random
+and gene-grouped CV should be larger on this cohort than the published-matrix
+experience suggests**, and any claim that "grouping barely changes anything" is
+now a claim about the wrong cohort. The grouped ablation has not been re-run
+here; it is the next thing to run, not something to assume.
+
+Gene assignment is by coordinate on NC_000913.2 against the reference gene
+table, not from either dataset's own annotation, so both cohorts are measured the
+same way. On the published rows that assignment agrees with Noshay's own for
+**97.7%** of guides and gives the same share to three decimals (0.843 against
+0.844) — which is the check that the change above is the cohort and not the
+method. `python -m sgrna.cohort_groups`, `results/cohort_groups.csv`.
+
 ### Why does boosting beat random forest, and ridge beat both forests?
 
 | | ρ |
@@ -881,9 +922,14 @@ dinucleotide indicators of the protospacer, over all eleven families:
 | `d_supercoiling` | 26 | −0.013 | 0% | +0.045 → artefact |
 | `g_transcription` | 18 | −0.016 | 0% | +0.015 |
 | `e_nucleoid` | 20 | −0.016 | 0% | +0.016 |
-| `i_shape` | 152 | −0.017 | 0% | +0.001 |
+| `i_shape` | 152 | −0.017 | 0% | +0.036† |
 | `j_periodicity` | 24 | −0.021 | 0% | −0.001 |
 | `h_offtarget` | 7 | −0.022 | 0% | +0.000 |
+
+† `i_shape` is the standalone increment over the base, like every other row.
+Earlier versions of this table printed +0.001, which is its increment *on top of
+family A* — a different quantity, and the one place in the report where a
+marginal-on-A figure sat in a column of base-relative gains (Appendix B3).
 
 **Read the last-but-one column, not the median.** The structure is binary: two
 families contain columns the 20-mer *determines*, and nine contain none.
@@ -903,8 +949,9 @@ null floor, which is what "no relationship" looks like rather than a defect.
 score.** Of the two families whose columns are determined, neither produced a
 material gain, and that is the direction worth using: if a candidate's columns
 are individually reconstructible from the 20-mer, do not build it. The converse
-has no force — `h_offtarget`, `i_shape` and `j_periodicity` all pass the screen
-and deliver nothing.
+has no force — `h_offtarget` and `j_periodicity` pass the screen and deliver
+nothing, and `i_shape` passes it and delivers +0.036 standalone, falling to
++0.001 only once family A is present.
 
 *Withdrawn here:* earlier versions scored this rule as "8 times out of 8" in one
 direction and "7 of 9" in the other. **Neither count is supportable.** Only four
@@ -931,7 +978,9 @@ supporting cases are the two cases where no measurement was needed.
 **The other nine carry no signal about the rule.** Their R² spans **0.010**
 (−0.022 to −0.012) — null-floor variation set by family size, not by
 predictability — while their gains span **0.081** (−0.001 to +0.080). Across all
-eleven families ρ(R², Δρ) = 0.489, **p = 0.127**. Arranging nulls in a table
+eleven families ρ(R², Δρ) = **0.224, p = 0.508** — it was quoted as 0.489,
+p = 0.127 while `i_shape` sat at +0.001, and correcting that entry weakens the
+association further. Arranging nulls in a table
 sorted by a statistic with no resolving power produces the *appearance* of a
 trend from a pile of things that did not work, for unrelated reasons:
 `h_offtarget` needs the rest of the genome, `j_periodicity` is a genuine null,
@@ -981,24 +1030,45 @@ is a gap worth closing before the paper describes it.
 
 Every Δρ in Appendix C was measured on the published 13,880-row matrix. The model
 layer moved to crisprHAL's 33,567 curated guides and the family measurements did
-not follow, so they were re-run there: same design, base representation against
-base + one family, 5 seeds × 5 folds, selection inside each training split.
+not follow, so **all eleven families were re-run there**: same design, base
+representation against base + one family, 5 seeds × 5 folds, selection inside
+each training split, `python -m sgrna.curated_ablation --all`.
 
-| family | published Δρ | **curated Δρ** |
-|---|---:|---:|
-| `a_flank` | +0.080 | **+0.164** |
-| `d_supercoiling` | +0.045 | **+0.139** |
-| `i_shape` | +0.001 | **+0.120** |
-| `d_mechanics` | +0.020 | **+0.099** |
-| `e_nucleoid` | +0.016 | **+0.072** |
-| `j_periodicity` | −0.001 | +0.011 |
-| `f_methylation` | +0.004 | +0.008 |
-| `h_offtarget` | +0.000 | +0.001 |
+| family | columns added | published Δρ | **curated Δρ** | ratio |
+|---|---:|---:|---:|---:|
+| `a_flank` | 348 | +0.080 | **+0.164** | 2.1× |
+| `d_supercoiling` | 26 | +0.045 | **+0.139** | 3.1× |
+| `i_shape` | 152 | +0.036 | **+0.120** | 3.4× |
+| `d_mechanics` | 30 | +0.020 | **+0.099** | 4.9× |
+| `e_nucleoid` | 20 | +0.016 | **+0.072** | 4.6× |
+| `g_transcription` | 19 | +0.015 | **+0.058** | 4.0× |
+| `b_energy` | 10 | +0.007 | +0.019 | 2.5× |
+| `c_folding` | 9 | +0.007 | +0.014 | 1.9× |
+| `j_periodicity` | 24 | −0.001 | +0.011 | — |
+| `f_methylation` | 17 | +0.003 | +0.008 | 2.3× |
+| `h_offtarget` | 13 | +0.000 | +0.001 | 3.8× |
 
-**Every family inflates, and `i_shape` goes from a flat null to the third-largest
-effect.** A family does not travel from +0.001 to +0.120 for biological reasons,
-so the first question was whether this measures the pipeline rather than the
-features.
+Baseline ρ 0.5445 ± 0.0010 on the curated cohort. The published column takes each
+family from its own run (`ablation_main`, `ablation_grouped` for the three
+positional families, `ablation_shape`, `ablation_jper`), so its baselines differ
+slightly between rows — 0.5272 random-row, 0.5283 100 kb-grouped.
+
+**The ranking transfers; the scale does not.** Rank correlation between the two
+columns is **ρ = 0.97**, and every family gains, with a median inflation of
+**3.3×**. That is the opposite of what the migration was expected to show. The
+cohort change does not reorder which families matter — it multiplies all of them
+by roughly the same factor.
+
+*Correction, 13 October.* An earlier version of this table gave `i_shape`'s
+published Δρ as +0.001 and called the curated +0.120 a reversal from a flat null.
+**+0.001 was the wrong quantity**: it is `i_shape`'s increment *on top of family
+A* (`a_flank+i_shape` 0.6078 against `a_flank` 0.6068), while every other row is
+an increment over the base. Standalone, `i_shape` was **+0.036** on the published
+matrix, third-largest then as it is now. The family is a near-duplicate of family
+A, which is why its marginal value there is ~0 — a real and reported result, but
+not a null, and not an entry that belonged in a column of base-relative gains.
+The same substitution appears in Appendix B2's screen table and Appendix C, both
+now corrected.
 
 **It does not measure the selector.** The curated base is 6,169 sparse indicator
 columns with none of the 63 hand-named summaries the published base carried, and
@@ -1017,43 +1087,95 @@ selecting 300 columns.
 
 ### What it does measure
 
-The inflation tracks **what kind of column a family supplies**, not what it
-measures. The families that gain most — `i_shape` (152 columns), `a_flank` (348),
-`d_mechanics` (30), `d_supercoiling` (26) — all supply **dense continuous
-summaries**. The two that barely move, `h_offtarget` (13 sparse counts) and
-`f_methylation` (17 near-binary motif indicators), supply columns shaped like the
-base. The published base already contained dense summaries among its 63
-hand-named columns, including guide Tm; the curated base contains none, so
-families that restore them are paid for it.
+The inflation tracks **what kind of column a family supplies**. Counting columns
+that take more than ten distinct values on the cohort as dense and continuous
+(`--shape-audit`, `results/ablation_curated_shape.csv`):
+
+| family | columns | dense continuous | curated Δρ |
+|---|---:|---:|---:|
+| `a_flank` | 348 | 155 | +0.164 |
+| `d_supercoiling` | 26 | 26 | +0.139 |
+| `i_shape` | 152 | 152 | +0.120 |
+| `d_mechanics` | 30 | 29 | +0.099 |
+| `e_nucleoid` | 20 | 20 | +0.072 |
+| `g_transcription` | 19 | 12 | +0.058 |
+| `b_energy` | 10 | 9 | +0.019 |
+| `c_folding` | 9 | 7 | +0.014 |
+| `j_periodicity` | 24 | 24 | +0.011 |
+| `f_methylation` | 17 | 2 | +0.008 |
+| `h_offtarget` | 13 | 1 | +0.001 |
+
+**ρ(dense continuous columns, Δρ) = 0.882, p = 0.0003, n = 11.** The published
+base already contained dense summaries among its 63 hand-named columns, including
+guide Tm; the curated base contains none, so families that restore them are paid
+for it.
+
+**Supply is not sufficient, which is the useful part.** `j_periodicity` supplies
+24 dense continuous columns — as many as `d_supercoiling`'s 26 — and returns
++0.011 against +0.139. Column shape buys a family the *chance* to help; what it
+measures decides whether it does. A single rank correlation across eleven
+families would not have separated those two claims, and the pair that breaks it
+is the evidence that content still matters.
 
 **This is the same effect as family A, with the confound removed.** Family A
-mixes summarisation with new DNA. `d_mechanics` adds **no new DNA at all** — it
-is a function of the 20-mer the base already encodes losslessly — and still moves
-ρ by 0.099. That is the cleanest available demonstration that **representation
-matters independently of information**, and it is the mechanism the flanking
-result depends on.
+mixes summarisation with new DNA. `d_mechanics`, `b_energy` and `c_folding` add
+**no new DNA at all** — each is a function of the guide the base already encodes
+losslessly — and they move ρ by +0.099, +0.019 and +0.014. That is the cleanest
+available demonstration that **representation matters independently of
+information**, and it is the mechanism the flanking result depends on.
+
+**Family G is the one family carrying genuinely new non-sequence information**
+— RegulonDB TSS positions and PRECISE-1K expression, neither computable from the
+genome — and at +0.058 it is now sixth. On the published matrix it was +0.015 and
+read as a near-null replication of Guo's reported absence of an expression
+effect. That reading does not survive the cohort change, and the interaction
+discipline this family was built with (Appendix C) has not been re-applied here:
+**+0.058 is a family-level number, and no interaction term has been checked on
+this cohort.** Until that is done it is not evidence for the transcription
+mechanism, only evidence that the family is no longer flat.
+
+### Getting the last three families onto this cohort
+
+Three families were missing from the first curated run, each for a different
+reason, and all three failures were silent:
+
+* **`b_energy`** built a file containing 33,567 sgRNAIDs and **zero feature
+  columns**, and reported success. The vendored CRISPRoff pipeline needs
+  Biopython and its folding needs ViennaRNA; neither was installed in the main
+  venv, and `b_energy.build` catches exceptions *per guide* and then drops the
+  error column. Fed to the ablation it would have scored Δρ = 0.000 and read as a
+  clean null. Both installed, it builds in 2 s, and 60% of guides fall inside
+  Alkan's efficient-hybridisation window — against 64% on the published matrix,
+  the check that the ΔG convention is still right.
+* **`c_folding`** failed the same way for ViennaRNA alone, and recovered with it.
+* **`g_transcription`** needed four index columns crisprHAL's CSVs do not carry:
+  `ori_distance`, `replichore`, `leading_strand` and a per-gene **b-number** for
+  the expression join. The reference gene table gives coordinates and gene names
+  but no locus tags; PRECISE-1K's `gene_info.csv` gives locus tags keyed by gene
+  name. So the host gene is assigned **by coordinate** on NC_000913.2 and the
+  b-number by name: 30,203 of 33,567 guides land inside a gene, 29,097 get an
+  expression row. `build_curated_features.augment()`.
+
+`curated_ablation._block` now refuses a block with no populated feature column,
+and `build_curated_features.run` refuses to write one, because the failure mode
+is not a crash — it is a plausible-looking zero.
 
 ### How to read these numbers, and how not to
 
-**They are not comparable to the published Δρ column.** The two cohorts have
-different baselines (0.544 against 0.527), different labels and different base
-representations. Only the *sign* and the *ordering within a column* carry over.
+**They are not comparable to the published Δρ column as levels.** The two cohorts
+have different baselines (0.544 against 0.527), different labels and different
+base representations. The *ordering* transfers (ρ = 0.97); the magnitudes do not.
 
 **They are not clean estimates of each family's biological contribution.** A
 family that supplies dense summaries is rewarded for its shape as well as its
 content on this base. Separating the two requires adding the portable hand-named
-summaries to the base and re-measuring, which has not been done.
+summaries to the curated base and re-measuring, which has not been done.
 
-**`i_shape`'s reversal is a caution about the published table too.** It was cited
-as a family that passes the redundancy screen and delivers nothing. On this
-cohort it delivers +0.120. Whatever that table was measuring, it was not a
-stable property of the feature family.
-
-*Not yet available on this cohort:* `b_energy` (its builder caught a missing
-Biopython import per guide and wrote a file with zero feature columns, reporting
-success — now installed, pending rebuild) and `g_transcription` (needs per-gene
-b-numbers to merge the expression compendium, and the curated index has no gene
-assignment). `c_folding` was recovered by installing ViennaRNA.
+**They are single-family increments over a common base, nothing more.** No joint
+arm has been run on this cohort, and the published cohort's joint arms are the
+reason to expect heavy overlap: `i_shape` on top of family A was worth +0.001
+there, and the three positional families collapsed into one variable. Summing
+this column would give +0.70 ρ of improvement, which is not a real quantity.
 
 ## Appendix C0 — Reproducibility: versions, seeds and protocol
 
@@ -1099,7 +1221,7 @@ loses one fold rather than an experiment.
 | `f_methylation` | Dam/Dcm motifs at PAM and seed | reference genome | +0.004 |
 | `g_transcription` | TSS distance, strand, expression | RegulonDB + PRECISE-1K | +0.015 |
 | `h_offtarget` | off-target burden, target copies | reference genome | +0.000 |
-| `i_shape` | flank bendability / deformability | published dinucleotide scales | +0.001 |
+| `i_shape` | flank bendability / deformability | published dinucleotide scales | +0.036 (+0.001 on top of `a_flank`) |
 | `j_periodicity` | GC skew, helical-repeat periodicity | reference genome | −0.001 |
 
 Groups 1 (`b`,`c`,`d_mechanics`,`f`) are redundant by construction (Appendix B2); group 2 (`a`) is
@@ -1181,9 +1303,20 @@ against Crossref metadata rather than transcribed from memory.
 
 ## Appendix E — Withdrawn claims
 
-Nineteen claims have been withdrawn and eight bugs found. They are not listed
+Twenty-six claims have been withdrawn and eleven bugs found. They are not listed
 here, so that this document reads as a statement rather than a diary; they are in
-`local/MISCONCEPTIONS.md`, outside the repo, with the cause of each.
+`docs/FINDINGS_LOG.md` in date order and in `local/MISCONCEPTIONS.md`, outside
+the repo, with the cause of each.
+
+Three of the eleven bugs share one shape and are worth naming as a class:
+**a computation that fails and reports success.** `b_energy` wrote a feature
+block with zero feature columns because its builder catches import errors per
+guide; a selector control compared 300 columns against 300 because
+`n_features=None` resolves to `config.N_FEATURES`; and a wide-window crisprHAL
+run scored an untrained network because `train()` returns `None` identically on
+success and failure. None raised. Each produced a number of exactly the kind
+expected, and the first two would have entered the report as clean null
+results.
 
 The pattern is worth one line, because it is the most transferable thing here:
 **the largest single category is an outsider's question**, and in every one of
