@@ -70,9 +70,9 @@ All arms from one protocol, 5 seeds × 5 folds, same rows:
 | arm | columns | ρ | vs full matrix |
 |---|---:|---:|---:|
 | mononucleotide only | 74 | 0.5081 ± 0.0010 | −0.0191 |
-| mono + dinucleotide | 364 | 0.5189 ± 0.0009 | −0.0083 |
-| reduced | 427 | 0.5249 ± 0.0014 | −0.0023 |
-| **portable** | **412** | **0.52713 ± 0.0011** | **−0.00003** |
+| + dinucleotide | 364 | 0.5189 ± 0.0009 | −0.0083 |
+| + non-sequences features | 427 | 0.5249 ± 0.0014 | −0.0023 |
+| - 15 undecoded (**portable** )| **412** | **0.52713 ± 0.0011** | **−0.00003** |
 | published full | 6,232 | 0.52716 ± 0.0022 | — |
 
 **412 is the stopping point.** Dropping the 15 non-portable columns is +0.0022 ρ,
