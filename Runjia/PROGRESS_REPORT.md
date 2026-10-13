@@ -12,10 +12,12 @@ nothing. The signal the matrix lacks is outside the guide: **DNA composition in
 windows of 50–1,000 nt around the cut site is worth +0.080 ρ**, the largest effect
 found here, and a smooth compositional gradient rather than a motif. The part
 that *decides the comparison* is long-range: on the ±189/166 nt span the state of
-the art already reads, its convolutions beat our windowed composition by 0.025,
-and our lead comes from the 250–1,000 nt windows its input never reaches.
-**The contribution is access to long-range context, not a better encoding of the
-same bases.** The resulting model
+the art already reads, its convolutions beat our windowed composition, and our
+lead comes from the 250–1,000 nt windows its input never reaches. **Handed that
+same reach, the state of the art gets worse, not better** (0.6799 → 0.6299),
+so the contribution is an encoding of long-range composition that a tuned
+convolutional network does not recover — not merely access to it. The resulting
+model
 reaches **ρ 0.721 against 0.704** for the published state of the art with both
 tuned, on identical folds and on the prior model's own split, for **~150× less
 CPU time** and about **half the training data**.
@@ -443,19 +445,20 @@ quoted with a score.
 with a texture-preserving null; not a motif, not mappability, not gene ranking;
 transfers across enzyme and organism and not across kingdoms (Findings 4–7).
 
-**3. A simple representation that exploits it competitively and cheaply — and
-an architecture result that comes with it.** Given the *same* DNA, the two
-models are indistinguishable on the guide alone and crisprHAL 2 is better on its
-own 378 nt span; given family A's ±1,000 nt reach, crisprHAL 2 **degrades**
-(0.6799 → 0.6299) while SLICER improves, so SLICER leads by 0.065 at matched
-input. The contribution is therefore not a faster model but a representation of
-long-range context that a tuned convolutional network does not extract at this
-sample size (Finding 5).
+**3. A representation of long-range context that a tuned convolutional network
+does not extract.** ρ 0.721 against 0.704 with both models tuned, 0.6997 against
+0.6940 on the prior model's own split, for ~150× less CPU time and about half
+the training data — leading on nine metrics tuned and eight of nine untuned
+(Appendix B).
 
-**3b. The headline comparison, stated plainly.**
-ρ 0.721 against 0.704 with both models tuned, 0.6997 against 0.6940 on the prior
-model's own split, for ~150× less CPU time and about half the training data —
-leading on nine metrics tuned and eight of nine untuned (Appendix B).
+The comparison holds up when the DNA is equalised, which is the form that
+matters. Given the *same* input, the two architectures are indistinguishable on
+the guide alone (0.5473 against 0.5494) and crisprHAL 2 is **better** on its own
+378 nt span (0.6568 against 0.6799); given family A's ±1,000 nt reach, crisprHAL
+2 **degrades** (0.6799 → 0.6299) while SLICER improves, so SLICER leads by
+**0.065** at matched input. So the contribution is not a faster model — it is an
+encoding of long-range composition that a tuned CNN does not recover at this
+sample size, at its published hyperparameters (Finding 5).
 
 Findings 8–12 support these three. They are not co-equal headlines, with one
 exception worth separating for an ML audience: **Findings 10 and 11 are
