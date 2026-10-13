@@ -79,6 +79,15 @@ All arms from one protocol, 5 seeds × 5 folds, same rows:
 | − 15 undecoded (**portable**) | **412** | **0.52713 ± 0.0011** | **−0.00003** |
 | published full | 6,232 | 0.52716 ± 0.0022 | — |
 
+*Protocol caveat, added 13 October.* Every arm here selects **300 columns from
+its candidate pool** — `cross_validate` resolves `n_features=None` to
+`config.N_FEATURES`, so "all columns" was never tested. The arms are therefore
+not on identical footing: the 74-column arm has fewer candidates than 300 and
+uses all of them, while the 6,232-column arm selects 300 from 6,232. The
+comparison is still internally consistent, and 412 ≈ the full matrix stands, but
+the ladder measures *candidate pools under a fixed selection budget*, not
+representations in full.
+
 **412 is the stopping point.** Dropping the 15 non-portable columns is +0.0022 ρ,
 i.e. slightly *better* than the 427, and lands **0.00003 ρ** from all 6,232. Going
 further down to the 364 sequence indicators alone *does* cost something — **0.0083
@@ -92,14 +101,28 @@ a move to another cohort actually needs.
 absent** there. Any claim about "the 427" on crisprHAL's rows was therefore never
 about the columns actually used; the portable 412 is what the claim should name.
 
-**One consequence is worth stating because it is a theorem, not a result.** If
-the matrix encodes the 20-mer losslessly, then *any* feature that is a
-deterministic function of the 20-mer adds nothing to a model trained on it. That
-retroactively explains several imported families — CRISPRoff binding energy is a
-sum over adjacent base pairs, so it is a function of the guide by construction —
-and it is a reason not to build such a family, not evidence about one. The
-measurements, and why they do **not** support a general screen, are in
-Appendix B2.
+**A consequence that is often stated as a theorem, and is false.** If the matrix
+encodes the 20-mer losslessly, it is tempting to conclude that *any* deterministic
+function of the 20-mer adds nothing to a model trained on it. **That holds for an
+unconstrained learner and not for ours** — and the gap is large. `d_mechanics` is
+nearest-neighbour duplex thermodynamics, a sum of dinucleotide parameters and
+therefore a function of the guide by construction. On the curated cohort it is
+worth **+0.099 ρ** (0.5443 → 0.6432), and that is **not** a feature-selection
+artefact: using every column rather than selecting 300 gives the same gain,
++0.0993 against +0.0988 (`results/selector_control.csv`).
+
+**So a feature can add no information and still add a great deal of
+performance.** A depth-limited gradient-boosted tree over one-hot indicators
+cannot cheaply compute "sum of position-wise energies"; handed that sum
+precomputed, it gains 0.099. **The distance between what a representation
+*contains* and what a model can *use* is the whole value of feature
+engineering**, and it is the mechanism behind family A as well — see Finding 3
+and Appendix B3.
+
+What survives of the original claim is narrower: a deterministic function of the
+20-mer adds no **information**, so it cannot raise the ceiling, and it is a poor
+bet when the model can already compute it. The measurements, and why they do
+**not** support a general screen, are in Appendix B2.
 
 *Limit:* "non-inferior by 0.005" is the claim, not "identical". Higher-order
 k-mers do carry a little — see Finding 7.
@@ -919,6 +942,118 @@ overturned.
 20-mer cannot add information to a model that already encodes the 20-mer. That is
 worth saying because people keep importing such features. It is not a predictive
 screen, and this report no longer quotes it as one.
+
+## Appendix B2a — Curation and feature selection are not the same kind of dropping
+
+Both discard data, and it is easy to treat them as interchangeable. They are not.
+
+**Curation drops rows; selection drops columns.** crisprHAL's curation removes
+guides whose *label* is unreliable — it is a read-count filter — which reduces
+noise in the target. Feature selection removes *inputs* that do not predict,
+which changes what the model sees. Neither touches the other's object.
+
+**Only one of them can flatter a score without improving a prediction.**
+Selection is fitted **inside each training fold**, so it cannot see the test rows
+and cannot leak. Curation is applied to the whole dataset **before splitting**,
+so it also removes noisy rows from the *test* set — raising ρ partly by making
+the evaluation easier rather than the model better. Our own figure for the value
+of curation, ρ 0.607 → 0.628 on restricting to the 8,617 retained rows, contains
+both effects and **we have never separated them**.
+
+**What curation is worth here, measured.** On the 8,617 guides both cohorts
+share, swapping Noshay's label for crisprHAL's changes almost nothing — baseline
+0.5387 → 0.5370, with family A 0.6279 → 0.6305, a difference of +0.003 inside the
+noise. The value is in *which rows survive*, not in how the survivors are scored.
+
+**The two cohorts are not nested**: 8,617 shared, 24,950 only in crisprHAL,
+**5,263 only in Noshay**. So curation is not a filter applied to Noshay's
+selection — it is a different, larger draw from the same Guo screen with a
+quality threshold. The guides crisprHAL drops look unremarkable on copy number
+and uniqueness; their only visible signature is a compressed label range.
+
+*What is not established:* the procedure itself — the read-count threshold, how
+the activity score is computed from the Cas9/dCas9 arms, whether replicates are
+combined differently from Guo's. That is in the PeerJ paper, which **nobody on
+this project has read the methods of**. Since we now train on their label, that
+is a gap worth closing before the paper describes it.
+
+## Appendix B3 — The family ablations on the curated cohort, and what they measure
+
+Every Δρ in Appendix C was measured on the published 13,880-row matrix. The model
+layer moved to crisprHAL's 33,567 curated guides and the family measurements did
+not follow, so they were re-run there: same design, base representation against
+base + one family, 5 seeds × 5 folds, selection inside each training split.
+
+| family | published Δρ | **curated Δρ** |
+|---|---:|---:|
+| `a_flank` | +0.080 | **+0.164** |
+| `d_supercoiling` | +0.045 | **+0.139** |
+| `i_shape` | +0.001 | **+0.120** |
+| `d_mechanics` | +0.020 | **+0.099** |
+| `e_nucleoid` | +0.016 | **+0.072** |
+| `j_periodicity` | −0.001 | +0.011 |
+| `f_methylation` | +0.004 | +0.008 |
+| `h_offtarget` | +0.000 | +0.001 |
+
+**Every family inflates, and `i_shape` goes from a flat null to the third-largest
+effect.** A family does not travel from +0.001 to +0.120 for biological reasons,
+so the first question was whether this measures the pipeline rather than the
+features.
+
+**It does not measure the selector.** The curated base is 6,169 sparse indicator
+columns with none of the 63 hand-named summaries the published base carried, and
+300 are selected. The obvious hypothesis was starvation. Tested directly on
+`d_mechanics`:
+
+| arm | ρ |
+|---|---:|
+| base, select 300 | 0.5443 |
+| base + `d_mechanics`, select 300 | 0.6432 |
+| base, **all 6,169 columns** | 0.5439 |
+| base + `d_mechanics`, **all 6,199 columns** | 0.6432 |
+
+**+0.0988 with selection, +0.0993 without.** The gain is not an artefact of
+selecting 300 columns.
+
+### What it does measure
+
+The inflation tracks **what kind of column a family supplies**, not what it
+measures. The families that gain most — `i_shape` (152 columns), `a_flank` (348),
+`d_mechanics` (30), `d_supercoiling` (26) — all supply **dense continuous
+summaries**. The two that barely move, `h_offtarget` (13 sparse counts) and
+`f_methylation` (17 near-binary motif indicators), supply columns shaped like the
+base. The published base already contained dense summaries among its 63
+hand-named columns, including guide Tm; the curated base contains none, so
+families that restore them are paid for it.
+
+**This is the same effect as family A, with the confound removed.** Family A
+mixes summarisation with new DNA. `d_mechanics` adds **no new DNA at all** — it
+is a function of the 20-mer the base already encodes losslessly — and still moves
+ρ by 0.099. That is the cleanest available demonstration that **representation
+matters independently of information**, and it is the mechanism the flanking
+result depends on.
+
+### How to read these numbers, and how not to
+
+**They are not comparable to the published Δρ column.** The two cohorts have
+different baselines (0.544 against 0.527), different labels and different base
+representations. Only the *sign* and the *ordering within a column* carry over.
+
+**They are not clean estimates of each family's biological contribution.** A
+family that supplies dense summaries is rewarded for its shape as well as its
+content on this base. Separating the two requires adding the portable hand-named
+summaries to the base and re-measuring, which has not been done.
+
+**`i_shape`'s reversal is a caution about the published table too.** It was cited
+as a family that passes the redundancy screen and delivers nothing. On this
+cohort it delivers +0.120. Whatever that table was measuring, it was not a
+stable property of the feature family.
+
+*Not yet available on this cohort:* `b_energy` (its builder caught a missing
+Biopython import per guide and wrote a file with zero feature columns, reporting
+success — now installed, pending rebuild) and `g_transcription` (needs per-gene
+b-numbers to merge the expression compendium, and the curated index has no gene
+assignment). `c_folding` was recovered by installing ViennaRNA.
 
 ## Appendix C0 — Reproducibility: versions, seeds and protocol
 
