@@ -7,8 +7,10 @@ RSI09, as of 11 October 2026. **The analysis is frozen** (Part 4).
 positional features for 13,880 *E. coli* guides but not the guide sequences,
 making it unusable for new targets. We decoded it, which revealed that its
 columns are an elaborate spelling of 20 letters — 427 of them do the same job as
-all 6,232 — and that explained why eight imported feature families added almost
-nothing. The signal the matrix lacks is outside the guide: **DNA composition in
+all 6,232, and 412 of those are computable for any guide. That settles by
+arithmetic why two imported biophysical families could not have helped: they are
+deterministic functions of the guide. Six others failed for unrelated reasons,
+which is a list of null results rather than a pattern (Appendix B2). The signal the matrix lacks is outside the guide: **DNA composition in
 windows of 50–1,000 nt around the cut site is worth +0.080 ρ**, the largest effect
 found here, and a smooth compositional gradient rather than a motif. The part
 that *decides the comparison* is long-range: on the ±189/166 nt span the state of
@@ -90,57 +92,19 @@ a move to another cohort actually needs.
 absent** there. Any claim about "the 427" on crisprHAL's rows was therefore never
 about the columns actually used; the portable 412 is what the claim should name.
 
+**One consequence is worth stating because it is a theorem, not a result.** If
+the matrix encodes the 20-mer losslessly, then *any* feature that is a
+deterministic function of the 20-mer adds nothing to a model trained on it. That
+retroactively explains several imported families — CRISPRoff binding energy is a
+sum over adjacent base pairs, so it is a function of the guide by construction —
+and it is a reason not to build such a family, not evidence about one. The
+measurements, and why they do **not** support a general screen, are in
+Appendix B2.
+
 *Limit:* "non-inferior by 0.005" is the claim, not "identical". Higher-order
-k-mers do carry a little — see Finding 8.
+k-mers do carry a little — see Finding 7.
 
-### 3. A feature whose columns the 20-mer already determines cannot help — a screen, not a law
-
-Out-of-fold R² of predicting each new column from position-specific mono- and
-dinucleotide indicators of the protospacer, over all eleven families:
-
-| family | columns | median R² | **share of columns with R² > 0.9** | Δρ |
-|---|---:|---:|---:|---:|
-| `b_energy` (CRISPRoff ΔG) | 10 | 0.984 | **70%** | +0.007 |
-| `d_mechanics` (duplex stability) | 30 | 0.845 | **50%** | +0.020 |
-| `c_folding` | 9 | 0.297 | 0% | +0.007 |
-| `f_methylation` | 17 | 0.141 | 0% | +0.004 |
-| `a_flank` | 322 | −0.012 | 0% | **+0.080** |
-| `d_supercoiling` | 26 | −0.013 | 0% | +0.045 → artefact |
-| `g_transcription` | 18 | −0.016 | 0% | +0.015 |
-| `e_nucleoid` | 20 | −0.016 | 0% | +0.016 |
-| `i_shape` | 152 | −0.017 | 0% | +0.001 |
-| `j_periodicity` | 24 | −0.021 | 0% | −0.001 |
-| `h_offtarget` | 7 | −0.022 | 0% | +0.000 |
-
-**Read the last-but-one column, not the median.** The structure is binary: two
-families contain columns the 20-mer *determines*, and nine contain none.
-`c_folding` and `f_methylation` have middling medians but **no** determined
-column — their medians average weak partial fits and detect nothing.
-Nearest-neighbour thermodynamics is a sum over adjacent pairs, so binding energy
-is a second-order quantity the matrix already holds: importing CRISPRoff was
-importing the matrix back into itself.
-
-**Why the nine null families agree so closely.** Out-of-fold R² against a target
-with no relationship to the basis is not 0 but a small negative set by the basis
-size and the row count, not by the target. All nine land between −0.012 and
-−0.022 with 10th percentiles of −0.019 to −0.022: they are sitting on a shared
-null floor, which is what "no relationship" looks like rather than a defect.
-
-*Status of this rule.* **A qualitative screen, and it is not quoted with a
-score.** Of the two families whose columns are determined, neither produced a
-material gain, and that is the direction worth using: if a candidate's columns
-are individually reconstructible from the 20-mer, do not build it. The converse
-has no force — `h_offtarget`, `i_shape` and `j_periodicity` all pass the screen
-and deliver nothing.
-
-*Withdrawn here:* earlier versions scored this rule as "8 times out of 8" in one
-direction and "7 of 9" in the other. **Neither count is supportable.** Only four
-families have positive R² at all, no threshold for "high" was ever declared, and
-`d_mechanics` — unambiguously high at 0.845 — returned +0.020, the second-largest
-gain in the table. The counts were doing rhetorical work the design cannot carry;
-the screen stands on its mechanism, not on a tally.
-
-### 4. The DNA around the cut site predicts cutting — the one large effect
+### 3. The DNA around the cut site predicts cutting — the one large effect
 
 Windowed composition of the flanking DNA (GC, purine, longest run, quantum-table
 averages at 50/250/500/1,000 nt each side, plus the nearest 10 bases) is worth
@@ -163,7 +127,7 @@ At 1 kb the shifted columns are still 0.41 correlated with the real ones and onl
 8% of the gain survives; by 10 kb the gain is gone. So this is not an artefact of
 chromosome-scale structure, and the effect is sharply localised.
 
-### 5. It is a gradient, not a motif
+### 4. It is a gradient, not a motif
 
 A convolutional network of the same architecture family as the best published
 competitor, given raw DNA on the same rows and folds:
@@ -253,7 +217,7 @@ epochs and every other setting were tuned at 378 nt, and **a re-tune at each
 width is the control we have not run.** One fold, one seed. State that limit
 beside the result.
 
-### 6. The effect belongs to the DNA, and transfers
+### 5. The effect belongs to the DNA, and transfers
 
 | test | result |
 |---|---|
@@ -302,7 +266,7 @@ That figure does not reproduce against the published label by either correlation
 measure; −0.201 for target GC reproduces exactly. The conditional analysis above
 replaces it.
 
-### 7. The long-range asymmetry depends on orientation — and it is transcription-start-site orientation, not nearest-gene
+### 6. The long-range asymmetry depends on orientation — and it is transcription-start-site orientation, not nearest-gene
 
 The PAM side is worth more than the other side (+0.072 against +0.027;
 count-matched +0.0790 against +0.0782, so it is the side and not the column
@@ -350,7 +314,7 @@ quantity that needed an interval, and the interval includes zero.
 operon strand is weaker than TSS and stays supporting rather than lead. **Part 4
 item 3 is closed.**
 
-### 8. Higher-order k-mers help, but only once feature selection is removed
+### 7. Higher-order k-mers help, but only once feature selection is removed
 
 Measured through the top-300 selector, adding trimers *hurt*. Without selection it
 helps, paired over 3 seeds × 5 folds:
@@ -367,7 +331,7 @@ anything. **A conclusion drawn downstream of feature selection is a statement
 about the selector until proven otherwise** — this ladder produced three confident
 wrong answers before that was understood.
 
-### 9. The model is out of material, and the reduction does not change that
+### 8. The model is out of material, and the reduction does not change that
 
 Correlating every column against the champion's out-of-fold residuals:
 
@@ -382,7 +346,7 @@ model is missing.** The test is trustworthy because it has a positive control �
 flagged family A at 0.147 *before* family A existed, and family A was then worth
 +0.080.
 
-### 10. Importance rankings are unstable per column and stable per block — and gain is the culprit
+### 9. Importance rankings are unstable per column and stable per block — and gain is the culprit
 
 Across seven model families (two boosters, two forests, two linear, CatBoost):
 
@@ -400,7 +364,7 @@ The largest between-model gap on any kind of column goes from 31 points to 0.3.
 
 *Consequence:* report SHAP, at block level, and never gain.
 
-### 11. The standard faithfulness probe is uninterpretable on a redundant matrix
+### 10. The standard faithfulness probe is uninterpretable on a redundant matrix
 
 "Drop the top features and refit" returns ≈0 on the full matrix for every model,
 which this project reported for weeks as evidence that no model had found the
@@ -409,7 +373,7 @@ the full matrix loses 0.002 and the 775-column reduced set loses **0.015** — s
 times the damage for the same share of the explanation removed, while both
 concentrate importance almost identically (44 and 37 columns for half of it).
 
-### 12. The label's ceiling is ≈0.94, not 0.90
+### 11. The label's ceiling is ≈0.94, not 0.90
 
 Two screens of the same library agree at ρ 0.810, which naively gives 0.90 — but
 the disagreement is **predictable at ρ 0.546**, so it is enzyme biology, not
@@ -435,15 +399,15 @@ So SLICER at ρ 0.707–0.721 leaves **about 0.22 of ρ unaccounted for**.
 
 **1. A published representation decoded, and shown to be redundant.** 99% of it
 regenerates from sequence; 427 of 6,232 columns are non-inferior to all of them;
-and the redundancy yields a screen for whether a candidate feature is worth
-building — if its columns are individually reconstructible from the 20-mer, the
-model already holds it (Findings 1–3). The screen is qualitative; it is not
-quoted with a score.
+and the lossless encoding settles, as a matter of arithmetic rather than
+measurement, that no deterministic function of the 20-mer can add information to
+a model trained on it — which is why several imported biophysical families could
+not have helped (Findings 1–2; Appendix B2).
 
 **2. Genomic flanking context identified and validated as the main new signal.**
 +0.080 ρ, the largest effect here; a spatially local compositional gradient, shown
 with a texture-preserving null; not a motif, not mappability, not gene ranking;
-transfers across enzyme and organism and not across kingdoms (Findings 4–7).
+transfers across enzyme and organism and not across kingdoms (Findings 3–6).
 
 **3. A representation of long-range context that a tuned convolutional network
 does not extract.** ρ 0.721 against 0.704 with both models tuned, 0.6997 against
@@ -458,10 +422,10 @@ the guide alone (0.5473 against 0.5494) and crisprHAL 2 is **better** on its own
 2 **degrades** (0.6799 → 0.6299) while SLICER improves, so SLICER leads by
 **0.065** at matched input. So the contribution is not a faster model — it is an
 encoding of long-range composition that a tuned CNN does not recover at this
-sample size, at its published hyperparameters (Finding 5).
+sample size, at its published hyperparameters (Finding 4).
 
-Findings 8–12 support these three. They are not co-equal headlines, with one
-exception worth separating for an ML audience: **Findings 10 and 11 are
+Findings 7–11 support these three. They are not co-equal headlines, with one
+exception worth separating for an ML audience: **Findings 9 and 10 are
 methodological results about interpretability that generalise beyond this
 dataset**, and would be better served by a short companion note than by being
 compressed into a biology paper.
@@ -509,9 +473,9 @@ Remaining before submission:
 |---|---|---|
 | 1 | eSpCas9 final evaluation, once, frozen configs — **on hold**: a pivot to crisprHAL's cohort reclassifies eSpCas9 as cross-enzyme validation rather than an untouched holdout, so spending the one-shot evaluation now would spend it on the wrong question | ~1 h |
 | 2 | crisprHAL 2's search run to **its own** plateau, not extrapolated | 2–4 GPU-h, free Colab tier |
-| 3 | ~~orientation controls~~ | **done** — Jacky, Finding 7 |
+| 3 | ~~orientation controls~~ | **done** — Jacky, Finding 6 |
 | 4 | human baseline re-tuned at the teammate's settings — **blocked**: the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/` | ~1 h once supplied |
-| 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 6 |
+| 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 5 |
 | 6 | sample-complexity curve repeated across folds and seeds | ~2 h |
 
 **A guide-design tool is not a deliverable.** The findings are the contribution,
@@ -591,7 +555,7 @@ correlation with the aligned track falls 1.00 / 0.41 / 0.05 / −0.03 at 0 / 1 k
 the shifted columns are still 0.41 correlated with the real ones. Sweeping turns
 the control into a measurement — Δρ against shift distance is the autocorrelation
 length of the effect, independent of the window sizes family A happens to use.
-Results in Finding 4. Grouped CV (100 kb blocks) throughout, because a positional
+Results in Finding 3. Grouped CV (100 kb blocks) throughout, because a positional
 feature under random KFold can score by locus recognition and the shifted arms
 would inherit that too.
 
@@ -645,7 +609,7 @@ feature-selection pass (86% of the FLOPs, and its only output is an ordering) an
 training on the reduced columns. A plain **ridge** regression on those columns
 costs **3.4 CPU-seconds** and reaches ρ 0.627, still above **our in-house**
 convolutional control at any input width (not above crisprHAL 2 — see
-Finding 5). Peak memory falls to 0.65 GB only if the reduced
+Finding 4). Peak memory falls to 0.65 GB only if the reduced
 matrix is what gets *stored*; subsetting after loading saves 14%.
 
 ### Is there an architecture-independent measure of cost?
@@ -789,7 +753,7 @@ From the genome alone: **GC skew** (strand-asymmetric, unlike GC content),
 (`GCTGGTGG`, RecBCD hotspots), homopolymer run-length, REP element density. From
 RegulonDB, already on disk: **distance and orientation to the nearest annotated
 TSS, terminator and operon boundary** — the properly-annotated version of the
-nearest-gene proxy, and the highest-value item given Finding 7. From a teammate:
+nearest-gene proxy, and the highest-value item given Finding 6. From a teammate:
 distance to the nearest essential gene.
 
 The first three were built as family J and are a **null** (−0.001 alone, +0.0004
@@ -827,6 +791,88 @@ because ten random candidates may not contain a great one.
 **Report ρ and R² together.** A LightGBM with a robust loss scored R² 0.192 with
 ρ 0.568 — the same model looking broken on one metric and respectable on the
 other.
+
+## Appendix B2 — Why the imported families failed, and why that is not a screen
+
+This began as a numbered finding: a rule that a feature predictable from the
+20-mer cannot help, with a table of eleven families as evidence. **The table does
+not support a rule**, and it is demoted here rather than deleted because the
+measurements are real and the failure mode is instructive.
+
+Out-of-fold R² of predicting each new column from position-specific mono- and
+dinucleotide indicators of the protospacer, over all eleven families:
+
+| family | columns | median R² | **share of columns with R² > 0.9** | Δρ |
+|---|---:|---:|---:|---:|
+| `b_energy` (CRISPRoff ΔG) | 10 | 0.984 | **70%** | +0.007 |
+| `d_mechanics` (duplex stability) | 30 | 0.845 | **50%** | +0.020 |
+| `c_folding` | 9 | 0.297 | 0% | +0.007 |
+| `f_methylation` | 17 | 0.141 | 0% | +0.004 |
+| `a_flank` | 322 | −0.012 | 0% | **+0.080** |
+| `d_supercoiling` | 26 | −0.013 | 0% | +0.045 → artefact |
+| `g_transcription` | 18 | −0.016 | 0% | +0.015 |
+| `e_nucleoid` | 20 | −0.016 | 0% | +0.016 |
+| `i_shape` | 152 | −0.017 | 0% | +0.001 |
+| `j_periodicity` | 24 | −0.021 | 0% | −0.001 |
+| `h_offtarget` | 7 | −0.022 | 0% | +0.000 |
+
+**Read the last-but-one column, not the median.** The structure is binary: two
+families contain columns the 20-mer *determines*, and nine contain none.
+`c_folding` and `f_methylation` have middling medians but **no** determined
+column — their medians average weak partial fits and detect nothing.
+Nearest-neighbour thermodynamics is a sum over adjacent pairs, so binding energy
+is a second-order quantity the matrix already holds: importing CRISPRoff was
+importing the matrix back into itself.
+
+**Why the nine null families agree so closely.** Out-of-fold R² against a target
+with no relationship to the basis is not 0 but a small negative set by the basis
+size and the row count, not by the target. All nine land between −0.012 and
+−0.022 with 10th percentiles of −0.019 to −0.022: they are sitting on a shared
+null floor, which is what "no relationship" looks like rather than a defect.
+
+*Status of this rule.* **A qualitative screen, and it is not quoted with a
+score.** Of the two families whose columns are determined, neither produced a
+material gain, and that is the direction worth using: if a candidate's columns
+are individually reconstructible from the 20-mer, do not build it. The converse
+has no force — `h_offtarget`, `i_shape` and `j_periodicity` all pass the screen
+and deliver nothing.
+
+*Withdrawn here:* earlier versions scored this rule as "8 times out of 8" in one
+direction and "7 of 9" in the other. **Neither count is supportable.** Only four
+families have positive R² at all, no threshold for "high" was ever declared, and
+`d_mechanics` — unambiguously high at 0.845 — returned +0.020, the second-largest
+gain in the table. The counts were doing rhetorical work the design cannot carry;
+the screen stands on its mechanism, not on a tally.
+
+
+### Why this is not a general screen
+
+Three things, and the first is decisive.
+
+**The rule applies to two families.** Only `b_energy` (R² 0.984) and
+`d_mechanics` (0.845) are substantially determined by the 20-mer. Everything else
+sits below 0.30. A rule with n = 2 is an observation.
+
+**For the strongest case it is a tautology.** CRISPRoff ΔG is *computed from the
+sequence* by nearest-neighbour summation. That it adds no information to a model
+holding the sequence losslessly is arithmetic, not an empirical discovery; the R²
+of 0.984 confirms the arithmetic. The same applies to `d_mechanics`. So the two
+supporting cases are the two cases where no measurement was needed.
+
+**The other nine carry no signal about the rule.** Their R² spans **0.010**
+(−0.022 to −0.012) — null-floor variation set by family size, not by
+predictability — while their gains span **0.081** (−0.001 to +0.080). Across all
+eleven families ρ(R², Δρ) = 0.489, **p = 0.127**. Arranging nulls in a table
+sorted by a statistic with no resolving power produces the *appearance* of a
+trend from a pile of things that did not work, for unrelated reasons:
+`h_offtarget` needs the rest of the genome, `j_periodicity` is a genuine null,
+`i_shape` duplicates family A, `d_supercoiling` was an artefact its own control
+overturned.
+
+**What survives** is the statement in Finding 2: a deterministic function of the
+20-mer cannot add information to a model that already encodes the 20-mer. That is
+worth saying because people keep importing such features. It is not a predictive
+screen, and this report no longer quotes it as one.
 
 ## Appendix C0 — Reproducibility: versions, seeds and protocol
 
@@ -875,7 +921,7 @@ loses one fold rather than an experiment.
 | `i_shape` | flank bendability / deformability | published dinucleotide scales | +0.001 |
 | `j_periodicity` | GC skew, helical-repeat periodicity | reference genome | −0.001 |
 
-Groups 1 (`b`,`c`,`d_mechanics`,`f`) are redundant by Finding 3; group 2 (`a`) is
+Groups 1 (`b`,`c`,`d_mechanics`,`f`) are redundant by construction (Appendix B2); group 2 (`a`) is
 the one that worked; group 3 (`d_supercoiling`, `e`, `g`) collapse into one
 positional variable; group 4 (`h`) needs the rest of the genome.
 
@@ -886,14 +932,14 @@ under-credit them.
 
 | set | who | result |
 |---|---|---|
-| **gene essentiality** | Jacky | **+0.0037 R²** over 0.2927, **selected in 5/5 folds** — the only non-QCT idea on that matrix with a consistent gain, and it passes Finding 3's screen |
-| **orientation controls** | Jacky | closes Part 4 item 3 and **rewrites Finding 7**: curated RegulonDB TSS replaces nearest gene as the orientation variable (Δ 0.051 [0.020, 0.082]), and the nearest-gene version we had been quoting is shown to be largely a distance/GC cohort confound (Δ 0.007, P = 0.34 after matching). Block bootstrap over 47 genomic blocks, promoter/RBS separated, operon compared |
+| **gene essentiality** | Jacky | **+0.0037 R²** over 0.2927, **selected in 5/5 folds** — the only non-QCT idea on that matrix with a consistent gain, and it is not a function of the 20-mer |
+| **orientation controls** | Jacky | closes Part 4 item 3 and **rewrites Finding 6**: curated RegulonDB TSS replaces nearest gene as the orientation variable (Δ 0.051 [0.020, 0.082]), and the nearest-gene version we had been quoting is shown to be largely a distance/GC cohort confound (Δ 0.007, P = 0.34 after matching). Block bootstrap over 47 genomic blocks, promoter/RBS separated, operon compared |
 | seed non-additive QCT | Joshua | ~+0.005 R²; absolute-difference forms carry more SHAP than signed (1.09 against 0.92) |
 | log-ratio QCT forms | Joshua | ~+0.005 R², best seed 0.3015 |
 | regional QCT summaries | Joshua | +0.0013 R², against a permuted control at 0.2857 |
 | PAM-weighted, profile-shape, coupling, HOMO–LUMO asymmetry | Joshua | −0.0010 to +0.0006 — null |
 
-The non-additive families are **independent evidence for Finding 8**: they gain
+The non-additive families are **independent evidence for Finding 7**: they gain
 from exactly the higher-order structure the k-mer ladder found worth +0.0035 ρ
 once the selector was removed.
 
