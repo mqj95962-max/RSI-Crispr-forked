@@ -4061,3 +4061,36 @@ we tuned for them, level against the model they tuned themselves, and behind by
 conditions rather than choosing one, and the most likely reason the first two
 differ is training-set size — 26,853 against 47,591, which is what the
 sample-complexity curves predict.
+
+## 15 October 2026 (addendum) — what Colab actually buys for tuning their model
+
+**Measured speed-up: 3.1×.** Their published configuration fits one fold in
+**5.48 min on a Colab T4** against **17.0 min locally**
+(`crisprhal_wide_window.csv` against `crisprhal_rerun.csv`). So yes, a matched
+search is now affordable — but the report's "2–4 GPU-hours, one free Colab
+session" was wrong by 3–5× and has been corrected.
+
+The error was pricing the *default* configuration for a search that mostly does
+not use it. The local search's median fit was **44 min** against 17 for the
+default, because the draws average larger networks. At ~14 min/fit on a T4, a
+matched nested search — 12 draws inside each of five folds plus five refits, 65
+fits — is **10–15 GPU-hours, two to four free sessions with resume**.
+
+**What it should buy, bounded by evidence rather than extrapolated from their
+10-draw trace.** Their own fully-tuned *published* WT model scores 0.695 on
+their own WT split, where SLICER scores 0.6997 at the same data scale (~26.8k
+training rows). That is what their architecture reaches when its authors tune it
+at this cohort size, and it is ~0.005 behind us. So the expected endpoint is the
+margin narrowing from **+0.0172 to roughly +0.005**, not to zero.
+
+`colab/crisprhal_tune_matched.py` is written, with the interpretation fixed
+before running it: ≥ ~0.716 means the margin was mostly a tuning artefact and
+parity is the honest conclusion on our folds too; 0.704–0.710 means it survives
+and ~+0.005–0.010 is the number; above 0.7213 means we lose on our own folds and
+should say so. Draw 0 is their published configuration, so it is also the
+positive control — its fold scores must land near 0.686–0.702 or the harness is
+wrong.
+
+Worth being clear about what this run can and cannot change: it bears only on
+the **our-folds** condition. The parity result on their own splits already uses
+their published weights, so no search of ours can affect it.

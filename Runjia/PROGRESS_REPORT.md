@@ -951,7 +951,7 @@ Remaining before submission:
 | | item | cost |
 |---|---|---|
 | 1 | ~~eSpCas9 final evaluation~~ | **done, and it is a tie** — ρ 0.7842 against 0.7821 on crisprHAL's own eSpCas9 split with their published weights, at 47,591 training guides. Also corrected: eSpCas9 was never an untouched holdout (above) |
-| 2 | crisprHAL 2's search run to **its own** plateau — **no longer needed for the comparison.** The tuning asymmetry (10 configurations against our 627) was an objection to *our* runs of their model. The final evaluation above uses **their published weights**, which embody whatever search their paper did, and SLICER still leads by +0.002 and +0.005 on their own two splits. A tuning-cost curve would still be interesting; it is not load-bearing | 2–4 GPU-h, optional |
+| 2 | crisprHAL 2's search run to **its own** plateau — **script ready**, `colab/crisprhal_tune_matched.py`: 12 draws × 5 folds with patience, resumable, interpretation pre-declared, 10–15 GPU-h on a free T4 at the measured 3.1× speed-up. Still **not needed for the comparison** The tuning asymmetry (10 configurations against our 627) was an objection to *our* runs of their model. The final evaluation above uses **their published weights**, which embody whatever search their paper did, and SLICER still leads by +0.002 and +0.005 on their own two splits. A tuning-cost curve would still be interesting; it is not load-bearing | 2–4 GPU-h, optional |
 | 3 | ~~orientation controls~~ | **done** — Jacky, Finding 6 |
 | 4 | human baseline re-tuned at the teammate's settings — **delegated to the teammate**, request drafted (`docs/correspondence/request_human_baseline_settings.md`): the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/`. If it does not arrive, Part 3's cross-kingdom sentence rests on the *sign* of the transfer and says so | ~1 h once supplied |
 | 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 5 |
@@ -1448,8 +1448,33 @@ The margin's weakest point is that crisprHAL got 10 configurations and SLICER
 627. Matching 627 draw-for-draw is ~460 CPU-hours, which is where a £20–50
 rental estimate came from. **That estimate was wrong**: the trace shows 40 draws
 captured 100% of SLICER's gain, so an equal-footing search means running *their*
-search to *its own* patience criterion — about **55 fits, 2–4 GPU-hours, one free
-Colab session**.
+search to *its own* patience criterion — about **55 fits**.
+
+*And the cost of those fits is now measured rather than guessed, which revises
+the estimate upward.* Their published configuration fits one fold in **5.48 min
+on a Colab T4** against **17.0 min locally** — a **3.1× speed-up**
+(`crisprhal_wide_window.csv`, `crisprhal_rerun.csv`). But a search's draws
+average *larger* than their default: the local search's median fit was 44 min
+against 17 for the default, so ~14 min/fit is the right T4 budget. Twelve draws
+inside each of five folds plus five refits is 65 fits, so **10–15 GPU-hours, two
+to four free sessions with resume** — not the "2–4 GPU-hours, one free Colab
+session" this section claimed before any Colab timing existed. That figure was
+too optimistic by 3–5×, because it priced the *default* configuration for a
+search that mostly does not use it.
+
+**What a matched search is expected to buy, bounded rather than extrapolated.**
+Their own fully-tuned **published** WT model scores 0.695 on their own WT split,
+where SLICER scores 0.6997 at the same data scale (~26.8k training rows). That is
+the best available estimate of what their architecture reaches when *its authors*
+tune it at this cohort size, and it sits ~0.005 behind us. So the expected
+endpoint of a matched search on our folds is the margin narrowing from **+0.0172
+to roughly +0.005**, not to zero. The interpretation is fixed in advance in
+`colab/crisprhal_tune_matched.py`: at **≥ ~0.716** the margin was mostly a
+tuning-effort artefact and parity is the honest conclusion on our folds too; at
+**0.704–0.710** it survives and ~+0.005 to +0.010 is the number to quote; **above
+0.7213** we lose on our own folds once their search is equalised, and should say
+so plainly. Draw 0 is their published configuration, so it doubles as the
+positive control — its fold scores must land near 0.686–0.702.
 
 **A TPU would be the wrong instrument.** TPUs earn their keep on large dense
 matmul under XLA; this model's recurrent branch is a bidirectional GRU — a
