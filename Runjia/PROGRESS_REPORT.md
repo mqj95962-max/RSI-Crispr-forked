@@ -196,8 +196,11 @@ k-mers do carry a little — see Finding 7.
 
 Windowed composition of the flanking DNA (GC, purine, longest run, quantum-table
 averages at 50/250/500/1,000 nt each side, plus the nearest 10 bases) is worth
-**+0.080 ρ** on the original label and **+0.164** on a read-depth-filtered one —
-larger than every other idea tested here combined. Cas9 does not read this DNA.
+**+0.164 ρ** on the curated cohort we train on (+0.080 on the published matrix) —
+larger than every other idea tested here combined, and it survives holding out
+whole genes, losing nothing beyond the 6% that grouping costs a feature which
+*cannot* be memorising a locus (Appendix B3). **Cas9 does not read this DNA**,
+which is what makes the effect interesting rather than merely useful.
 
 **The effect is spatially local, shown with a control that preserves genomic
 texture.** Re-assigning each guide the flank track read from a position offset by
@@ -543,7 +546,7 @@ the full matrix loses 0.002 and the 775-column reduced set loses **0.015** — s
 times the damage for the same share of the explanation removed, while both
 concentrate importance almost identically (44 and 37 columns for half of it).
 
-### 11. The label's ceiling is ≈0.94, not 0.90
+### 11. The label's ceiling is 0.946, measured from crisprHAL's own replicates
 
 **Measured for the curated label, 15 October: 0.946 [0.944, 0.948]**, and the
 route is a replicate-agreement one rather than the inherited figure
@@ -565,27 +568,11 @@ inherited number:
 | does their **label** reproduce? | a plain CPM log-ratio of the two conditions correlates **\|ρ\| = 0.957** with their released score, so these are the replicates behind that label |
 | is it conservative? | **yes** — ALDEx2's posterior shrinks noisy guides toward the prior, which can only raise reliability above a plain log-ratio's, so 0.946 is a **lower bound** |
 
-So the curated label is *cleaner* than the published one (0.946 against 0.937),
-which is what their paper claims curation does, now measured from their own
-counts rather than taken on trust. The arithmetic below is retained because it
-is the published label's route and the two cohorts' figures are quoted side by
-side elsewhere.
-
-Two screens of the same library agree at ρ 0.810, which naively gives 0.90 — but
-the disagreement is **predictable at ρ 0.546**, so it is enzyme biology, not
-noise. Using the source paper's own agreement statistics instead, and accounting
-for the published score being a **two-replicate geometric mean**:
-
-| route | r | reliability | ceiling |
-|---|---:|---:|---:|
-| **tiling library, a *different* library** | 0.878 | 0.878 | **0.937 [0.929, 0.945]** |
-| replicate agreement + Spearman–Brown | >0.883 | 0.938 | 0.969 |
-
-**Lead with 0.937.** The replicate route must assume the activity score inherits
-the single-arm read counts' reliability, and it cannot: the label is the `|Z|` of
-a Cas9/dCas9 **ratio**, and a difference is never more reliable than its
-components — at 50% shared signal between arms the implied ceiling is already
-0.940. The tiling route needs none of that machinery.
+So the curated label is *cleaner* than the published one — **0.946 against
+0.937** — which is exactly what their paper claims curation does, now measured
+from their own counts rather than taken on trust. The published figure came from
+a different route (Guo's tiling library, not replicates) and should not be reused
+for curated numbers; that derivation is in Appendix B.
 
 So SLICER at ρ 0.707–0.721 leaves **about 0.22 of ρ unaccounted for** — 0.225
 against the curated label's measured 0.946, and the gap is not a rounding
@@ -1500,6 +1487,31 @@ same way. On the published rows that assignment agrees with Noshay's own for
 **97.7%** of guides and gives the same share to three decimals (0.843 against
 0.844) — which is the check that the change above is the cohort and not the
 method. `python -m sgrna.cohort_groups`, `results/cohort_groups.csv`.
+
+### Where the published label's 0.937 ceiling came from
+
+Two screens of the same library agree at ρ 0.810, which naively gives 0.90 — but
+the disagreement is **predictable at ρ 0.546**, so it is enzyme biology, not
+noise. Using the source paper's own agreement statistics instead, and accounting
+for the published score being a **two-replicate geometric mean**:
+
+| route | r | reliability | ceiling |
+|---|---:|---:|---:|
+| **tiling library, a *different* library** | 0.878 | 0.878 | **0.937 [0.929, 0.945]** |
+| replicate agreement + Spearman–Brown | >0.883 | 0.938 | 0.969 |
+
+**Lead with 0.937.** The replicate route must assume the activity score inherits
+the single-arm read counts' reliability, and it cannot: the label is the `|Z|` of
+a Cas9/dCas9 **ratio**, and a difference is never more reliable than its
+components — at 50% shared signal between arms the implied ceiling is already
+0.940. The tiling route needs none of that machinery.
+
+
+*Why this is kept.* It is the ceiling for Noshay's `cut_score`, not for the
+curated label we train on, and the curated figure (0.946, Finding 11) comes from
+a replicate split that *is* available for that label. Both appear in the report
+because arms on the two cohorts are compared, and quoting 0.937 against a curated
+number would understate the headroom.
 
 ### The reduced-representation ladder, and the budget that was never tested
 
