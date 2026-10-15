@@ -4,40 +4,47 @@
 RSI09, as of 11 October 2026. **The analysis is frozen** (Part 4).
 
 **In one paragraph.** A 2023 resource published 6,232 quantum-chemical and
-positional features for 13,880 *E. coli* guides but not the guide sequences,
-making it unusable for new targets. We decoded it, which revealed that its
-columns are an elaborate spelling of 20 letters — on that matrix, under a
-300-column selection budget, 427 of them do the same job as all 6,232, and 412 of
-those are computable for any guide (the reduction does *not* survive on the
-curated cohort with selection removed, Finding 2). That settles by
-arithmetic why two imported biophysical families could not have helped: they are
-deterministic functions of the guide. Six others failed for unrelated reasons,
-which is a list of null results rather than a pattern (Appendix B2). The signal the matrix lacks is outside the guide: **DNA composition in
-windows of 50–1,000 nt around the cut site is worth +0.080 ρ**, the largest effect
-found here, and a smooth compositional gradient rather than a motif. The part
-that *decides the comparison* is long-range: on the ±189/166 nt span the state of
-the art already reads, its convolutions beat our windowed composition, and our
-lead comes from the 250–1,000 nt windows its input never reaches. **Handed that
-same reach, the state of the art gets worse, not better** (0.6799 → 0.6299),
-so the contribution is an encoding of long-range composition that a tuned
-convolutional network does not recover — not merely access to it. The resulting
-model
-reaches **ρ 0.721 against 0.704** for the published state of the art with both
-tuned, on identical folds and on the prior model's own split, for **~150× less
-CPU time** and about **half the training data**. **That lead is a small-data
-lead.** Run once on crisprHAL 2's own eSpCas9 split, where 47,591 guides are
-available for training instead of 26,853, the two models tie — 0.7842 against
-0.7821 — and their model is ahead on three of six metrics. The data-efficiency
-claim is the one that survives a larger screen; the ranking claim is not.
+positional features for 13,880 *E. coli* guides but **not the guide sequences**,
+which made it unusable for new targets. We decoded it: 99% of those columns
+regenerate from a 20-mer, and they turn out to be an elaborate spelling of about
+twenty variables. That settles by arithmetic — not by measurement — why several
+imported biophysical feature families could not have helped, since they are
+deterministic functions of the guide the matrix already encodes losslessly
+(Findings 1–2). **The signal the matrix lacks is outside the guide: DNA
+composition in windows of 50–1,000 nt around the cut site, worth +0.164 ρ on the
+curated cohort** — the largest effect in the project, a smooth compositional
+gradient rather than a motif, local to within a kilobase, and specific to
+cleavage rather than to Cas9 binding (Findings 3–6). The part that decides the
+comparison with the state of the art is its **range**: inside the ±189/166 nt
+span crisprHAL 2 already reads, its convolutions beat our windowed composition,
+and our advantage comes entirely from the 250–1,000 nt its input never reaches —
+handed that reach, it gets worse rather than better (Finding 4). The resulting
+model is **statistically equivalent to crisprHAL 2 on both of its authors' own
+published splits** — Δρ +0.0021, 95% CI [−0.0031, +0.0072] — at **~150× less CPU
+time**, reaching a given accuracy on about **half the labelled guides**. On our
+own folds we lead by +0.017; on a different assay their model transfers better.
+**The claim that survives every condition is parity at a fraction of the cost,
+plus better data efficiency** — not a better model (Finding 12).
 
-**How this document is organised.** Part 1 is the findings, each with the
-evidence it rests on and the limit of what it supports. Part 2 states the three
-contributions. Part 3 is where the work stops. Part 4 is the freeze and what
-remains. Part 5 is what the control phase changed, including the claims it
-cost us. Everything that supports a finding without being one — control
-experiments, extension questions, clarifications, the full cost panel — is in the
-appendices. Protocols and per-fold numbers are in `../results/RESULTS.md`; the
-chronological record, including withdrawn claims, is in `FINDINGS_LOG.md`.
+**How this document is organised.** **Part 1** is twelve findings, each stated
+as a claim, followed by the evidence it rests on and the limit of what it
+supports. They are ordered as an argument rather than chronologically: 1–2
+decode the published representation and show what it cannot contain, 3–6
+establish the one large effect and what it is, 7–11 are the supporting and
+methodological results, and 12 is the comparison with the state of the art.
+**Part 2** states the three contributions, **Part 3** where the work stops,
+**Part 4** the freeze and the remaining items, **Part 5** what the adversarial
+phase changed — including the claims it cost.
+
+Everything that supports a finding without being one lives in the appendices:
+**A** every control, each with what it rules out and what would be believed
+without it; **B** the questions asked along the way; **B2/B2a/B3** the imported
+families that did not work, what curation actually is, and the family table on
+the curated cohort; **C0/C** reproducibility and data sources; **D** references;
+**E** withdrawn claims. Null results that are null for unrelated reasons are in
+B2 and B3 rather than in Part 1, because a list of things that did not work is
+not a finding. Protocols and per-fold numbers are in `../results/RESULTS.md`;
+the chronological record is `FINDINGS_LOG.md`.
 
 ---
 
@@ -71,57 +78,23 @@ quadrupling the selected columns changes nothing; nothing correlates with the
 model's residuals above 0.031.
 
 *The first of those was circular until 15 October, and survives being made
-non-circular.* "Model class barely matters" was measured on a representation with
-no large effect in it — the published matrix without family A — so it could have
-been a statement about a flat representation rather than about model classes.
-Re-run on the curated base **with** family A (`curated_models.py`, one seed ×
-five folds, same registry and folds):
+non-circular.* "Model class barely matters" had only ever been measured on a
+representation with no large effect in it. Re-run on the curated base **with**
+family A, eight classes span **0.1076 ρ** against 0.116 for sixteen classes
+without it — adding the one family that matters does not widen the gap between
+model classes at all, while the family itself is worth +0.164. Table in
+Appendix B.
 
-| | ρ | | | ρ |
-|---|---:|---|---|---:|
-| XGBoost | **0.7084** | | ridge | 0.6473 |
-| LightGBM | 0.7082 | | PLS | 0.6450 |
-| extra trees | 0.6537 | | elastic net | 0.6369 |
-| random forest | 0.6482 | | k-NN | 0.6007 |
-
-**Spread 0.1076 ρ across eight classes, against 0.116 across sixteen without
-family A.** Adding the one feature family that matters does not widen the gap
-between model classes at all, while the family itself is worth +0.164. The
-boosting-over-everything margin (+0.055 over ridge) is also unchanged in
-character. So the corollary is not an artefact of measuring it on a
-representation with nothing in it.
-
-**And the reduced set is portable** (`portability.py`), which matters for any
-move to another cohort. Of the 63 hand-named columns, 26 are computable from the
-20-mer and its PAM, 2 need gene annotation, and 34 are undecoded `V` columns — of
-which 19 are reconstructible (R² ≥ 0.95 against mono+di indicators) and **15 are
-not**. Dropping those 15 *costs nothing*, and the ladder below says where to stop.
-All arms from one protocol, 5 seeds × 5 folds, same rows:
-
-| arm | columns | ρ | vs full matrix |
-|---|---:|---:|---:|
-| mononucleotide only | 74 | 0.5081 ± 0.0010 | −0.0191 |
-| + dinucleotide | 364 | 0.5189 ± 0.0009 | −0.0083 |
-| + non-sequence features | 427 | 0.5249 ± 0.0014 | −0.0023 |
-| − 15 undecoded (**portable**) | **412** | **0.52713 ± 0.0011** | **−0.00003** |
-| published full | 6,232 | 0.52716 ± 0.0022 | — |
-
-*Protocol caveat, added 13 October.* Every arm here selects **300 columns from
-its candidate pool** — `cross_validate` resolves `n_features=None` to
-`config.N_FEATURES`, so "all columns" was never tested. The arms are therefore
-not on identical footing: the 74-column arm has fewer candidates than 300 and
-uses all of them, while the 6,232-column arm selects 300 from 6,232. The
-comparison is still internally consistent, and 412 ≈ the full matrix stands, but
-the ladder measures *candidate pools under a fixed selection budget*, not
-representations in full.
-
-**412 is the stopping point.** Dropping the 15 non-portable columns is +0.0022 ρ,
-i.e. slightly *better* than the 427, and lands **0.00003 ρ** from all 6,232. Going
-further down to the 364 sequence indicators alone *does* cost something — **0.0083
-ρ** — so the 48 portable hand-named columns earn their place rather than surviving
-by inertia. **412 columns computable for any 20-mer plus the reference genome
-match all 6,232**, with no lookup into the published matrix, which is the property
-a move to another cohort actually needs.
+**And the reduced set is portable**, which is what a move to another cohort
+actually needs. Of the 63 hand-named columns, 26 are computable from the 20-mer
+and its PAM, 2 need gene annotation, and 34 are undecoded `V` columns — 19 of
+them reconstructible, 15 not. Dropping those 15 costs nothing, which leaves
+**412 columns computable for any 20-mer plus the reference genome**, landing
+**0.00003 ρ** from all 6,232 and formally non-inferior against a pre-declared
+0.005 margin. Going further down to the 364 sequence indicators alone *does*
+cost 0.0083 ρ, so the 48 portable hand-named columns earn their place rather
+than surviving by inertia. The full ladder, and the protocol caveat that every
+arm selected 300 columns from its own pool, are in Appendix B.
 
 *Already in force on the curated cohort.* The curated arms carry 6,517 columns =
 6,169 reconstructable + 348 flank, so the 63 hand-named columns are **already
@@ -170,22 +143,14 @@ are built from the guide and nothing else, and all three pay: `b_energy`
 `d_mechanics` arm, using every column rather than selecting 300 gives the same
 gain, +0.0993 against +0.0988 (`results/selector_control.csv`).
 
-*Correction, 13 October — the clean cases are the other two.* **Eight of
-`d_mechanics`'s thirty columns are not functions of the 20-mer at all**:
-`eng.mech.flank.{up,dn}{25,100}` are duplex thermodynamics of the flanking DNA,
-which the base does not contain. So its +0.099 mixes this claim with family A's
-mechanism. Found by reconstructing each column from the base's 364 mono- and
-dinucleotide indicators out of fold:
-
-| `d_mechanics` columns | out-of-fold R² from the base |
-|---|---:|
-| 9 ΔG/ΔH/ΔS sums over the protospacer and its windows | **1.0000** |
-| 4 melting temperatures | 0.997–0.9995 |
-| 7 stacking and slide summaries (means, sd, extrema, argmax) | 0.20–0.98 |
-| **8 flank thermodynamics (±25, ±100 nt)** | **−0.006 to +0.042** |
-
-The nine exact ones are the arithmetic the argument needs, and the probe
-recovers them to four decimals. The eight flank columns are new DNA.
+*Correction, 13 October — and it cost the most quotable number in the report.*
+`d_mechanics` was the headline case for this claim at **+0.099**, on the grounds
+that nearest-neighbour thermodynamics is a function of the guide. **Eight of its
+thirty columns are not**: `eng.mech.flank.{up,dn}{25,100}` are duplex
+thermodynamics of the *flanking* DNA, which the base does not contain. A
+reconstruction probe found them at out-of-fold R² ≈ 0 from the base's 364 mono-
+and dinucleotide indicators, while nine ΔG/ΔH/ΔS sums came back at **R² =
+1.0000** (probe and full table in Appendix A).
 
 **Split into its two halves, `d_mechanics` says the opposite of what it was
 quoted for** (`no_information.py`, same base, same 5 × 5 protocol):
@@ -340,28 +305,15 @@ epochs and every other setting were tuned at 378 nt, and **a re-tune at each
 width is the control we have not run.** One fold, one seed. State that limit
 beside the result.
 
-*Is "as published, with more of the genome" a fair test?* It is a fair test of
-one thing and not of another, and the distinction decides what Finding 4 can
-claim. Equalising the input DNA removes the information asymmetry — in fact it
-reverses it, since they receive **raw** sequence over the window while family A
-receives a 348-column lossy summary of it, so on information they are ahead.
-What it does not equalise is the *opportunity to use* that DNA. Their 48 epochs,
-dropout, filter count and GRU width were all chosen at 378 nt; stretching the
-input to 2,023 nt multiplies the flattened layer by ~5 while leaving its
-regularisation and training budget untouched. So the measurement supports
-
-> **the published configuration, used as published, is degraded by input wider
-> than it was tuned for**
-
-and not
-
-> ~~a convolutional-recurrent architecture cannot exploit long-range context~~.
-
-The second claim needs a re-tune at each width. What makes the first worth
-reporting anyway is that **378 nt is their own optimum, not an arbitrary
-inherited setting** — see below — so the experiment extends a curve past the
-point their own search stopped improving, rather than handicapping them at a
-setting nobody chose.
+*Is "as published, with more of the genome" a fair test?* Of one claim only.
+Equalising the input DNA removes the information asymmetry — in fact it reverses
+it, since they receive **raw** sequence over the window while family A receives a
+348-column lossy summary of the same span. What it does not equalise is the
+*opportunity to use* that DNA: their epochs, dropout, filters and GRU width were
+all chosen at 378 nt. So this supports **"the published configuration, used as
+published, is degraded by input wider than it was tuned for"** and not "a
+convolutional-recurrent architecture cannot exploit long-range context".
+Appendix A sets out why, and why the experiment is still worth reporting.
 
 *Their own paper supplies part of that control, and it points the same way.*
 Browne et al. (2026) searched input length **per dataset** and stopped at 378 nt
@@ -641,41 +593,128 @@ artefact of an inherited ceiling.
 
 ---
 
+### 12. Against the state of the art: parity, and the margin depends on the question
+
+crisprHAL 2 (Browne et al., 2026) is the state of the art for bacterial Cas9,
+and the comparison with it was measured under four conditions over three days.
+**They do not agree, and the disagreement is the result** — a single headline
+number here would be a choice of condition dressed as a finding.
+
+| condition | what is held equal | result |
+|---|---|---|
+| **our five folds, both tuned here** | rows, label, folds, and a tuning protocol we ran for both | **SLICER +0.0172** [+0.0136, +0.0209] |
+| **their two splits, their published weights** | rows, label, split, and each model as its authors ship it | **parity** — +0.002 and +0.005 |
+| **equal input DNA** | all of the above *plus* the DNA each model reads | **depends on the width** — crisprHAL +0.023 at 378 nt, SLICER +0.065 at ±1,000 nt |
+| **a different assay, neither model trained on it** | rows, label, and that neither has seen the data | **crisprHAL +0.026** [+0.023, +0.029] |
+
+**On held-out folds of our own cohort, we are ahead by a margin that resolves.**
+Each guide is predicted exactly once by a model that never saw it, so the five
+validation folds give 33,567 out-of-fold predictions per model over the same
+rows, and the difference can be bootstrapped paired on guides rather than across
+five folds: **+0.0115** [+0.0074, +0.0157] at each side's starting configuration,
+**+0.0172** [+0.0136, +0.0209] with both tuned, and **+0.0043** [+0.0005,
++0.0080] pitting our untuned model against their tuned one. Five of five folds
+favour SLICER. *None of these three rows is symmetric in search effort* — ours
+had 12 draws inside each of five folds, theirs 10 draws on one inner split — so a
+matched search is the outstanding control (Part 4 item 2, Appendix B).
+
+**On crisprHAL 2's own two splits, evaluated against their own published
+weights, it is parity — and parity as a measured equivalence rather than as a
+failure to find a difference.** Their eSpCas9 arm reproduces their published
+figure to four decimals (0.7821 against their reported 0.782), which is what
+makes the comparison quotable. Paired on the same 11,898 guides against a margin
+declared before the interval was seen:
+
+| | value |
+|---|---:|
+| Δρ, SLICER − crisprHAL 2 | **+0.0021** |
+| 95% CI, paired bootstrap | **[−0.0031, +0.0072]** |
+| inside the pre-declared ±0.01 | **yes** |
+
+and on their SpCas9 split +0.005. **All six metrics are individually
+indistinguishable from zero** — we lead on the two rank metrics, they lead on
+Pearson, R², top-decile precision and expected pick percentile, and every
+interval contains zero (Appendix A). So "they win some, we win others" is the
+right reading, and the reason is not the split itself but that no metric resolves
+a difference at this sample size.
+
+**The two conditions disagree because of data volume, which is a prediction the
+sample-complexity curves had already made.** Our folds train on 26,853 guides;
+their eSpCas9 split on 47,591. The curves say our advantage is largest where
+labels are scarce and closes as they stop being (Appendix B), and the paired gap
+goes +0.0133 at 26,853 to +0.0021 at 47,591. **So the data-efficiency claim
+survives and the ranking claim does not.** "SLICER beats crisprHAL 2" is a claim
+about the small-data regime; at 47.6k labelled guides it is false.
+
+**And on a screen neither model trained on, their raw-sequence model transfers
+better than our engineered one** — \|ρ\| 0.0867 against 0.0609 zero-shot on Cui's
+CRISPRi screen, a paired difference of −0.0258 with the interval clear of zero.
+Both numbers are near-nothing against the 0.458 a model *trained* on that screen
+reaches, so this compares two small quantities. The reason is specific and worth
+stating rather than burying: the transferable signal in a dCas9 screen is
+**guide-sequence** effects, which is what their input is, while our advantage is
+flanking DNA, which contributes nothing to silencing (Finding 5). **Our
+representation is the more specialised of the two**, and that is a real cost of
+the design.
+
+*The claim that survives all four conditions*, and the sentence the paper should
+use:
+
+> Given each model its own best input and its own tuning, SLICER is statistically
+> equivalent to crisprHAL 2 on both of crisprHAL 2's own published splits — Δρ
+> +0.0021, 95% CI [−0.0031, +0.0072] on eSpCas9, +0.005 on SpCas9 — at roughly
+> 150× less compute, and reaches a given accuracy on about half the labelled
+> guides. Under equal input DNA the ranking depends on the window: crisprHAL 2 is
+> better inside its own 378 nt span, and SLICER is better once the window reaches
+> the 250–1,000 nt its input cannot see.
+
+*Why the advantage exists at all is Finding 4*, which is a statement about
+long-range context rather than about architecture. *What it costs to run* is
+Part 3 and Appendix B. *The conditions that make "fair" ambiguous* — and why
+the phrase should not be used unqualified — are in Appendix A.
+
+---
+
 ## Part 2 — Contributions
 
-**1. A published representation decoded, and shown to be redundant.** 99% of it
-regenerates from sequence; 427 of 6,232 columns are non-inferior to all of them;
-and the lossless encoding settles, as a matter of arithmetic rather than
-measurement, that no deterministic function of the 20-mer can add information to
-a model trained on it — which is why several imported biophysical families could
-not have helped (Findings 1–2; Appendix B2).
+**1. A published representation decoded, and shown to be redundant.** 99% of its
+6,232 columns regenerate from a 20-mer, and they spell out about twenty
+variables; on the published matrix under a 300-column budget, 412 columns
+computable for any guide match all 6,232 to 0.00003 ρ. The lossless encoding also
+settles by arithmetic that **no deterministic function of the 20-mer can add
+information** — though it can still add *performance*, +0.011 to +0.019 for a
+depth-limited tree, which is a much smaller effect than this project first
+claimed and the reason several imported biophysical families could not have
+helped (Findings 1–2; Appendices B2, B3).
 
 **2. Genomic flanking context identified and validated as the main new signal.**
-+0.080 ρ, the largest effect here; a spatially local compositional gradient, shown
-with a texture-preserving null; not a motif, not mappability, not gene ranking;
-transfers across enzyme and organism and not across kingdoms (Findings 3–6).
+**+0.164 ρ** on the curated cohort (+0.080 on the published matrix) — the largest
+effect here; a spatially local compositional gradient rather than a motif, shown
+with a texture-preserving null that also measures its autocorrelation length;
+not mappability, not gene ranking, and it survives holding out whole genes. It
+transfers across enzyme and organism, not across kingdoms, and **not to a dCas9
+silencing screen** — which locates it at the cleavage step rather than at binding
+(Findings 3–6).
 
-**3. A representation of long-range context that a tuned convolutional network
-does not extract *at this sample size*.** ρ 0.721 against 0.704 with both models
-tuned, 0.6997 against 0.6940 on the prior model's own split, for ~150× less CPU
-time and about half the training data — leading on nine metrics tuned and eight
-of nine untuned (Appendix B).
+**3. Parity with the state of the art, from a representation of long-range
+context that a tuned convolutional network does not extract at this sample
+size.** Statistically equivalent to crisprHAL 2 on both of its authors' own
+published splits — Δρ +0.0021, 95% CI [−0.0031, +0.0072] on eSpCas9 and +0.005 on
+SpCas9 — at **~150× less CPU time** and reaching a given accuracy on about **half
+the labelled guides**. On our own five folds we are ahead by +0.0172
+[+0.0136, +0.0209], under a search that was not matched; on a different assay
+their model transfers better. **The contribution is not a faster or better
+model** — it is that a boosted tree over 300 engineered columns matches a tuned
+deep network at a fraction of the cost, because the signal it encodes is
+long-range and the network's input does not reach it (Findings 4 and 12).
 
-**The sample-size qualifier is load-bearing, and the final evaluation is why.**
-On crisprHAL's own eSpCas9 split, with 47,591 training guides instead of 26,853,
-the two models tie: **0.7842 against 0.7821**, inside the standard error, with
-their model ahead on R², top-decile precision and pick percentile (Part 4). Our
-advantage is a small-data advantage, which is the claim the sample-complexity
-curves support and the only one that survives a dataset 1.8× larger.
-
-The comparison holds up when the DNA is equalised, which is the form that
-matters. Given the *same* input, the two architectures are indistinguishable on
-the guide alone (0.5473 against 0.5494) and crisprHAL 2 is **better** on its own
-378 nt span (0.6568 against 0.6799); given family A's ±1,000 nt reach, crisprHAL
-2 **degrades** (0.6799 → 0.6299) while SLICER improves, so SLICER leads by
-**0.065** at matched input. So the contribution is not a faster model — it is an
-encoding of long-range composition that a tuned CNN does not recover at this
-sample size, at its published hyperparameters (Finding 4).
+The qualifier is load-bearing, and the evidence runs both ways: given the *same*
+input the two architectures are indistinguishable on the guide alone (0.5473
+against 0.5494), crisprHAL 2 is **better** inside its own 378 nt span (0.6568
+against 0.6799), and SLICER leads by **0.065** only once the window reaches
+±1,000 nt, where their model degrades. That is an argument about *reach*, not
+about architecture, and Finding 12 tabulates every condition under which the
+comparison has been asked rather than choosing one.
 
 Findings 7–11 support these three. They are not co-equal headlines, with one
 exception worth separating for an ML audience: **Findings 9 and 10 are
@@ -719,237 +758,16 @@ compressed into a biology paper.
 **The analysis is frozen as of 11 October 2026.** No further model, feature or
 hyperparameter choice is made against the curated five-fold split.
 
-**The final evaluation has been run, and the dataset it used was not as clean as
-this section claimed.** eSpCas9 was designated "the untouched final evaluation",
-to be used once. It was already in use: four feature arms across three seeds and
-two CV schemes (`results/transfer.csv`), with a flank gain of +0.104 under `arc5`
-quoted in `RESULTS.md`. Nothing was ever *selected* on it — every configuration
-was chosen on the published or curated cohort and then confirmed on eSpCas9 — so
-the right word for it is **confirmatory**, not untouched, and "evaluated once"
-was never available.
+**Where the model stands against the state of the art is Finding 12**, which
+was written in this section while it was being measured and has been moved into
+Part 1 now that it is settled. The freeze matters to it in one way worth stating
+here: **eSpCas9 was designated "the untouched final evaluation" and was not
+untouched** — four feature arms had already been run on it across three seeds and
+two CV schemes (`results/transfer.csv`). Nothing was ever *selected* on it, so it
+is confirmatory rather than contaminated, but "evaluated once" was never
+available, and the last genuinely unused dataset (Cui's CRISPRi screen) has now
+been spent too. **No untouched external set remains.**
 
-What was still untouched is the **comparison**: SLICER against crisprHAL 2 on
-crisprHAL's own shipped eSpCas9 partition, using their own published eSpCas9
-weights. No split, model, feature set or hyperparameter in it was chosen with
-reference to eSpCas9. Run once, on their 11,897-guide test file
-(`final_eval.py`):
-
-| | ρ | τ | Pearson | R² | top-decile | pick %ile |
-|---|---:|---:|---:|---:|---:|---:|
-| **SLICER** — champion XGBoost, 6,517 columns, selection fitted inside their training rows | **0.7842** | 0.5942 | 0.7782 | 0.5979 | 0.488 | 94.8 |
-| **crisprHAL 2** — their shipped `ESPCAS9.keras`, evaluated as distributed | 0.7821 | 0.5920 | **0.7801** | **0.6009** | **0.494** | **95.5** |
-
-**Their arm reproduces their published figure.** Browne et al. report ρ 0.782
-and Pearson 0.780 for crisprHAL-eSp on this test set; loading their shipped
-weights here gives **0.7821 and 0.7801**. The harness is reading their model
-correctly, which is what makes the comparison worth quoting.
-
-**A tie.** SLICER leads by **+0.0021 ρ** and loses on R², top-decile precision
-and expected pick percentile. On a single test set of 11,898 guides the standard
-error of ρ alone is ≈0.009, so the honest statement is that **the two models are
-indistinguishable on this screen**, and the direction of the difference depends
-on which metric is asked for.
-
-**This is the most informative negative result in the report, because it was
-predicted.** Our lead on the curated WT cohort is +0.0133 ρ, paired across five
-folds, at ~26,853 training guides. crisprHAL's eSpCas9 split gives **47,591**
-training guides — 1.8× more — and the gap closes to nothing. That is exactly
-what the sample-complexity curves say should happen (Appendix B): our advantage
-is largest where labels are scarce and the curves converge as they stop being
-scarce. **So the data-efficiency finding survives and the ranking claim does
-not.** "SLICER beats crisprHAL 2" is a claim about the small-data regime, and at
-47.6k labelled guides it is false. The paper should say so in those words.
-
-Two caveats worth keeping with those numbers. SLICER sees **more DNA** here, not
-less — their eSpCas9 input is 406 nt while family A reaches ±1,000 nt — so the
-tie is not an equal-information comparison and it favours them, not us. And
-their arm is their *published* model while ours is trained here, which is the
-right asymmetry for a final evaluation (no chance for us to have tuned it) but
-means their number carries whatever tuning their paper did.
-
-**On both of their own splits, the margin is small and in our favour**, which is
-the cleanest summary of the head-to-head available and the one the paper should
-lead with:
-
-| their split | their published ρ | SLICER | margin |
-|---|---:|---:|---:|
-| *E. coli* SpCas9, 26,830 train | 0.695 | **0.6997** | +0.005 |
-| *E. coli* eSpCas9, 47,591 train | 0.782 | **0.7842** | +0.002 |
-
-Two independent partitions, chosen by them, neither used for any choice of ours:
-**+0.005 and +0.002**. That is a defensible claim of parity with the state of the
-art at a fraction of the compute — and it is not a claim of beating it.
-
-**And parity here is a measured equivalence, not a failure to find a
-difference.** The two arms predict the same 11,898 guides, so the difference is
-bootstrapped **paired on guides** (4,000 resamples) against a margin declared
-before the interval was seen — **±0.01 ρ**, twice the 0.005 used for the
-column-reduction claim because 0.005 is below either model's fold-to-fold noise
-on this screen:
-
-| | value |
-|---|---:|
-| Δρ, SLICER − crisprHAL 2 | **+0.0021** |
-| 95% CI, paired bootstrap | **[−0.0031, +0.0072]** |
-| two-sided p | 0.44 |
-| inside ±0.01 | **yes** |
-
-The whole interval falls inside the margin, which is the form of claim the data
-supports: not "we could not tell them apart" but "they are the same within a
-hundredth of a correlation".
-
-### On a held-out fold of the curated cohort: SLICER, by a margin that resolves
-
-The five-fold head-to-head was reported two ways and neither put an interval on
-the difference: the fold-level mean has n = 5 and cannot resolve anything below
-~0.005, and the pooled nine-metric panel has no uncertainty at all. Every guide
-is predicted exactly once by a model that never saw it, so the five validation
-folds give **33,567 out-of-fold predictions per model over the same rows**, and
-the difference can be bootstrapped **paired on guides** (`heldout_compare.py`):
-
-| pairing | SLICER | crisprHAL 2 | difference | 95% CI | p |
-|---|---:|---:|---:|---|---:|
-| "both at defaults" † | 0.7083 | 0.6968 | **+0.0115** | [+0.0074, +0.0157] | <0.001 |
-| both tuned | 0.7213 | 0.7040 | **+0.0172** | [+0.0136, +0.0209] | <0.001 |
-| **ours untuned against theirs tuned** | 0.7083 | 0.7040 | **+0.0043** | [+0.0005, +0.0080] | 0.024 |
-
-**All three intervals clear zero, so on this cohort the difference is real** —
-unlike the eSpCas9 split, where the same analysis gives parity. Per fold at seed
-41, SLICER at defaults beats crisprHAL at defaults in **5 of 5** folds (0.6944 /
-0.7079 / 0.7121 / 0.7112 / 0.7136 against 0.6855 / 0.6988 / 0.6978 / 0.7022 /
-0.7012).
-
-† **Our "default" is not a default.** `tune.DEFAULT` is
-`n_estimators=400, learning_rate=0.05, num_leaves=16, max_depth=4,
-subsample=0.8, colsample_bytree=0.8` — a configuration selected by the
-**627-draw search on the published cohort**, not LightGBM's defaults
-(`n_estimators=100, learning_rate=0.1, num_leaves=31, max_depth=-1`, no
-subsampling). crisprHAL's arm, by contrast, really is its published
-configuration. So this row is **also asymmetric in our favour**, and the
-asymmetry had not been noticed until the question was asked directly on
-15 October. **No row in this table is symmetric in search effort**, which is the
-argument for the matched run in Part 4 item 2.
-
-Three things that must be quoted with those numbers:
-
-*The alignment had to be reconstructed, and was checked.* crisprHAL's
-predictions were saved one file per fold with no guide key, so the concatenation
-is in fold order rather than cohort order. The pairing reconstructs
-`KFold(5, shuffle=True, random_state=41)` and asserts that the label vectors
-match guide for guide; without that check a plausible-looking but meaningless
-interval would have come out of a mis-rotated join.
-
-*The tuned margin is an upper bound.* SLICER's search is 12 draws inside each of
-five folds; crisprHAL's is 10 draws on a single inner split of fold 1's training
-rows, because each of its fits costs ~17 CPU-minutes. Neither search ever
-touches an outer validation fold, so neither number is leaked — but theirs is
-the weaker search. The **cross** row is the honest floor on that objection: our
-*untuned* model against their *tuned* one is +0.0043, an interval that only just
-clears zero.
-
-*And the answer to the search asymmetry is not in this table.* It is the final
-evaluation below, against their own **published** weights — their tuning, their
-search — where the margin is +0.002 and +0.005. **Read together: we are ahead by
-~0.017 on our folds against a model we tuned for them, and level against the
-model they tuned themselves.** The most likely reason the two conditions differ
-is training-set size, 26,853 here against 47,591 there, which is what the
-sample-complexity curves predict.
-
-### Every comparison condition we can construct, and the three different answers
-
-Asked under one condition the head-to-head gives parity; asked under another it
-does not. The conditions are listed here because choosing one of them silently
-is the main way this comparison could be made to say whatever we want. **Four
-conditions, three answers**, and the ordering of the first two is the thing to
-explain rather than to pick between.
-
-| condition | what it holds fixed | result |
-|---|---|---|
-| **same task, our five folds, both tuned here** | rows, label, folds, and the tuning protocol *we* ran for both | **SLICER** — +0.0172, 95% CI [+0.0136, +0.0209], paired on 33,567 guides; +0.0043 [+0.0005, +0.0080] with ours untuned against theirs tuned |
-| **same task, their split, each model at its own best input and tuning** | rows, label, split, and each side's own configuration | **parity** — Δρ +0.0021, 95% CI [−0.0031, +0.0072], inside a pre-declared ±0.01; and on their SpCas9 split +0.005 |
-| **same task, equal input DNA** | rows, label, split, *and the DNA each model reads* | **depends on the width** — tied on the guide alone (0.5473 / 0.5494), crisprHAL +0.023 inside its own 378 nt span, SLICER +0.065 at ±1,000 nt |
-| **different assay, neither model trained on it** | rows, label, and that neither has seen the data | **crisprHAL, reliably** — zero-shot on Cui's CRISPRi screen, \|ρ\| 0.0867 against our 0.0609, difference **−0.0258 [−0.0289, −0.0227]** |
-
-**On their own splits the metric split is noise, not a profile difference.** It
-would be easy to read "we win the rank metrics, they win the top-of-list metrics"
-as a real difference in character — ours better at global ordering, theirs better
-at picking a guide. Bootstrapped paired on the same 11,898 guides, **all six
-differences have intervals containing zero**:
-
-| metric | Δ (SLICER − crisprHAL) | 95% CI |
-|---|---:|---|
-| Spearman ρ | +0.0021 | [−0.0028, +0.0071] |
-| Kendall τ | +0.0023 | [−0.0024, +0.0073] |
-| Pearson r | −0.0019 | [−0.0066, +0.0030] |
-| R² | −0.0030 | [−0.0103, +0.0041] |
-| top-decile precision | −0.0059 | [−0.0244, +0.0202] |
-| expected pick percentile | −0.70 | [−17.91, +3.98] |
-
-So "they win some, we win others" is the right conclusion *and* the right reason
-is not the split itself — a split can reflect a genuine difference in profile.
-It is that **no metric resolves a difference at this sample size**, which is
-what parity means. The last row also shows why a top-10 statistic should not
-carry a headline: its interval is 22 percentile points wide.
-
-**Where parity fails is the transfer test, and it fails against us.** Scored
-zero-shot on a screen neither model trained on, crisprHAL 2's raw-sequence model
-carries over better than our engineered representation: \|ρ\| 0.0867 against
-0.0609, paired difference −0.0258 with the interval clear of zero
-(`cui_final_exam.py`). Both numbers are near-nothing in absolute terms — a model
-*trained* on that screen reaches 0.458 — so this is a comparison of two small
-quantities, and it should be reported as one. The likely reason is specific and
-unflattering: the transferable signal in a dCas9 screen is **guide-sequence**
-effects (Cui's own subject is sequence-specific dCas9 toxicity), which is exactly
-what their input is, while our advantage is flanking DNA, which Finding 5 shows
-contributes nothing to silencing. **Our representation is more specialised to
-cutting than theirs.** That is a real cost of the design and belongs in the
-paper.
-
-*What this test is and is not.* It is a cross-assay transfer test: both models
-predict cutting, Cui's label is growth fitness under silencing, and those are
-different constructs, so it measures which inductive bias survives a change of
-readout rather than which predicts cutting better. It is **not** a held-out test
-of the task either model was built for — no unused cutting screen exists — and
-treating it as "the final exam" would quietly swap the question. One asymmetry
-to declare: SLICER's feature family had already been evaluated against this label
-once, in the mechanism test of Finding 5, where the result was a null; nothing
-was selected on it, and crisprHAL had never seen it.
-
-### What "parity" can and cannot mean here
-
-The phrase **"parity under the fairest conditions for both models" should not be
-used**, because "fairest" conflates two axes of fairness that point in different
-directions. Three things can be equalised, and only two of them are:
-
-| axis | on their splits | effect |
-|---|---|---|
-| **rows, labels, splits** | equal — theirs, untouched by us | fair |
-| **tuning effort** | equal, arguably in their favour: their arm is their *published* model, ours is a config frozen on a different dataset and never tuned for eSpCas9 | fair, or against us |
-| **input DNA** | **unequal, in our favour** — family A reads ±1,000 nt, their eSpCas9 input is 406 nt | against them |
-
-So the parity result is "each model at its own best configuration", which is a
-real and reportable condition — it is how both models would actually be used —
-but it is **not** the equal-information condition. When DNA *is* equalised
-(Finding 4), the ranking depends on the width: tied on the guide alone
-(0.5473 / 0.5494), **crisprHAL 2 ahead by 0.023** at its own 378 nt design span,
-SLICER ahead by 0.065 at ±1,000 nt.
-
-**The sentence that is true on all three axes at once:**
-
-> Given each model its own best input and its own tuning, SLICER is
-> statistically equivalent to crisprHAL 2 on both of crisprHAL 2's own published
-> splits — Δρ +0.0021, 95% CI [−0.0031, +0.0072] on eSpCas9, +0.005 on SpCas9 —
-> at roughly 150× less compute. Under equal input DNA the ranking depends on the
-> window: crisprHAL 2 is better inside its own 378 nt span, and SLICER is better
-> once the window reaches the 250–1,000 nt its input cannot see.
-
-Two further asymmetries belong beside it. Our features were designed on *E.
-coli* WT cutting data, the same organism, so design knowledge leaks into the
-eSpCas9 arm in a way no split can remove; and the SpCas9 margin compares our
-0.6997 against their *published* 0.695 rather than against a re-run under
-identical preprocessing — our own re-run of their model on that split gives
-0.6940, so that margin is +0.006 measured our way and +0.005 against their
-number.
 
 Two existing external checks, neither a substitute for that: the baseline anchor
 reproduces Noshay et al.'s published figure through our harness, and SLICER
@@ -1062,7 +880,7 @@ cost, because the cost was not small.
 | "0.047 against the nearest gene, 0.005 with it" | unweighted point estimates; the block bootstrap gives Δ 0.026 with an interval including zero, and it **collapses to 0.007 under distance+GC matching** |
 | "the asymptotes are close … not evidence of a higher ceiling" | paired across five folds the gap is **+0.0133 ρ, p = 0.0058, 5/5 folds** — our own caveat was an artefact of measuring one fold |
 | "427 columns are the portable set" | 412; and the curated cohort never carried the 63 hand-named columns at all |
-| "eSpCas9 is the designated **untouched** final evaluation, to be evaluated once" | it had already been used for four feature arms across three seeds and two CV schemes. Confirmatory, not untouched; "once" was never available (Part 4) |
+| "eSpCas9 is the designated **untouched** final evaluation, to be evaluated once" | it had already been used for four feature arms across three seeds and two CV schemes. Confirmatory, not untouched; "once" was never available (Part 4, Finding 12) |
 | "SLICER beats crisprHAL 2" | **parity.** Δρ +0.0021, 95% CI [−0.0031, +0.0072] on their eSpCas9 split, +0.005 on their SpCas9 split. The lead at 26,853 training guides is +0.0133 and vanishes at 47,591 — a small-data claim, not a ranking |
 | "`d_mechanics` adds no new DNA and is worth +0.099 — representation beats information" | 8 of its 30 columns are **flanking-DNA** thermodynamics and carry +0.097 of it. The representation effect is **+0.011 to +0.019**, agreed across three guide-only families |
 
@@ -1216,6 +1034,72 @@ target GC and measuring inside each bin removes that path by construction.
 five strata — the signature of a suppressor relationship, and the opposite of
 what a confound looks like.
 
+**Why "a fair comparison" has to be qualified, and what each condition holds
+equal.** The phrase *"parity under the fairest conditions for both models"*
+should not be used, because three things can be equalised and no condition
+equalises all three:
+
+| axis | on their splits | effect |
+|---|---|---|
+| **rows, labels, splits** | equal — theirs, untouched by us | fair |
+| **tuning effort** | equal, arguably in their favour: their arm is their *published* model, ours is a config frozen on a different dataset and never tuned for eSpCas9 | fair, or against us |
+| **input DNA** | **unequal, in our favour** — family A reads ±1,000 nt, their eSpCas9 input is 406 nt | against them |
+
+So the parity result is "each model at its own best configuration" — a real and
+reportable condition, and how both models would actually be used — but **not** the
+equal-information condition. Equalising the DNA instead makes the ranking depend
+on the width (Finding 4). Two further asymmetries belong beside the numbers: our
+features were designed on *E. coli* WT cutting data, the same organism, so design
+knowledge leaks into the eSpCas9 arm in a way no split can remove; and the SpCas9
+margin compares our 0.6997 against their *published* 0.695 rather than a re-run
+under identical preprocessing — our own re-run of their model gives 0.6940, so
+that margin is +0.006 measured our way and +0.005 against their number.
+
+**Equal DNA is not equal opportunity to use it, and Finding 4 claims only the
+weaker thing.** Giving crisprHAL 2 more of the genome at its published
+configuration multiplies its flattened layer ~5× at 2,023 nt while leaving the
+regularisation and training budget that were chosen at 378 nt untouched. The
+measurement therefore supports *"the published configuration is degraded by
+input wider than it was tuned for"*, not *"this architecture cannot exploit
+long-range context"* — the second needs a re-tune at each width.
+*Why it is still worth reporting:* **378 nt is their own searched optimum**, not
+an inherited default. Browne et al. searched input length per dataset and
+stopped there, reporting gains that level off at +0.00034 ρ per upstream
+nucleotide and +0.00074 downstream. So the experiment extends a curve past the
+point their own search stopped improving, rather than handicapping them at a
+setting nobody chose.
+
+**The metric panel, bootstrapped: is the metric split a profile difference or
+noise?** It would be easy to read "we win the rank metrics, they win the
+top-of-list metrics" as a genuine difference in character. Paired on the same
+11,898 guides, 2,000 resamples:
+
+| metric | Δ (SLICER − crisprHAL) | 95% CI |
+|---|---:|---|
+| Spearman ρ | +0.0021 | [−0.0028, +0.0071] |
+| Kendall τ | +0.0023 | [−0.0024, +0.0073] |
+| Pearson r | −0.0019 | [−0.0066, +0.0030] |
+| R² | −0.0030 | [−0.0103, +0.0041] |
+| top-decile precision | −0.0059 | [−0.0244, +0.0202] |
+| expected pick percentile | −0.70 | [−17.91, +3.98] |
+
+*Why it works:* six metrics on one test set invite reading a pattern into six
+differences. Bootstrapping each one paired on guides asks whether any of them
+resolves, and none does. *Without it:* the split would read as "better at ranking
+against better at picking", which is a claim about model character rather than
+about sampling noise. The last row is also the argument against ever headlining a
+top-10 statistic: its interval is 22 percentile points wide.
+
+**The held-out pairing had to reconstruct an alignment, and it is asserted rather
+than assumed.** crisprHAL's out-of-fold predictions were saved one file per fold
+with no guide key, so the concatenation is in fold order, not cohort order.
+Pairing them with SLICER's out-of-fold vector requires rebuilding
+`KFold(5, shuffle=True, random_state=41)` and concatenating its validation
+indices in the same order; the code then asserts that the two label vectors match
+guide for guide. *Without it:* a mis-rotated join would have produced a tight,
+plausible and meaningless interval — the same failure shape as the three in
+"Guards" below.
+
 ### Instruments — is the measurement measuring what its name says?
 
 **The selector control: 300 columns against all of them.**
@@ -1239,6 +1123,16 @@ information. Eight of its thirty columns came back at **R² ≈ 0** — flanking
 thermodynamics — and they carry +0.097 of the +0.099 (Finding 2). **This control
 cost the report its most quotable claim, and it is the single most useful thing
 run in two days.**
+
+Per-column, the probe separates the family cleanly, which is what made the
+decomposition obvious once it was run:
+
+| `d_mechanics` columns | out-of-fold R² from the base |
+|---|---:|
+| 9 ΔG/ΔH/ΔS sums over the protospacer and its windows | **1.0000** |
+| 4 melting temperatures | 0.997–0.9995 |
+| 7 stacking and slide summaries (means, sd, extrema, argmax) | 0.20–0.98 |
+| **8 flank thermodynamics (±25, ±100 nt)** | **−0.006 to +0.042** |
 
 **The guide-only / flank-only decomposition** (`no_information.py`) is the
 follow-up that same probe demanded: split the family by what its columns read and
@@ -1443,7 +1337,7 @@ crisprHAL seed would tighten it.
 
 *And the gap is specific to this data volume.* The same comparison on
 crisprHAL's eSpCas9 split, at 47,591 training guides, is a tie (0.7842 against
-0.7821; Part 4). Read together, the two results are one statement: **+0.0133 at
+0.7821; Finding 12). Read together, the two results are one statement: **+0.0133 at
 26,853 guides, +0.0021 at 47,591** — a converging gap, measured twice, which is
 a stronger and narrower claim than either number alone.
 
@@ -1474,7 +1368,7 @@ our own tuned-vs-tuned row implicitly claims.
 |---|---|
 | ~~17 CPU-hours locally, too expensive~~ | **gone.** 3.1× faster on a free T4; 10–15 GPU-h over two to four sessions |
 | ~~their published weights already answer it~~ | **answers a different question.** They settle the comparison *on their splits*, where it is parity. They say nothing about our folds, which is where our +0.0172 lives |
-| ~~the defaults-vs-defaults row is a clean like-for-like fallback~~ | **false.** Our "default" is the 627-draw champion from the published cohort; theirs is their published configuration (Part 4) |
+| ~~the defaults-vs-defaults row is a clean like-for-like fallback~~ | **false.** Our "default" is the 627-draw champion from the published cohort; theirs is their published configuration (Finding 12) |
 | ~~we flagged it as an upper bound, which is honest~~ | **not sufficient.** Flagging a bound you could measure is weaker than measuring it, and we pre-registered the obligation: `crisprhal_tune.py` states that if their tuned score does not close the gap, "the asymmetry is a live caveat and must be quoted alongside the result." It did not close the gap. The caveat is live |
 
 **So no on-our-folds number we report is symmetric in search effort**, and the
@@ -1543,7 +1437,7 @@ objection applies to *our* runs of their architecture, which is exactly what the
 five-fold rows are. On their own two shipped splits we compare
 against **their published weights** — their tuning, their search, their
 published numbers, which our harness reproduces to three decimals (ρ 0.782 →
-0.7821 on eSpCas9) — and the margins are +0.005 and +0.002 (Part 4). Whatever
+0.7821 on eSpCas9) — and the margins are +0.005 and +0.002 (Finding 12). Whatever
 search budget they used is already inside those numbers. The tuning-matched run
 remains worth doing as a *cost* measurement; it is no longer a threat to the
 *performance* claim.
@@ -1606,6 +1500,56 @@ same way. On the published rows that assignment agrees with Noshay's own for
 **97.7%** of guides and gives the same share to three decimals (0.843 against
 0.844) — which is the check that the change above is the cohort and not the
 method. `python -m sgrna.cohort_groups`, `results/cohort_groups.csv`.
+
+### The reduced-representation ladder, and the budget that was never tested
+
+Finding 2's reduction was established on the published matrix. All arms from one
+protocol, 5 seeds × 5 folds, same rows:
+
+| arm | columns | ρ | vs full matrix |
+|---|---:|---:|---:|
+| mononucleotide only | 74 | 0.5081 ± 0.0010 | −0.0191 |
+| + dinucleotide | 364 | 0.5189 ± 0.0009 | −0.0083 |
+| + non-sequence features | 427 | 0.5249 ± 0.0014 | −0.0023 |
+| − 15 undecoded (**portable**) | **412** | **0.52713 ± 0.0011** | **−0.00003** |
+| published full | 6,232 | 0.52716 ± 0.0022 | — |
+
+Non-inferiority of the 427 is formal: loss **+0.0023, 95% CI [−0.0008,
++0.0054]**, against a pre-declared 0.005 ρ margin, one-sided p = 0.035. That is
+the right form of claim — "as good as" cannot be established by failing to
+reject a difference.
+
+*Protocol caveat, found 13 October.* Every arm above selects **300 columns from
+its candidate pool**, because `cross_validate` resolves `n_features=None` to
+`config.N_FEATURES`. So "all columns" was never tested here: the 74-column arm
+uses all of its candidates while the 6,232-column arm uses 300 of 6,232. The
+ladder measured *candidate pools under a fixed selection budget*, not
+representations in full. The budget turns out not to bind — on the curated
+cohort, selecting 300 against using every column differs by ±0.0005 in both
+directions (Finding 2) — but the caveat had to be measured rather than waved
+away, and when it was, **the reduction itself stopped holding on the curated
+cohort**.
+
+### Does model class matter more once the representation contains the effect?
+
+No, and that is what makes the Finding 2 corollary usable. "Sixteen model classes
+span only 0.116 ρ" was measured on the published matrix **without** family A —
+i.e. on a representation with no large effect in it — so the reading it supports
+("the representation matters and the model class barely does") was circular.
+Re-run on the curated base *with* family A, same registry and folds, one seed ×
+five folds (`curated_models.py`):
+
+| | ρ | | | ρ |
+|---|---:|---|---|---:|
+| XGBoost | **0.7084** | | ridge | 0.6473 |
+| LightGBM | 0.7082 | | PLS | 0.6450 |
+| extra trees | 0.6537 | | elastic net | 0.6369 |
+| random forest | 0.6482 | | k-NN | 0.6007 |
+
+**Spread 0.1076 ρ across eight classes, against 0.116 across sixteen without
+family A.** The boosting-over-ridge margin (+0.055) is unchanged in character
+too. So the corollary is not an artefact of measuring it on a flat
+representation.
 
 ### Why does boosting beat random forest, and ridge beat both forests?
 
