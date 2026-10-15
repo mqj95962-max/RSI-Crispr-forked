@@ -68,6 +68,27 @@ Three results elsewhere are corollaries: sixteen model classes span only 0.116 �
 quadrupling the selected columns changes nothing; nothing correlates with the
 model's residuals above 0.031.
 
+*The first of those was circular until 15 October, and survives being made
+non-circular.* "Model class barely matters" was measured on a representation with
+no large effect in it — the published matrix without family A — so it could have
+been a statement about a flat representation rather than about model classes.
+Re-run on the curated base **with** family A (`curated_models.py`, one seed ×
+five folds, same registry and folds):
+
+| | ρ | | | ρ |
+|---|---:|---|---|---:|
+| XGBoost | **0.7084** | | ridge | 0.6473 |
+| LightGBM | 0.7082 | | PLS | 0.6450 |
+| extra trees | 0.6537 | | elastic net | 0.6369 |
+| random forest | 0.6482 | | k-NN | 0.6007 |
+
+**Spread 0.1076 ρ across eight classes, against 0.116 across sixteen without
+family A.** Adding the one feature family that matters does not widen the gap
+between model classes at all, while the family itself is worth +0.164. The
+boosting-over-everything margin (+0.055 over ridge) is also unchanged in
+character. So the corollary is not an artefact of measuring it on a
+representation with nothing in it.
+
 **And the reduced set is portable** (`portability.py`), which matters for any
 move to another cohort. Of the 63 hand-named columns, 26 are computable from the
 20-mer and its PAM, 2 need gene annotation, and 34 are undecoded `V` columns — of
@@ -682,17 +703,31 @@ Remaining before submission:
 | 1 | ~~eSpCas9 final evaluation~~ | **done, and it is a tie** — ρ 0.7842 against 0.7821 on crisprHAL's own eSpCas9 split with their published weights, at 47,591 training guides. Also corrected: eSpCas9 was never an untouched holdout (above) |
 | 2 | crisprHAL 2's search run to **its own** plateau — **no longer needed for the comparison.** The tuning asymmetry (10 configurations against our 627) was an objection to *our* runs of their model. The final evaluation above uses **their published weights**, which embody whatever search their paper did, and SLICER still leads by +0.002 and +0.005 on their own two splits. A tuning-cost curve would still be interesting; it is not load-bearing | 2–4 GPU-h, optional |
 | 3 | ~~orientation controls~~ | **done** — Jacky, Finding 6 |
-| 4 | human baseline re-tuned at the teammate's settings — **blocked**: the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/` | ~1 h once supplied |
+| 4 | human baseline re-tuned at the teammate's settings — **still blocked, request drafted** (`docs/correspondence/request_human_baseline_settings.md`): the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/`. If it does not arrive, Part 3's cross-kingdom sentence rests on the *sign* of the transfer and says so | ~1 h once supplied |
 | 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 5 |
 | 6 | ~~sample-complexity curve repeated across folds and seeds~~ | **done** — Appendix B |
 | 7 | re-tune crisprHAL 2 at **each input width** — **partly supplied by their own paper.** Browne et al. searched input length *per dataset* and stopped at 378 nt (*E. coli* SpCas9) and 406 nt (eSpCas9), reporting that gains level off: +0.00034 ρ per upstream nucleotide and +0.00074 per downstream one, from 0.554 on the sgRNA alone to 0.697 at 378 nt. So the width is their optimum, found by their own search, and our 1,023/2,023 nt degradation is the continuation of a curve they had already flattened. What is still unrun is re-tuning the *other* hyperparameters at each width | 2–4 GPU-h, now optional |
 | 8 | re-derive the **ceiling for the curated label** — **the route through their paper is closed**: Browne et al. report *no* replicate-to-replicate correlation for any dataset, and their label is an ALDEx2 Bayesian posterior mean over 2 control + 2 experimental replicates, so Spearman–Brown on a geometric mean does not apply to it. The only remaining route is to pull the per-replicate counts from the original screen and re-run their ALDEx2 step per replicate | a data job, not an hour |
 | 9 | ~~re-run the gene-grouped ablation on the curated cohort~~ | **done** — all eleven families, Appendix B3. The three largest effects lose nothing beyond the 6% grouping tax; `e_nucleoid` and `g_transcription` carry a real locus component of 6 and 15 points |
 
-**Paper writing is deferred until the claims are validated.** The shared Google
-Doc is **frozen as of 13 October 2026** and is no longer kept in sync; this
-report is the single maintained document. Resuming the draft is a decision to
-take once items 1, 2, 7 and 8 are closed, not before.
+**Paper writing is no longer blocked by this list.** Items 1, 2, 7 and 9 are
+closed; item 8 needs the original per-replicate read counts and item 4 needs a
+teammate, and **neither gates a draft** — the ceiling can be quoted as inherited
+with its caveat, and the human baseline enters only one sentence of Part 3. What
+the draft must carry, and what this list exists to make unavoidable:
+
+* the headline comparison is **parity, not a win** — +0.005 and +0.002 on
+  crisprHAL's own two splits — and the data-efficiency result is the claim that
+  survives a larger screen;
+* the curated five-fold figures carry an **unknown adaptive-overfitting
+  component**, because eSpCas9 turned out to be confirmatory rather than
+  untouched and nothing fully clean is left;
+* the 412-column reduction is a **published-matrix result under a 300-column
+  budget** and does not transfer to the curated cohort;
+* the ceiling 0.937 is **inherited from a different label**.
+
+The shared Google Doc is **frozen as of 13 October 2026** and is no longer kept
+in sync; this report is the single maintained document.
 
 **A guide-design tool is not a deliverable.** The findings are the contribution,
 the field already has several predictors, and everything needed to build one
@@ -713,9 +748,9 @@ settled under those constraints and is **not** automatically valid on crisprHAL'
 | **the ceiling, 0.937** | Guo's replicate statistics for the published label | crisprHAL's curation changes the label's noise by design; the curated ceiling is probably higher and is unmeasured |
 | **`n_features` = 300** | selector sweep on 6,232 published columns | **closed.** Selecting 300 against using every column: 0.5445 / 0.5449 on the base and 0.7084 / 0.7079 with family A. ±0.0005 in both directions, so the budget is free on this cohort too (Finding 2) |
 | **grouped CV by `arc5` / 100 kb block** | 13,880 guides, within-gene variance share 0.844 | **re-measured — it moved.** 0.844 → **0.713** on the curated cohort: gene identity explains 29% of the label there against 16% here, so gene-grouped CV constrains the model *more*, not less (Appendix B) |
-| **champion hyperparameters** | 627 draws against the old cohort | tuned before the cohort moved. Re-tuning now conflicts with the freeze — the tension needs a deliberate decision, not a default |
+| **champion hyperparameters** | 627 draws against the old cohort | **decided: keep the freeze.** The champion XGBoost and LightGBM at its own unrelated defaults land within **0.0002 ρ** of each other on the curated cohort with family A (0.7084 / 0.7082), so the configuration is not a knife-edge and re-tuning has little to win. Stated as a decision with its evidence rather than left as a tension |
 | **the family Δρ table** | published matrix and label | **closed — all eleven families re-measured on the curated cohort** (Appendix B3). The *ordering* transfers almost exactly (rank ρ 0.97); every family inflates, median 3.3×. So the published table is still a guide to which families matter, and not to how much |
-| **"sixteen model classes span 0.116 ρ"** | published matrix, no family A | the boosting-over-ridge margin was measured without the one feature family that matters |
+| **"sixteen model classes span 0.116 ρ"** | published matrix, no family A | **closed, and it holds.** Eight classes on the curated base *with* family A span **0.1076 ρ** (XGBoost 0.7084 → k-NN 0.6007), against 0.116 for sixteen classes without it. Model class spans ~0.11 either way while family A alone is worth +0.164 (Finding 2) |
 | **Noshay's iRF as baseline anchor** | the only available comparator | now provenance only; crisprHAL 2 is the baseline |
 
 **The honest framing is that the model layer moved cohorts and the

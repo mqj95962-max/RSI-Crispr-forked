@@ -3788,3 +3788,89 @@ same screen, four fifths of which Noshay never published, in which the effect is
 easier to see. **The published matrix understated the flanking-context effect**,
 so the curated levels are the ones that describe genome-wide guide design and
 Finding 3's effect size goes up rather than down when restated there.
+
+## 15 October 2026 — the pre-submission list, mostly closed
+
+**Item 1, the final evaluation: a tie, and the dataset was not what Part 4 said.**
+eSpCas9 was designated "the untouched final evaluation, evaluated once". It was
+already in use — four feature arms across three seeds and two CV schemes in
+`transfer.csv`, with a +0.104 `arc5` flank gain quoted in `RESULTS.md`. Nothing
+was ever *selected* on it, so it is confirmatory rather than untouched, and
+"once" was never available. What was still untouched is the comparison: SLICER
+against crisprHAL 2 on **their** shipped eSpCas9 partition with **their**
+published weights.
+
+    SLICER     rho 0.7842  tau 0.5942  Pearson 0.7782  R2 0.5979  top-dec 0.488
+    crisprHAL  rho 0.7821  tau 0.5920  Pearson 0.7801  R2 0.6009  top-dec 0.494
+
+Their arm reproduces their published figure (0.782 / 0.780 → 0.7821 / 0.7801),
+which is what makes the comparison quotable. **+0.0021 to us, three of six
+metrics to them, on 11,898 guides where the SE of rho alone is ~0.009 — a tie.**
+
+**And it was predicted.** Our +0.0133 lead is at 26,853 training guides; this
+split gives 47,591, and the sample-complexity curves say the gap closes as
+labels stop being scarce. So **the data-efficiency claim survives and the
+ranking claim does not**: "SLICER beats crisprHAL 2" is a small-data claim and is
+false at 47.6k guides. On their own two splits the margins are +0.005 (SpCas9)
+and +0.002 (eSpCas9) — parity at a fraction of the compute.
+
+**crisprHAL's methods, finally read** (Browne et al. 2026, PeerJ e20706; this
+had been an open gap while we trained on their label):
+
+* the score is the **ALDEx2 `diff.btw` log2 fold-change** — a Bayesian posterior
+  expectation over 2 control and 2 experimental replicates, not a read-count
+  ratio;
+* the filter is an **average control-condition read count across the two control
+  replicates**, threshold **73** for the *E. coli* SpCas9 set we train on;
+* **the threshold is itself fitted**, by 5-fold CV on the training set, so
+  curation is a hyperparameter rather than a fixed cleaning rule;
+* it is **applied before the 80/20 split** (their Table 2; their own text flags
+  the tension), confirming from their methods that curation cleans the test set
+  too — which Appendix B2a had inferred.
+
+**Item 8's route through their paper is closed**: they report no replicate-to-
+replicate correlation for any dataset, and a posterior mean is shrunk toward its
+prior, so Spearman–Brown on a two-replicate geometric mean does not apply to
+their label. Only the per-replicate recomputation from the original read counts
+remains.
+
+**Item 7 is mostly closed by their paper too.** They searched input length *per
+dataset* and stopped at 378 nt (*E. coli* SpCas9) and 406 nt (eSpCas9), reporting
+gains that level off: +0.00034 rho per upstream nucleotide, +0.00074 downstream,
+0.554 on the sgRNA alone to 0.697 at 378 nt. So 378 is **their** optimum from
+**their** search, and our 1,023/2,023 nt decline continues a curve they had
+already flattened. **Item 2 is closed by argument**: the tuning asymmetry was an
+objection to our runs of their model, and the final evaluation uses their
+published weights.
+
+**The reduced-representation ladder, re-run on the curated cohort with no
+selection** (`curated_ladder.py`, 3 seeds × 5 folds, `n_features` = each arm's
+own column count):
+
+    mono              74   0.5198     base_full        6169   0.5449
+    mono_di          364   0.5331     mono_di+flank     712   0.6937
+                                      base_full+flank  6517   0.7079
+
+Two results pointing opposite ways. **`n_features` = 300 costs ±0.0005** in both
+directions (0.5445/0.5449 and 0.7084/0.7079), which retires the protocol caveat
+and that open row. **But the reduction is not non-inferior here**: 364 columns
+lose 0.0118 and 712 lose 0.0142, two to three times the pre-declared 0.005
+margin. "412 ≈ all 6,232" is a published-matrix result under a 300-column budget
+and does not transfer; what does transfer is the lossless part, 74 columns
+recovering 95.4% of full rho against 96.4% there.
+
+**"Model class barely matters" was circular, and survives being made
+non-circular.** It was measured on a representation with no large effect in it.
+Re-run on the curated base *with* family A: eight classes span **0.1076 rho**
+(XGBoost 0.7084 → k-NN 0.6007) against 0.116 for sixteen classes without it.
+Adding the one family that matters does not widen the gap between model classes,
+while the family is worth +0.164.
+
+**Champion hyperparameters: keep the freeze, with evidence.** The champion
+XGBoost and LightGBM at unrelated defaults land within **0.0002 rho** on the
+curated cohort with family A, so the configuration is not a knife-edge and
+re-tuning has little to win.
+
+**Still open:** item 4 (the teammate's human-baseline settings; request drafted
+at `docs/correspondence/request_human_baseline_settings.md`) and item 8 (the
+per-replicate read counts). Neither gates a draft.
