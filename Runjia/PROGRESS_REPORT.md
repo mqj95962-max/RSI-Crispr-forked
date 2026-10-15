@@ -22,7 +22,11 @@ convolutional network does not recover — not merely access to it. The resultin
 model
 reaches **ρ 0.721 against 0.704** for the published state of the art with both
 tuned, on identical folds and on the prior model's own split, for **~150× less
-CPU time** and about **half the training data**.
+CPU time** and about **half the training data**. **That lead is a small-data
+lead.** Run once on crisprHAL 2's own eSpCas9 split, where 47,591 guides are
+available for training instead of 26,853, the two models tie — 0.7842 against
+0.7821 — and their model is ahead on three of six metrics. The data-efficiency
+claim is the one that survives a larger screen; the ranking claim is not.
 
 **How this document is organised.** Part 1 is the findings, each with the
 evidence it rests on and the limit of what it supports. Part 2 states the three
@@ -100,6 +104,38 @@ a move to another cohort actually needs.
 6,169 reconstructable + 348 flank, so the 63 hand-named columns are **already
 absent** there. Any claim about "the 427" on crisprHAL's rows was therefore never
 about the columns actually used; the portable 412 is what the claim should name.
+
+**Re-run on the curated cohort with the caveat removed, the reduction does not
+hold.** `curated_ladder.py`, 3 seeds × 5 folds, **no selection in any arm** —
+`n_features` set to each arm's own column count, so this is representations
+compared in full rather than candidate pools under a budget:
+
+| arm | columns | ρ | vs full |
+|---|---:|---:|---:|
+| mononucleotide only | 74 | 0.5198 ± 0.0021 | −0.0251 |
+| + dinucleotide | 364 | 0.5331 ± 0.0010 | −0.0118 |
+| **regenerated base** | **6,169** | **0.5449 ± 0.0013** | — |
+| 364 + family A | 712 | 0.6937 ± 0.0010 | −0.0142 |
+| base + family A | 6,517 | **0.7079 ± 0.0004** | — |
+
+**Two results, and they point in opposite directions.**
+
+*`n_features = 300` costs nothing, in either direction.* Selecting 300 from 6,169
+gives 0.5445 against 0.5449 using all of them, and 300 from 6,517 gives 0.7084
+against 0.7079. **±0.0005.** The selection budget was never the binding
+constraint, which retires both the protocol caveat above and the `n_features`
+row in Part 4.
+
+*But the reduced representation is **not** non-inferior here.* 364 columns lose
+**0.0118** and 712 lose **0.0142** — two to three times the pre-declared 0.005 ρ
+margin that 427 passed on the published matrix. The reduction claim therefore
+does not transfer: **"412 ≈ all 6,232" is a statement about the published matrix
+under a 300-column budget**, and on the curated cohort with every column
+available the higher-order k-mer columns are worth 0.012–0.014. That is Finding
+7 seen from the other side — higher-order k-mers help once selection is removed —
+and it means the paper must state the reduction with both qualifiers or not at
+all. What does transfer is the *lossless* part: 74 columns recover 95.4% of full
+ρ here against 96.4% there.
 
 **A consequence that is often stated as a theorem, and is false.** If the matrix
 encodes the 20-mer losslessly, it is tempting to conclude that *any* deterministic
@@ -280,6 +316,16 @@ input wider than it was designed for.** Not "CNNs cannot learn this" — its 48
 epochs and every other setting were tuned at 378 nt, and **a re-tune at each
 width is the control we have not run.** One fold, one seed. State that limit
 beside the result.
+
+*Their own paper supplies part of that control, and it points the same way.*
+Browne et al. (2026) searched input length **per dataset** and stopped at 378 nt
+for *E. coli* SpCas9 and 406 nt for eSpCas9, reporting that the gains level off:
++0.00034 ρ per nucleotide upstream and +0.00074 downstream, carrying the model
+from 0.554 on the sgRNA alone to 0.697 at 378 nt. So 378 nt is not an arbitrary
+inherited setting — it is where **their** search stopped improving, and the
+decline we measure at 1,023 and 2,023 nt is the continuation of a curve they had
+already flattened. What remains unrun is re-tuning the other hyperparameters at
+each width, which is a weaker objection than it was before this was read.
 
 ### 5. The effect belongs to the DNA, and transfers
 
@@ -502,10 +548,17 @@ with a texture-preserving null; not a motif, not mappability, not gene ranking;
 transfers across enzyme and organism and not across kingdoms (Findings 3–6).
 
 **3. A representation of long-range context that a tuned convolutional network
-does not extract.** ρ 0.721 against 0.704 with both models tuned, 0.6997 against
-0.6940 on the prior model's own split, for ~150× less CPU time and about half
-the training data — leading on nine metrics tuned and eight of nine untuned
-(Appendix B).
+does not extract *at this sample size*.** ρ 0.721 against 0.704 with both models
+tuned, 0.6997 against 0.6940 on the prior model's own split, for ~150× less CPU
+time and about half the training data — leading on nine metrics tuned and eight
+of nine untuned (Appendix B).
+
+**The sample-size qualifier is load-bearing, and the final evaluation is why.**
+On crisprHAL's own eSpCas9 split, with 47,591 training guides instead of 26,853,
+the two models tie: **0.7842 against 0.7821**, inside the standard error, with
+their model ahead on R², top-decile precision and pick percentile (Part 4). Our
+advantage is a small-data advantage, which is the claim the sample-complexity
+curves support and the only one that survives a dataset 1.8× larger.
 
 The comparison holds up when the DNA is equalised, which is the form that
 matters. Given the *same* input, the two architectures are indistinguishable on
@@ -555,10 +608,66 @@ compressed into a biology paper.
 **The analysis is frozen as of 11 October 2026.** No further model, feature or
 hyperparameter choice is made against the curated five-fold split.
 
-**The designated untouched final evaluation is the eSpCas9 screen (59,489
-guides)** — used only for transfer and the ceiling argument, never for selecting a
-model, feature family, column set or hyperparameter. Both models, at frozen
-configurations, evaluated on it once, reported whichever way it falls.
+**The final evaluation has been run, and the dataset it used was not as clean as
+this section claimed.** eSpCas9 was designated "the untouched final evaluation",
+to be used once. It was already in use: four feature arms across three seeds and
+two CV schemes (`results/transfer.csv`), with a flank gain of +0.104 under `arc5`
+quoted in `RESULTS.md`. Nothing was ever *selected* on it — every configuration
+was chosen on the published or curated cohort and then confirmed on eSpCas9 — so
+the right word for it is **confirmatory**, not untouched, and "evaluated once"
+was never available.
+
+What was still untouched is the **comparison**: SLICER against crisprHAL 2 on
+crisprHAL's own shipped eSpCas9 partition, using their own published eSpCas9
+weights. No split, model, feature set or hyperparameter in it was chosen with
+reference to eSpCas9. Run once, on their 11,897-guide test file
+(`final_eval.py`):
+
+| | ρ | τ | Pearson | R² | top-decile | pick %ile |
+|---|---:|---:|---:|---:|---:|---:|
+| **SLICER** — champion XGBoost, 6,517 columns, selection fitted inside their training rows | **0.7842** | 0.5942 | 0.7782 | 0.5979 | 0.488 | 94.8 |
+| **crisprHAL 2** — their shipped `ESPCAS9.keras`, evaluated as distributed | 0.7821 | 0.5920 | **0.7801** | **0.6009** | **0.494** | **95.5** |
+
+**Their arm reproduces their published figure.** Browne et al. report ρ 0.782
+and Pearson 0.780 for crisprHAL-eSp on this test set; loading their shipped
+weights here gives **0.7821 and 0.7801**. The harness is reading their model
+correctly, which is what makes the comparison worth quoting.
+
+**A tie.** SLICER leads by **+0.0021 ρ** and loses on R², top-decile precision
+and expected pick percentile. On a single test set of 11,898 guides the standard
+error of ρ alone is ≈0.009, so the honest statement is that **the two models are
+indistinguishable on this screen**, and the direction of the difference depends
+on which metric is asked for.
+
+**This is the most informative negative result in the report, because it was
+predicted.** Our lead on the curated WT cohort is +0.0133 ρ, paired across five
+folds, at ~26,853 training guides. crisprHAL's eSpCas9 split gives **47,591**
+training guides — 1.8× more — and the gap closes to nothing. That is exactly
+what the sample-complexity curves say should happen (Appendix B): our advantage
+is largest where labels are scarce and the curves converge as they stop being
+scarce. **So the data-efficiency finding survives and the ranking claim does
+not.** "SLICER beats crisprHAL 2" is a claim about the small-data regime, and at
+47.6k labelled guides it is false. The paper should say so in those words.
+
+Two caveats worth keeping with those numbers. SLICER sees **more DNA** here, not
+less — their eSpCas9 input is 406 nt while family A reaches ±1,000 nt — so the
+tie is not an equal-information comparison and it favours them, not us. And
+their arm is their *published* model while ours is trained here, which is the
+right asymmetry for a final evaluation (no chance for us to have tuned it) but
+means their number carries whatever tuning their paper did.
+
+**On both of their own splits, the margin is small and in our favour**, which is
+the cleanest summary of the head-to-head available and the one the paper should
+lead with:
+
+| their split | their published ρ | SLICER | margin |
+|---|---:|---:|---:|
+| *E. coli* SpCas9, 26,830 train | 0.695 | **0.6997** | +0.005 |
+| *E. coli* eSpCas9, 47,591 train | 0.782 | **0.7842** | +0.002 |
+
+Two independent partitions, chosen by them, neither used for any choice of ours:
+**+0.005 and +0.002**. That is a defensible claim of parity with the state of the
+art at a fraction of the compute — and it is not a claim of beating it.
 
 Two existing external checks, neither a substitute for that: the baseline anchor
 reproduces Noshay et al.'s published figure through our harness, and SLICER
@@ -570,14 +679,14 @@ Remaining before submission:
 
 | | item | cost |
 |---|---|---|
-| 1 | eSpCas9 final evaluation, once, frozen configs — **on hold**: a pivot to crisprHAL's cohort reclassifies eSpCas9 as cross-enzyme validation rather than an untouched holdout, so spending the one-shot evaluation now would spend it on the wrong question | ~1 h |
-| 2 | crisprHAL 2's search run to **its own** plateau, not extrapolated | 2–4 GPU-h, free Colab tier |
+| 1 | ~~eSpCas9 final evaluation~~ | **done, and it is a tie** — ρ 0.7842 against 0.7821 on crisprHAL's own eSpCas9 split with their published weights, at 47,591 training guides. Also corrected: eSpCas9 was never an untouched holdout (above) |
+| 2 | crisprHAL 2's search run to **its own** plateau — **no longer needed for the comparison.** The tuning asymmetry (10 configurations against our 627) was an objection to *our* runs of their model. The final evaluation above uses **their published weights**, which embody whatever search their paper did, and SLICER still leads by +0.002 and +0.005 on their own two splits. A tuning-cost curve would still be interesting; it is not load-bearing | 2–4 GPU-h, optional |
 | 3 | ~~orientation controls~~ | **done** — Jacky, Finding 6 |
 | 4 | human baseline re-tuned at the teammate's settings — **blocked**: the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/` | ~1 h once supplied |
 | 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 5 |
 | 6 | ~~sample-complexity curve repeated across folds and seeds~~ | **done** — Appendix B |
-| 7 | re-tune crisprHAL 2 at **each input width** — the control a reviewer will ask for on Finding 4, since its hyperparameters were tuned at 378 nt | 2–4 GPU-h |
-| 8 | re-derive the **ceiling for the curated label** — the 0.937 figure is inherited from the published one (Finding 11) | ~1 h once the replicate statistics are located |
+| 7 | re-tune crisprHAL 2 at **each input width** — **partly supplied by their own paper.** Browne et al. searched input length *per dataset* and stopped at 378 nt (*E. coli* SpCas9) and 406 nt (eSpCas9), reporting that gains level off: +0.00034 ρ per upstream nucleotide and +0.00074 per downstream one, from 0.554 on the sgRNA alone to 0.697 at 378 nt. So the width is their optimum, found by their own search, and our 1,023/2,023 nt degradation is the continuation of a curve they had already flattened. What is still unrun is re-tuning the *other* hyperparameters at each width | 2–4 GPU-h, now optional |
+| 8 | re-derive the **ceiling for the curated label** — **the route through their paper is closed**: Browne et al. report *no* replicate-to-replicate correlation for any dataset, and their label is an ALDEx2 Bayesian posterior mean over 2 control + 2 experimental replicates, so Spearman–Brown on a geometric mean does not apply to it. The only remaining route is to pull the per-replicate counts from the original screen and re-run their ALDEx2 step per replicate | a data job, not an hour |
 | 9 | ~~re-run the gene-grouped ablation on the curated cohort~~ | **done** — all eleven families, Appendix B3. The three largest effects lose nothing beyond the 6% grouping tax; `e_nucleoid` and `g_transcription` carry a real locus component of 6 and 15 points |
 
 **Paper writing is deferred until the claims are validated.** The shared Google
@@ -599,10 +708,10 @@ settled under those constraints and is **not** automatically valid on crisprHAL'
 
 | decision | made under | why it may differ now |
 |---|---|---|
-| **the 412/427-column reduced set** | non-inferiority on the *published* matrix and label | column selection was never re-run on the curated cohort, which already excludes the 63 hand-named columns. The right reduced set there may not be this one |
+| **the 412/427-column reduced set** | non-inferiority on the *published* matrix and label | **closed, and the answer is no.** With no selection on the curated cohort, 364 columns lose 0.0118 and 364 + family A lose 0.0142 — 2–3× the 0.005 margin. Non-inferiority was a published-matrix result under a 300-column budget (Finding 2) |
 | **the published Δρ levels** | Noshay's 13,880 rows | **explained, not just re-measured.** The 3.3× inflation is the row population: the 24,950 guides only crisprHAL publishes have 1.34× the label spread and a 2.5× stronger flank-GC correlation. The published matrix understated the effect (Appendix B2a) |
 | **the ceiling, 0.937** | Guo's replicate statistics for the published label | crisprHAL's curation changes the label's noise by design; the curated ceiling is probably higher and is unmeasured |
-| **`n_features` = 300** | selector sweep on 6,232 published columns | partly answered by the selector control (Appendix B3): on the curated base, selecting 300 and using **all 6,199** columns differ by 0.0005 ρ, so 300 is not starving the model *there*. Still unmeasured for the wide arms — family A brings the count to 6,517 |
+| **`n_features` = 300** | selector sweep on 6,232 published columns | **closed.** Selecting 300 against using every column: 0.5445 / 0.5449 on the base and 0.7084 / 0.7079 with family A. ±0.0005 in both directions, so the budget is free on this cohort too (Finding 2) |
 | **grouped CV by `arc5` / 100 kb block** | 13,880 guides, within-gene variance share 0.844 | **re-measured — it moved.** 0.844 → **0.713** on the curated cohort: gene identity explains 29% of the label there against 16% here, so gene-grouped CV constrains the model *more*, not less (Appendix B) |
 | **champion hyperparameters** | 627 draws against the old cohort | tuned before the cohort moved. Re-tuning now conflicts with the freeze — the tension needs a deliberate decision, not a default |
 | **the family Δρ table** | published matrix and label | **closed — all eleven families re-measured on the curated cohort** (Appendix B3). The *ordering* transfers almost exactly (rank ρ 0.97); every family inflates, median 3.3×. So the published table is still a guide to which families matter, and not to how much |
@@ -990,6 +1099,12 @@ head-to-head reports, not an independent finding.
 per-fold values are noisier; the pairing is by fold, which is valid, but a second
 crisprHAL seed would tighten it.
 
+*And the gap is specific to this data volume.* The same comparison on
+crisprHAL's eSpCas9 split, at 47,591 training guides, is a tie (0.7842 against
+0.7821; Part 4). Read together, the two results are one statement: **+0.0133 at
+26,853 guides, +0.0021 at 47,591** — a converging gap, measured twice, which is
+a stronger and narrower claim than either number alone.
+
 *Protocol note:* the module's printed summary used to report only "share of each
 model's own best", which reads as a data-efficiency claim and is not one — two
 curves can both reach 95% of themselves at the same n while being far apart in
@@ -1013,6 +1128,15 @@ cheaper and faster for it.
 *When:* once, at data freeze. Re-tuning is required only when rows, label or
 folds change (both models) or the feature set changes (SLICER only);
 documentation and analyses outside the curated arm require none.
+
+**And for the headline comparison it is now moot.** The objection applies to
+*our* runs of their architecture. On their own two shipped splits we compare
+against **their published weights** — their tuning, their search, their
+published numbers, which our harness reproduces to three decimals (ρ 0.782 →
+0.7821 on eSpCas9) — and the margins are +0.005 and +0.002 (Part 4). Whatever
+search budget they used is already inside those numbers. The tuning-matched run
+remains worth doing as a *cost* measurement; it is no longer a threat to the
+*performance* claim.
 
 ### Could a cleverer data structure avoid the 3.8 GB table?
 
@@ -1261,11 +1385,31 @@ selection — it is a different, larger draw from the same Guo screen with a
 quality threshold. The guides crisprHAL drops look unremarkable on copy number
 and uniqueness; their only visible signature is a compressed label range.
 
-*What is not established:* the procedure itself — the read-count threshold, how
-the activity score is computed from the Cas9/dCas9 arms, whether replicates are
-combined differently from Guo's. That is in the PeerJ paper, which **nobody on
-this project has read the methods of**. Since we now train on their label, that
-is a gap worth closing before the paper describes it.
+**What the procedure actually is** (Browne et al., 2026, read 15 October — this
+was an open gap in every earlier version of this report, and we train on their
+label):
+
+* **The score is not a read-count ratio.** It is the ALDEx2 `diff.btw` log2
+  fold-change between the experimental (Cas9) and control (dead-nuclease) arms —
+  *"the expected value of a Bayesian posterior derived from the data"*, over two
+  control and two experimental replicates. That matters for the ceiling argument
+  below: a posterior mean is shrunk toward the prior, so its reliability is a
+  property of the prior as well as of the read counts, and the Spearman–Brown
+  machinery we applied to Noshay's two-replicate geometric mean does not carry
+  over unchanged.
+* **The filter is an average control-condition read count across the two control
+  replicates**, and the threshold is **73** for the *E. coli* SpCas9 set we train
+  on (31 for eSpCas9, 56 for *C. rodentium* TevSpCas9). So "a read-count filter"
+  was the right inference.
+* **The threshold is itself a fitted quantity** — chosen by 5-fold
+  cross-validation on the training set. Curation is therefore not a fixed
+  data-cleaning rule but a hyperparameter optimised for model performance, which
+  is worth knowing before describing their cohort as independently cleaner.
+* **And it is applied before the split.** Their Table 2 reports the cutoffs
+  against the unfiltered pools, before the 80/20 partition — their own text flags
+  the tension with the hold-out being untouched. This confirms the concern above
+  from their methods rather than from our inference: curation cleans the test set
+  too, and our 0.607 → 0.628 figure still contains both effects.
 
 ### Why the columns behave *qualitatively* differently after curation
 
