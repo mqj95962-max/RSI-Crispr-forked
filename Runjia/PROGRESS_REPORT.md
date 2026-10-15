@@ -6,8 +6,10 @@ RSI09, as of 11 October 2026. **The analysis is frozen** (Part 4).
 **In one paragraph.** A 2023 resource published 6,232 quantum-chemical and
 positional features for 13,880 *E. coli* guides but not the guide sequences,
 making it unusable for new targets. We decoded it, which revealed that its
-columns are an elaborate spelling of 20 letters — 427 of them do the same job as
-all 6,232, and 412 of those are computable for any guide. That settles by
+columns are an elaborate spelling of 20 letters — on that matrix, under a
+300-column selection budget, 427 of them do the same job as all 6,232, and 412 of
+those are computable for any guide (the reduction does *not* survive on the
+curated cohort with selection removed, Finding 2). That settles by
 arithmetic why two imported biophysical families could not have helped: they are
 deterministic functions of the guide. Six others failed for unrelated reasons,
 which is a list of null results rather than a pattern (Appendix B2). The signal the matrix lacks is outside the guide: **DNA composition in
@@ -568,13 +570,31 @@ concentrate importance almost identically (44 and 37 columns for half of it).
 
 ### 11. The label's ceiling is ≈0.94, not 0.90
 
-**⚠ This ceiling was derived for the *published* label and has not been
-re-derived for the curated one we now train on.** The arithmetic below uses Guo's
-replicate statistics and the published score's two-replicate geometric mean;
-crisprHAL 2's curation changes the label's noise properties by design — that is
-the whole claim of their paper — so the curated label's ceiling is probably
-*higher* and is currently unmeasured. Treat 0.937 as inherited, not established,
-until it is recomputed.
+**Measured for the curated label, 15 October: 0.946 [0.944, 0.948]**, and the
+route is a replicate-agreement one rather than the inherited figure
+(`curated_ceiling.py`). crisprHAL 2's paper reports no replicate statistics, but
+their **per-replicate counts are published** — two Cas9 replicates and two
+dead-nuclease controls. Pairing Cas9 replicate 1 with control 1 and replicate 2
+with control 2 gives two independent estimates of the same quantity, agreeing at
+**ρ 0.8097**; Spearman–Brown makes the released two-replicate score's reliability
+**0.8948**, and its square root is the highest ρ any predictor can reach against
+it. The other pairing gives 0.9453, so the figure does not depend on how the
+replicates are matched.
+
+Three things make it trustworthy, and they are why this is worth more than the
+inherited number:
+
+| check | result |
+|---|---|
+| does their **cohort** reproduce? | their R script filters on an average control count of **73**; applying it gives **33,871** guides against the 33,567 they release |
+| does their **label** reproduce? | a plain CPM log-ratio of the two conditions correlates **\|ρ\| = 0.957** with their released score, so these are the replicates behind that label |
+| is it conservative? | **yes** — ALDEx2's posterior shrinks noisy guides toward the prior, which can only raise reliability above a plain log-ratio's, so 0.946 is a **lower bound** |
+
+So the curated label is *cleaner* than the published one (0.946 against 0.937),
+which is what their paper claims curation does, now measured from their own
+counts rather than taken on trust. The arithmetic below is retained because it
+is the published label's route and the two cohorts' figures are quoted side by
+side elsewhere.
 
 Two screens of the same library agree at ρ 0.810, which naively gives 0.90 — but
 the disagreement is **predictable at ρ 0.546**, so it is enzyme biology, not
@@ -592,7 +612,9 @@ a Cas9/dCas9 **ratio**, and a difference is never more reliable than its
 components — at 50% shared signal between arms the implied ceiling is already
 0.940. The tiling route needs none of that machinery.
 
-So SLICER at ρ 0.707–0.721 leaves **about 0.22 of ρ unaccounted for**.
+So SLICER at ρ 0.707–0.721 leaves **about 0.22 of ρ unaccounted for** — 0.225
+against the curated label's measured 0.946, and the gap is not a rounding
+artefact of an inherited ceiling.
 
 ---
 
@@ -645,7 +667,10 @@ compressed into a biology paper.
 - **Everything is bacterial.** Cross-kingdom transfer is ≈0, measured in both
   directions. And our human baseline is **undertuned** — a grid search by a
   teammate reached ρ 0.472 against the 0.404 quoted here — which matters because
-  the cross-kingdom claim leans on the human side being weak.
+  the cross-kingdom claim leans on the human side being weak. **Closing this is
+  delegated** (Part 4 item 4): until the settings arrive, the claim rests on the
+  *sign* of the transfer, which is negative in both directions with intervals
+  excluding zero, and not on the size of the margin.
 - **One organism and two relatives.** No genome-wide Cas9-cutting screen exists
   outside *Enterobacteriaceae*; what exists elsewhere is CRISPRi, a different
   measured quantity. Closing this needs wet-lab work.
@@ -799,11 +824,11 @@ Remaining before submission:
 | 1 | ~~eSpCas9 final evaluation~~ | **done, and it is a tie** — ρ 0.7842 against 0.7821 on crisprHAL's own eSpCas9 split with their published weights, at 47,591 training guides. Also corrected: eSpCas9 was never an untouched holdout (above) |
 | 2 | crisprHAL 2's search run to **its own** plateau — **no longer needed for the comparison.** The tuning asymmetry (10 configurations against our 627) was an objection to *our* runs of their model. The final evaluation above uses **their published weights**, which embody whatever search their paper did, and SLICER still leads by +0.002 and +0.005 on their own two splits. A tuning-cost curve would still be interesting; it is not load-bearing | 2–4 GPU-h, optional |
 | 3 | ~~orientation controls~~ | **done** — Jacky, Finding 6 |
-| 4 | human baseline re-tuned at the teammate's settings — **still blocked, request drafted** (`docs/correspondence/request_human_baseline_settings.md`): the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/`. If it does not arrive, Part 3's cross-kingdom sentence rests on the *sign* of the transfer and says so | ~1 h once supplied |
+| 4 | human baseline re-tuned at the teammate's settings — **delegated to the teammate**, request drafted (`docs/correspondence/request_human_baseline_settings.md`): the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/`. If it does not arrive, Part 3's cross-kingdom sentence rests on the *sign* of the transfer and says so | ~1 h once supplied |
 | 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 5 |
 | 6 | ~~sample-complexity curve repeated across folds and seeds~~ | **done** — Appendix B |
 | 7 | re-tune crisprHAL 2 at **each input width** — **partly supplied by their own paper.** Browne et al. searched input length *per dataset* and stopped at 378 nt (*E. coli* SpCas9) and 406 nt (eSpCas9), reporting that gains level off: +0.00034 ρ per upstream nucleotide and +0.00074 per downstream one, from 0.554 on the sgRNA alone to 0.697 at 378 nt. So the width is their optimum, found by their own search, and our 1,023/2,023 nt degradation is the continuation of a curve they had already flattened. What is still unrun is re-tuning the *other* hyperparameters at each width | 2–4 GPU-h, now optional |
-| 8 | re-derive the **ceiling for the curated label** — **the route through their paper is closed**: Browne et al. report *no* replicate-to-replicate correlation for any dataset, and their label is an ALDEx2 Bayesian posterior mean over 2 control + 2 experimental replicates, so Spearman–Brown on a geometric mean does not apply to it. The only remaining route is to pull the per-replicate counts from the original screen and re-run their ALDEx2 step per replicate | a data job, not an hour |
+| 8 | ~~re-derive the ceiling for the curated label~~ | **done: 0.946 [0.944, 0.948]**, from their own published per-replicate counts, cohort and label both verified to reproduce, and conservative by construction (Finding 11) |
 | 9 | ~~re-run the gene-grouped ablation on the curated cohort~~ | **done** — all eleven families, Appendix B3. The three largest effects lose nothing beyond the 6% grouping tax; `e_nucleoid` and `g_transcription` carry a real locus component of 6 and 15 points |
 
 **Paper writing is no longer blocked by this list.** Items 1, 2, 7 and 9 are
@@ -830,7 +855,9 @@ further external validation needs new data.
   untouched and nothing fully clean is left;
 * the 412-column reduction is a **published-matrix result under a 300-column
   budget** and does not transfer to the curated cohort;
-* the ceiling 0.937 is **inherited from a different label**.
+* the ceiling for the label we train on is **0.946 [0.944, 0.948]**, measured;
+  0.937 belongs to the published label and should not be quoted for curated
+  figures.
 
 The shared Google Doc is **frozen as of 13 October 2026** and is no longer kept
 in sync; this report is the single maintained document.
@@ -851,7 +878,7 @@ settled under those constraints and is **not** automatically valid on crisprHAL'
 |---|---|---|
 | **the 412/427-column reduced set** | non-inferiority on the *published* matrix and label | **closed, and the answer is no.** With no selection on the curated cohort, 364 columns lose 0.0118 and 364 + family A lose 0.0142 — 2–3× the 0.005 margin. Non-inferiority was a published-matrix result under a 300-column budget (Finding 2) |
 | **the published Δρ levels** | Noshay's 13,880 rows | **explained, not just re-measured.** The 3.3× inflation is the row population: the 24,950 guides only crisprHAL publishes have 1.34× the label spread and a 2.5× stronger flank-GC correlation. The published matrix understated the effect (Appendix B2a) |
-| **the ceiling, 0.937** | Guo's replicate statistics for the published label | crisprHAL's curation changes the label's noise by design; the curated ceiling is probably higher and is unmeasured |
+| **the ceiling, 0.937** | Guo's replicate statistics for the published label | **closed, and it was higher as predicted: 0.946 [0.944, 0.948]**, from crisprHAL's own per-replicate counts (Finding 11) |
 | **`n_features` = 300** | selector sweep on 6,232 published columns | **closed.** Selecting 300 against using every column: 0.5445 / 0.5449 on the base and 0.7084 / 0.7079 with family A. ±0.0005 in both directions, so the budget is free on this cohort too (Finding 2) |
 | **grouped CV by `arc5` / 100 kb block** | 13,880 guides, within-gene variance share 0.844 | **re-measured — it moved.** 0.844 → **0.713** on the curated cohort: gene identity explains 29% of the label there against 16% here, so gene-grouped CV constrains the model *more*, not less (Appendix B) |
 | **champion hyperparameters** | 627 draws against the old cohort | **decided: keep the freeze.** The champion XGBoost and LightGBM at its own unrelated defaults land within **0.0002 ρ** of each other on the curated cohort with family A (0.7084 / 0.7082), so the configuration is not a knife-edge and re-tuning has little to win. Stated as a decision with its evidence rather than left as a tension |
@@ -886,7 +913,7 @@ cost, because the cost was not small.
 | the mechanism | a dCas9 **CRISPRi** screen, the last untouched dataset, could have shown the flank effect to be about binding or accessibility rather than cleavage. Family A adds **−0.009** there against **+0.157** on the cutting screen, flank-only 0.133 against 0.341 — so the effect is specific to cutting (Finding 5) |
 | the flanking-context thesis | the family table on the curated cohort sorts by **how far outside the 20-mer a family can see**: nothing confined to the guide clears +0.019, nothing above +0.05 is confined to it. Arrived at by withdrawing a claim that pointed the other way (Appendix B3) |
 
-### What it cost — six claims withdrawn in four days
+### What it cost — eight claims withdrawn in six days
 
 | withdrawn | replaced by |
 |---|---|
@@ -895,6 +922,8 @@ cost, because the cost was not small.
 | "0.047 against the nearest gene, 0.005 with it" | unweighted point estimates; the block bootstrap gives Δ 0.026 with an interval including zero, and it **collapses to 0.007 under distance+GC matching** |
 | "the asymptotes are close … not evidence of a higher ceiling" | paired across five folds the gap is **+0.0133 ρ, p = 0.0058, 5/5 folds** — our own caveat was an artefact of measuring one fold |
 | "427 columns are the portable set" | 412; and the curated cohort never carried the 63 hand-named columns at all |
+| "eSpCas9 is the designated **untouched** final evaluation, to be evaluated once" | it had already been used for four feature arms across three seeds and two CV schemes. Confirmatory, not untouched; "once" was never available (Part 4) |
+| "SLICER beats crisprHAL 2" | **parity.** Δρ +0.0021, 95% CI [−0.0031, +0.0072] on their eSpCas9 split, +0.005 on their SpCas9 split. The lead at 26,853 training guides is +0.0133 and vanishes at 47,591 — a small-data claim, not a ranking |
 | "`d_mechanics` adds no new DNA and is worth +0.099 — representation beats information" | 8 of its 30 columns are **flanking-DNA** thermodynamics and carry +0.097 of it. The representation effect is **+0.011 to +0.019**, agreed across three guide-only families |
 
 ### What that means
@@ -1104,10 +1133,35 @@ With it, it is a claim about how much signal the label contains — and the figu
 is **inherited from the published label and not yet re-derived for the curated
 one**, which is Part 4 item 8.
 
+**The cross-assay control: a screen where the mechanism should *not* apply.**
+*Why it works:* every other external check is another Cas9 cutting screen, so a
+flank effect there is consistent with cutting, with binding, and with local
+accessibility alike. dCas9 binds without cutting, so a flank effect that is
+about the cleavage step must disappear, while one about binding or accessibility
+must survive. The control is the only one here that could have falsified a
+mechanism rather than a number.
+*Without it:* Finding 3's mechanism sentence would rest on plausibility. Family A
+adds **−0.009** to a CRISPRi screen and **+0.157** to a cutting screen under one
+protocol, with a flank-only arm (0.133 against 0.341) to rule out selection
+dilution (Finding 5).
+
+**The replicate-split ceiling.**
+*Why it works:* a ceiling has to come from the measurement, not the model. Two
+Cas9 replicates and two controls allow two independent estimates of the same
+quantity; their agreement is the reliability of one, and Spearman–Brown converts
+that to the reliability of the released mean of two. Two checks make it an
+estimate of *their* label rather than of our arithmetic: their cohort reproduces
+under their stated cutoff (33,871 against 33,567) and a plain log-ratio
+reproduces their score at |ρ| 0.957.
+*Without it:* the curated arms would keep quoting 0.937, a figure derived for a
+different label by a different route. It is **0.946 [0.944, 0.948]**, and
+conservative, since their posterior shrinkage can only raise reliability above a
+plain log-ratio's.
+
 ### Guards — did the computation actually run?
 
-Four failures in two days produced plausible numbers, or destroyed real ones,
-from code that reported success. These are not controls in the experimental sense; they are the
+Five failures in three days produced plausible numbers, destroyed real ones, or
+raised a false alarm, from code that reported success. These are not controls in the experimental sense; they are the
 assertions that should have existed first.
 
 * **crisprHAL's `train()` catches its own exceptions and returns `None`
@@ -1120,6 +1174,12 @@ assertions that should have existed first.
   decimal places — i.e. by a coincidence that was too perfect, not by design.
   *The guard that works:* pass `X.shape[1]` explicitly and assert the column
   count used.
+* **A cross-check that was wrong in the alarming direction.** Cui's coordinates
+  were compared to ours with `|ours − theirs| ≤ 1`, which reported agreement for
+  **0.0%** of guides and reads as an assembly mismatch. The offset takes exactly
+  two values, +3 and −21, one per strand: they report the PAM-proximal end, and
+  every guide agrees exactly. A check that fails loudly is still a failed check,
+  and this one would have stopped the last untouched experiment.
 * **A grouped run wrote its results into the random-row table and destroyed
   it** — a leftover raw `to_csv(OUT)` in a loop whose other writes had been
   routed to the grouped output. Recovered from the committed copy. Noticed only
@@ -2000,11 +2060,18 @@ predictions: Data curation improves deep learning for sgRNA/Cas9 prediction.
 *PeerJ*, *14*, e20706. https://doi.org/10.7717/peerj.20706
 — the state of the art; code and curated label re-run here as the baseline.
 
+Cui, L., Vigouroux, A., Rousset, F., Varet, H., Khanna, V., & Bikard, D. (2018).
+A CRISPRi screen in *E. coli* reveals sequence-specific toxicity of dCas9.
+*Nature Communications*, *9*, 1912. https://doi.org/10.1038/s41467-018-04209-5
+— the dCas9 CRISPRi screen used as the final untouched test (Finding 5); its two
+measurement arms also set the ceiling range quoted in Appendix B.
+
 Guo, J., Wang, T., Guan, C., Liu, B., Luo, C., Xie, Z., Zhang, C., & Xing, X.
 (2018). Improved sgRNA design in bacteria via genome-wide activity profiling.
 *Nucleic Acids Research*, *46*(14), 7052–7069. https://doi.org/10.1093/nar/gky572
 — the screen behind the label; Figure 2b and 2c agreement statistics for the
-ceiling; the intergenic sub-library.
+published label's ceiling; the intergenic sub-library. Its per-replicate counts,
+as re-released by Browne et al., give the curated label's ceiling (Finding 11).
 
 Guo, M. S., Kawamura, R., Littlehale, M. L., Marko, J. F., & Laub, M. T. (2021).
 High-resolution, genome-wide mapping of positive supercoiling in chromosomes.
@@ -2050,7 +2117,7 @@ against Crossref metadata rather than transcribed from memory.
 
 ## Appendix E — Withdrawn claims
 
-Twenty-seven claims have been withdrawn and twelve bugs found. They are not listed
+Twenty-nine claims have been withdrawn and thirteen bugs found. They are not listed
 here, so that this document reads as a statement rather than a diary; they are in
 `docs/FINDINGS_LOG.md` in date order and in `local/MISCONCEPTIONS.md`, outside
 the repo, with the cause of each.

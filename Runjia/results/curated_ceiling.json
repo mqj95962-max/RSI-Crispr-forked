@@ -1,0 +1,33 @@
+{
+ "n_counts": 121340,
+ "n_after_cutoff": 33871,
+ "cutoff": 73,
+ "arms": {
+  "1-1 / 2-2": {
+   "replicate_spearman": 0.8097060263686057,
+   "replicate_pearson": 0.8970085012404845,
+   "reliability_spearman_brown": 0.894848129553261,
+   "ceiling": 0.9459641269906914,
+   "ceiling_ci": [
+    0.9442914170752339,
+    0.9474989515105215
+   ],
+   "ceiling_from_pearson": 0.9724754328349411
+  },
+  "1-2 / 2-1": {
+   "replicate_spearman": 0.8075142359141554,
+   "replicate_pearson": 0.8949679364134039,
+   "reliability_spearman_brown": 0.8935080231949075,
+   "ceiling": 0.9452555332791803,
+   "ceiling_ci": [
+    0.9437061913468947,
+    0.9468577226188688
+   ],
+   "ceiling_from_pearson": 0.9718915428677607
+  }
+ },
+ "reconstruction": {
+  "n_shared": 33567,
+  "spearman": -0.9572525413787624
+ }
+}

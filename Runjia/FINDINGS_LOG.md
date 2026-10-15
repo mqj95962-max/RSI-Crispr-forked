@@ -3933,3 +3933,45 @@ that Cui's `pos` agreed with ours for 0.0% of guides, which reads as an assembly
 mismatch. The offset takes exactly two values, +3 and −21, one per strand: they
 report the PAM-proximal end. Every guide agrees exactly. A check that is wrong in
 the alarming direction is still a wrong check.
+
+## 15 October 2026 (night) — the ceiling for the label we actually train on
+
+**Item 8 is closed: 0.946 [0.944, 0.948].** Two routes had failed — crisprHAL 2's
+paper reports no replicate statistics, and their label is an ALDEx2 posterior
+mean, so Spearman–Brown on a geometric mean does not describe it. The third route
+works because **their per-replicate counts are published** in the paper
+repository: two Cas9 replicates and two dead-nuclease controls, 121,340 guides.
+
+Pair Cas9 replicate 1 with control 1 and replicate 2 with control 2 and you have
+two independent estimates of the same quantity. They agree at **ρ 0.8097**;
+Spearman–Brown makes the released two-replicate score's reliability **0.8948**;
+its square root is the ceiling. The other pairing gives 0.9453, so it does not
+depend on how replicates are matched.
+
+Three checks, and they are why this beats the inherited figure:
+
+* **their cohort reproduces** — their own R script filters on an average control
+  count of 73, and applying it gives 33,871 guides against the 33,567 released;
+* **their label reproduces** — a plain CPM log-ratio correlates |ρ| **0.957**
+  with their released score, so these are the replicates behind that label;
+* **it is conservative** — ALDEx2's posterior shrinks noisy guides toward the
+  prior, which can only raise reliability above a plain log-ratio's.
+
+So the curated label is cleaner than the published one, **0.946 against 0.937**,
+which is what their paper claims curation does — now measured from their counts
+instead of taken on trust. SLICER at 0.721 leaves 0.225 of ρ unaccounted for, and
+that gap is no longer an artefact of an inherited ceiling.
+
+Also read: their curation script. The filter is
+`(dCas1_NS + dCas2_NS)/2 >= cutoff` swept 1–100, the score is an ALDEx2
+`aldex.effect` column, and the released set is the cutoff-73 version. Both are
+now in `external_data/crisprHAL/rawData/`.
+
+**Tidying, same pass.** The opening paragraph now says the 427/412 reduction is a
+published-matrix result under a 300-column budget, since it does not survive on
+the curated cohort with selection removed. Part 5's withdrawal table gains the
+two from the final evaluation ("eSpCas9 is untouched" and "SLICER beats
+crisprHAL 2"), making 29 claims withdrawn and 13 bugs. Appendix A gains the
+cross-assay control and the replicate-split ceiling, each with what would be
+believed without it. Appendix D gains Cui et al. Part 3's human-baseline sentence
+now says the claim rests on the sign of the transfer while item 4 is delegated.
