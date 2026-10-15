@@ -4094,3 +4094,46 @@ wrong.
 Worth being clear about what this run can and cannot change: it bears only on
 the **our-folds** condition. The parity result on their own splits already uses
 their published weights, so no search of ours can affect it.
+
+## 15 October 2026 (decision) — the matched search is fair, so it is required
+
+Asked whether tuning crisprHAL 2 to convergence is a fair comparison, on the
+explicit ground that a fair comparison should not be skipped merely because it
+weakens the claim. Argued on fairness alone, the answer is yes, with one
+refinement: **"to convergence" is not the right target** — a deep net has no
+canonical stopping point for a hyperparameter search, and the result depends on
+who draws the space and when they stop. **"Matched" is well defined**: same
+draws, same nesting, same patience, each from its own published configuration.
+That is the condition our tuned-vs-tuned row already implicitly claims.
+
+**Every reason for skipping it has expired, and checking the last one turned up
+a mislabelling of our own.**
+
+* cost: 17 CPU-h locally → 10–15 GPU-h on a free T4 at the measured 3.1×;
+* "their published weights already answer it": they answer it **on their
+  splits**, where it is parity. They say nothing about our folds, which is where
+  the +0.0172 lives;
+* "defaults-vs-defaults is a clean fallback": **false.** `tune.DEFAULT` is
+  `n_estimators=400, lr=0.05, num_leaves=16, max_depth=4, subsample=0.8,
+  colsample=0.8` — the **627-draw champion from the published cohort**, not
+  LightGBM's defaults (100, 0.1, 31, −1, no subsampling). crisprHAL's arm really
+  is its published configuration. So that row is asymmetric in our favour too,
+  and nobody had noticed until the question was put directly;
+* "we flagged it as an upper bound": not sufficient, and we pre-registered the
+  obligation — `crisprhal_tune.py` says that if their tuned score does not close
+  the gap, "the asymmetry is a live caveat and must be quoted alongside the
+  result." It did not close the gap.
+
+**So no on-our-folds number we report is symmetric in search effort.** Part 4
+item 2 is reinstated as required rather than optional.
+
+**And the expected outcome strengthens the paper.** Their published WT model
+lands ~0.005 behind us on their own split at the same data scale, so a matched
+search should take +0.0172 to roughly +0.005. "Parity with the state of the art
+at ~150× less compute, confirmed under a matched search" is harder to attack
+than "+0.017 under a search we admit was unequal".
+
+**One residual asymmetry the matched run will not remove, favouring us:**
+SLICER's tuned arm starts from a configuration already selected by 627 draws on
+the published cohort and adds 12 per fold; their matched arm gets 60 draws and no
+such history. Stated rather than left for a reviewer to find.

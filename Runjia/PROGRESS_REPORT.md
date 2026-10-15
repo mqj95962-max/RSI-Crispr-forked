@@ -809,7 +809,7 @@ the difference can be bootstrapped **paired on guides** (`heldout_compare.py`):
 
 | pairing | SLICER | crisprHAL 2 | difference | 95% CI | p |
 |---|---:|---:|---:|---|---:|
-| both at defaults | 0.7083 | 0.6968 | **+0.0115** | [+0.0074, +0.0157] | <0.001 |
+| "both at defaults" † | 0.7083 | 0.6968 | **+0.0115** | [+0.0074, +0.0157] | <0.001 |
 | both tuned | 0.7213 | 0.7040 | **+0.0172** | [+0.0136, +0.0209] | <0.001 |
 | **ours untuned against theirs tuned** | 0.7083 | 0.7040 | **+0.0043** | [+0.0005, +0.0080] | 0.024 |
 
@@ -818,6 +818,17 @@ unlike the eSpCas9 split, where the same analysis gives parity. Per fold at seed
 41, SLICER at defaults beats crisprHAL at defaults in **5 of 5** folds (0.6944 /
 0.7079 / 0.7121 / 0.7112 / 0.7136 against 0.6855 / 0.6988 / 0.6978 / 0.7022 /
 0.7012).
+
+† **Our "default" is not a default.** `tune.DEFAULT` is
+`n_estimators=400, learning_rate=0.05, num_leaves=16, max_depth=4,
+subsample=0.8, colsample_bytree=0.8` — a configuration selected by the
+**627-draw search on the published cohort**, not LightGBM's defaults
+(`n_estimators=100, learning_rate=0.1, num_leaves=31, max_depth=-1`, no
+subsampling). crisprHAL's arm, by contrast, really is its published
+configuration. So this row is **also asymmetric in our favour**, and the
+asymmetry had not been noticed until the question was asked directly on
+15 October. **No row in this table is symmetric in search effort**, which is the
+argument for the matched run in Part 4 item 2.
 
 Three things that must be quoted with those numbers:
 
@@ -951,7 +962,7 @@ Remaining before submission:
 | | item | cost |
 |---|---|---|
 | 1 | ~~eSpCas9 final evaluation~~ | **done, and it is a tie** — ρ 0.7842 against 0.7821 on crisprHAL's own eSpCas9 split with their published weights, at 47,591 training guides. Also corrected: eSpCas9 was never an untouched holdout (above) |
-| 2 | crisprHAL 2's search run to **its own** plateau — **script ready**, `colab/crisprhal_tune_matched.py`: 12 draws × 5 folds with patience, resumable, interpretation pre-declared, 10–15 GPU-h on a free T4 at the measured 3.1× speed-up. Still **not needed for the comparison** The tuning asymmetry (10 configurations against our 627) was an objection to *our* runs of their model. The final evaluation above uses **their published weights**, which embody whatever search their paper did, and SLICER still leads by +0.002 and +0.005 on their own two splits. A tuning-cost curve would still be interesting; it is not load-bearing | 2–4 GPU-h, optional |
+| 2 | crisprHAL 2 given **the search we gave ourselves** — **required, not optional, and reinstated as such on 15 October.** Script ready at `colab/crisprhal_tune_matched.py`: 12 draws × 5 folds with patience, resumable, interpretation pre-declared, draw 0 as positive control. The reasons for skipping it have all expired — see "Is it fair to tune their model to convergence?" in Appendix B | 10–15 GPU-h, free T4 |
 | 3 | ~~orientation controls~~ | **done** — Jacky, Finding 6 |
 | 4 | human baseline re-tuned at the teammate's settings — **delegated to the teammate**, request drafted (`docs/correspondence/request_human_baseline_settings.md`): the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/`. If it does not arrive, Part 3's cross-kingdom sentence rests on the *sign* of the transfer and says so | ~1 h once supplied |
 | 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 5 |
@@ -1442,6 +1453,48 @@ curves can both reach 95% of themselves at the same n while being far apart in
 ρ. It now leads with absolute thresholds and labels the own-best figures
 diagnostic.
 
+### Is it fair to tune crisprHAL 2 to convergence? Yes — and that is why it has to be run
+
+The question was put in the right form: if a matched search is the fair
+comparison, the fact that it would weaken our margin is not a reason to skip it;
+if it is arguably *not* fair, skipping it is legitimate. So the answer has to be
+argued on fairness alone.
+
+**"To convergence" is not the right target, but "matched" is.** A deep network
+has no canonical convergence point for a hyperparameter search — the result
+depends entirely on who draws the search space and when they stop. What *is*
+well defined is **equal effort under an equal protocol**: the same number of
+draws, the same nesting, the same patience rule, each starting from its own
+published configuration. That is what the script runs, and it is the condition
+our own tuned-vs-tuned row implicitly claims.
+
+**Every reason we had for not running it has expired.**
+
+| the reason | status |
+|---|---|
+| ~~17 CPU-hours locally, too expensive~~ | **gone.** 3.1× faster on a free T4; 10–15 GPU-h over two to four sessions |
+| ~~their published weights already answer it~~ | **answers a different question.** They settle the comparison *on their splits*, where it is parity. They say nothing about our folds, which is where our +0.0172 lives |
+| ~~the defaults-vs-defaults row is a clean like-for-like fallback~~ | **false.** Our "default" is the 627-draw champion from the published cohort; theirs is their published configuration (Part 4) |
+| ~~we flagged it as an upper bound, which is honest~~ | **not sufficient.** Flagging a bound you could measure is weaker than measuring it, and we pre-registered the obligation: `crisprhal_tune.py` states that if their tuned score does not close the gap, "the asymmetry is a live caveat and must be quoted alongside the result." It did not close the gap. The caveat is live |
+
+**So no on-our-folds number we report is symmetric in search effort**, and the
+matched run is the only thing that would make one. It should be run.
+
+**The expected outcome makes the paper stronger, not weaker.** Their own
+fully-tuned published WT model lands ~0.005 behind SLICER on their own WT split
+at the same data scale, so the matched search is expected to take +0.0172 down to
+roughly +0.005. **"Parity with the state of the art at ~150× less compute,
+confirmed under a matched search" is a harder claim to attack than "+0.017 under
+a search we admit was unequal."** A number that survives the obvious objection
+is worth more than a larger number that invites it.
+
+**One asymmetry the matched run will not remove, and it favours us.** SLICER's
+tuned arm starts from a configuration already selected by 627 draws on the
+published cohort and then adds 12 draws per fold; their matched arm would get 60
+draws and no such history. Strict equality of *total* search would need a larger
+budget on their side. The matched run removes the largest asymmetry, not all of
+it, and the residual should be stated rather than left for a reviewer to find.
+
 ### Would renting a TPU settle the tuning asymmetry? Yes, and it should not be a budget item
 
 The margin's weakest point is that crisprHAL got 10 configurations and SLICER
@@ -1485,8 +1538,9 @@ cheaper and faster for it.
 folds change (both models) or the feature set changes (SLICER only);
 documentation and analyses outside the curated arm require none.
 
-**And for the headline comparison it is now moot.** The objection applies to
-*our* runs of their architecture. On their own two shipped splits we compare
+**For the comparison on *their* splits it is moot; for ours it is not.** The
+objection applies to *our* runs of their architecture, which is exactly what the
+five-fold rows are. On their own two shipped splits we compare
 against **their published weights** — their tuning, their search, their
 published numbers, which our harness reproduces to three decimals (ρ 0.782 →
 0.7821 on eSpCas9) — and the margins are +0.005 and +0.002 (Part 4). Whatever
