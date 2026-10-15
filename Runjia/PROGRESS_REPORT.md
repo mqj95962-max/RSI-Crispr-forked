@@ -798,14 +798,63 @@ The whole interval falls inside the margin, which is the form of claim the data
 supports: not "we could not tell them apart" but "they are the same within a
 hundredth of a correlation".
 
+### On a held-out fold of the curated cohort: SLICER, by a margin that resolves
+
+The five-fold head-to-head was reported two ways and neither put an interval on
+the difference: the fold-level mean has n = 5 and cannot resolve anything below
+~0.005, and the pooled nine-metric panel has no uncertainty at all. Every guide
+is predicted exactly once by a model that never saw it, so the five validation
+folds give **33,567 out-of-fold predictions per model over the same rows**, and
+the difference can be bootstrapped **paired on guides** (`heldout_compare.py`):
+
+| pairing | SLICER | crisprHAL 2 | difference | 95% CI | p |
+|---|---:|---:|---:|---|---:|
+| both at defaults | 0.7083 | 0.6968 | **+0.0115** | [+0.0074, +0.0157] | <0.001 |
+| both tuned | 0.7213 | 0.7040 | **+0.0172** | [+0.0136, +0.0209] | <0.001 |
+| **ours untuned against theirs tuned** | 0.7083 | 0.7040 | **+0.0043** | [+0.0005, +0.0080] | 0.024 |
+
+**All three intervals clear zero, so on this cohort the difference is real** —
+unlike the eSpCas9 split, where the same analysis gives parity. Per fold at seed
+41, SLICER at defaults beats crisprHAL at defaults in **5 of 5** folds (0.6944 /
+0.7079 / 0.7121 / 0.7112 / 0.7136 against 0.6855 / 0.6988 / 0.6978 / 0.7022 /
+0.7012).
+
+Three things that must be quoted with those numbers:
+
+*The alignment had to be reconstructed, and was checked.* crisprHAL's
+predictions were saved one file per fold with no guide key, so the concatenation
+is in fold order rather than cohort order. The pairing reconstructs
+`KFold(5, shuffle=True, random_state=41)` and asserts that the label vectors
+match guide for guide; without that check a plausible-looking but meaningless
+interval would have come out of a mis-rotated join.
+
+*The tuned margin is an upper bound.* SLICER's search is 12 draws inside each of
+five folds; crisprHAL's is 10 draws on a single inner split of fold 1's training
+rows, because each of its fits costs ~17 CPU-minutes. Neither search ever
+touches an outer validation fold, so neither number is leaked — but theirs is
+the weaker search. The **cross** row is the honest floor on that objection: our
+*untuned* model against their *tuned* one is +0.0043, an interval that only just
+clears zero.
+
+*And the answer to the search asymmetry is not in this table.* It is the final
+evaluation below, against their own **published** weights — their tuning, their
+search — where the margin is +0.002 and +0.005. **Read together: we are ahead by
+~0.017 on our folds against a model we tuned for them, and level against the
+model they tuned themselves.** The most likely reason the two conditions differ
+is training-set size, 26,853 here against 47,591 there, which is what the
+sample-complexity curves predict.
+
 ### Every comparison condition we can construct, and the three different answers
 
 Asked under one condition the head-to-head gives parity; asked under another it
 does not. The conditions are listed here because choosing one of them silently
-is the main way this comparison could be made to say whatever we want.
+is the main way this comparison could be made to say whatever we want. **Four
+conditions, three answers**, and the ordering of the first two is the thing to
+explain rather than to pick between.
 
 | condition | what it holds fixed | result |
 |---|---|---|
+| **same task, our five folds, both tuned here** | rows, label, folds, and the tuning protocol *we* ran for both | **SLICER** — +0.0172, 95% CI [+0.0136, +0.0209], paired on 33,567 guides; +0.0043 [+0.0005, +0.0080] with ours untuned against theirs tuned |
 | **same task, their split, each model at its own best input and tuning** | rows, label, split, and each side's own configuration | **parity** — Δρ +0.0021, 95% CI [−0.0031, +0.0072], inside a pre-declared ±0.01; and on their SpCas9 split +0.005 |
 | **same task, equal input DNA** | rows, label, split, *and the DNA each model reads* | **depends on the width** — tied on the guide alone (0.5473 / 0.5494), crisprHAL +0.023 inside its own 378 nt span, SLICER +0.065 at ±1,000 nt |
 | **different assay, neither model trained on it** | rows, label, and that neither has seen the data | **crisprHAL, reliably** — zero-shot on Cui's CRISPRi screen, \|ρ\| 0.0867 against our 0.0609, difference **−0.0258 [−0.0289, −0.0227]** |

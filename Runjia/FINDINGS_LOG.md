@@ -4027,3 +4027,37 @@ degraded by input wider than it was tuned for" and not "this architecture cannot
 exploit long-range context". What keeps it worth reporting is that 378 nt is
 their own searched optimum, so the experiment extends their curve rather than
 handicapping them at a setting nobody chose.
+
+## 15 October 2026 (last) — the held-out-fold comparison, with an interval at last
+
+The five-fold head-to-head had been reported as a fold-level mean (n = 5, cannot
+resolve below ~0.005) and as a pooled metric panel (no uncertainty at all).
+Every guide is predicted once by a model that never saw it, so the folds give
+**33,567 out-of-fold predictions per model on the same rows**, and the difference
+can be bootstrapped paired on guides:
+
+    both at defaults                 0.7083 vs 0.6968   +0.0115 [+0.0074, +0.0157]
+    both tuned                       0.7213 vs 0.7040   +0.0172 [+0.0136, +0.0209]
+    ours untuned vs theirs tuned     0.7083 vs 0.7040   +0.0043 [+0.0005, +0.0080]
+
+**All three clear zero**, so on this cohort the difference is real — unlike the
+eSpCas9 split, where the same analysis gives parity. 5 of 5 folds favour SLICER
+at defaults.
+
+Three caveats quoted with it. **The alignment had to be reconstructed**:
+crisprHAL's predictions were saved per fold with no guide key, so the
+concatenation is in fold order, not cohort order, and the pairing rebuilds
+`KFold(5, shuffle=True, random_state=41)` and asserts the labels match guide for
+guide — without that check a mis-rotated join would have produced a
+plausible-looking, meaningless interval. **The tuned margin is an upper bound**:
+our search is 12 draws inside each of five folds, theirs 10 draws on one inner
+split of fold 1 (their fits cost ~17 CPU-min), so the cross row is the floor on
+that objection. **And the answer to the asymmetry is elsewhere** — against their
+own published weights the margin is +0.002 and +0.005.
+
+So the whole picture, in one line: **ahead by ~0.017 on our folds against a model
+we tuned for them, level against the model they tuned themselves, and behind by
+0.026 transferring to a different assay.** The report tabulates all four
+conditions rather than choosing one, and the most likely reason the first two
+differ is training-set size — 26,853 against 47,591, which is what the
+sample-complexity curves predict.
