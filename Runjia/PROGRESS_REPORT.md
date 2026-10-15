@@ -357,6 +357,7 @@ each width, which is a weaker objection than it was before this was read.
 | different kingdom (bacteria ↔ human) | **negative both ways**, CIs excluding zero |
 | read-depth / mappability artefact? | survives a high-uniqueness stratum, +0.078 → +0.051 |
 | gene ranking in disguise? | within-gene ρ 0.571 against 0.606 global; flanks worth **+0.061 inside genes** |
+| **a property of cutting, or of Cas9 binding?** | **cutting.** In a dCas9 CRISPRi screen family A adds **−0.009**, against **+0.157** on the cutting screen under the same gene-grouped protocol |
 
 *Why these five and not other tests.* Each removes one way the effect could be
 an artefact of this dataset rather than a property of the DNA. A new **enzyme**
@@ -370,6 +371,47 @@ guides whose reads cannot be misassigned. The **within-gene** comparison removes
 the gene-ranking explanation by asking the question entirely inside genes, where
 "which gene" is constant. Nothing here is an intervention, so all five together
 still only rule things out.
+
+**The one test that could have falsified the mechanism, and it did not.**
+Finding 3's account is a duplex-opening step limited by local DNA composition at
+the cut site. Every external check until now has been another Cas9 *cutting*
+screen, which cannot distinguish that from a general property of Cas9 binding or
+of local chromatin accessibility — both would predict a flank effect too. Cui et
+al.'s (2018) dCas9 **CRISPRi** screen can: dCas9 binds and does not cut, and the
+measured quantity is fitness under transcriptional silencing rather than survival
+after cleavage.
+
+It had never been used for anything here except a single ceiling-range number, so
+it was the last genuinely untouched dataset available. 76,325 uniquely-targeting
+guides located in NC_000913.2, 70,298 of them inside 4,265 named genes, same
+pipeline, same champion, 3 seeds × 5 folds, **whole genes held out** —
+mandatory here, because 30% of this label's variance is between genes (within-gene
+share 0.704) and essential genes sit 2.05 fitness units below non-essential ones,
+so a model that recognised the locus would be richly rewarded:
+
+| arm | CRISPRi (dCas9) | cutting (curated Cas9) |
+|---|---:|---:|
+| 20-mer base, 6,169 columns | 0.4577 ± 0.0013 | 0.5584 ± 0.0011 |
+| base + family A | 0.4484 ± 0.0006 | 0.7151 ± 0.0005 |
+| **family A's increment** | **−0.0093** | **+0.1567** |
+| family A alone, 348 columns | 0.1333 ± 0.0013 | 0.3408 ± 0.0005 |
+
+**Family A adds nothing to a silencing screen and +0.157 to a cutting screen,
+measured the same way.** The flank-only arm is what makes that a clean null
+rather than a selection artefact: adding 348 columns to a 6,169-column pool under
+a 300-column budget could dilute selection, but family A on its own cannot be
+diluted, and on its own it reaches 0.133 against 0.341 on the cutting screen.
+
+*So the effect is specific to cleavage*, which is what Finding 3 claims and what
+a binding- or accessibility-based explanation would have contradicted. Two
+honest qualifications. The 0.133 is **not zero** — flanking composition does
+carry some information about CRISPRi fitness, plausibly because a 2 kb window
+around a gene says something about the gene — but it is **redundant with the
+20-mer** there, which is the opposite of its behaviour on cutting data. And this
+is a different enzyme, library, assay and laboratory at once, so a null has many
+possible authors; what makes it interpretable is that the *base* predicts 0.458
+on the same rows, so the pipeline plainly works on this screen and the null
+belongs to family A rather than to the run.
 
 *Mechanism, as a hypothesis.* Target GC correlates **−0.201** with the score;
 the effect survives a change of enzyme and of organism; and the model run
@@ -770,6 +812,16 @@ teammate, and **neither gates a draft** — the ceiling can be quoted as inherit
 with its caveat, and the human baseline enters only one sentence of Part 3. What
 the draft must carry, and what this list exists to make unavoidable:
 
+**The last untouched dataset has now been spent, deliberately, on the one
+question that could have falsified the mechanism.** Cui et al.'s dCas9 CRISPRi
+screen was the only external set never used for a model, feature, split or
+hyperparameter. It was spent on "is the flank effect about cutting or about
+binding?", and the answer is cutting: family A adds **−0.009** there against
+**+0.157** on the cutting screen (Finding 5). **No untouched dataset remains**,
+so the adaptive-overfitting caveat below is permanent rather than pending, and
+further external validation needs new data.
+
+
 * the headline comparison is **parity, not a win** — +0.005 and +0.002 on
   crisprHAL's own two splits — and the data-efficiency result is the claim that
   survives a larger screen;
@@ -831,6 +883,7 @@ cost, because the cost was not small.
 | the reduced representation | **412 columns** computable from any 20-mer land 0.00003 ρ from all 6,232 — portability, not just sufficiency |
 | orientation | against a curated RegulonDB TSS, Δ **0.051 [0.020, 0.082]** with the interval clear of zero (Jacky) |
 | data efficiency | survives all five folds; the ρ ≥ 0.68 ratio goes **1.4× → 2.5×** |
+| the mechanism | a dCas9 **CRISPRi** screen, the last untouched dataset, could have shown the flank effect to be about binding or accessibility rather than cleavage. Family A adds **−0.009** there against **+0.157** on the cutting screen, flank-only 0.133 against 0.341 — so the effect is specific to cutting (Finding 5) |
 | the flanking-context thesis | the family table on the curated cohort sorts by **how far outside the 20-mer a family can see**: nothing confined to the guide clears +0.019, nothing above +0.05 is confined to it. Arrived at by withdrawing a claim that pointed the other way (Appendix B3) |
 
 ### What it cost — six claims withdrawn in four days

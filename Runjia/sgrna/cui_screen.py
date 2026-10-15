@@ -177,8 +177,13 @@ def run(seeds=(41, 42, 43), n_splits=None, verbose: bool = True):
             Xs, ys, groups = X[has_gene], y[has_gene], gene[has_gene]
         else:
             Xs, ys, groups = X[has_gene], y[has_gene], None
+        # `a_flank` alone is the arm that makes the null clean. Adding 348
+        # columns to a pool of 6,169 under a 300-column budget could dilute
+        # selection, so a small negative delta is not by itself evidence of
+        # nothing; family A on its own cannot be diluted by anything.
         for arm, cols in (("base", slice(0, n_base)),
-                          ("base+a_flank", slice(0, X.shape[1]))):
+                          ("base+a_flank", slice(0, X.shape[1])),
+                          ("a_flank_only", slice(n_base, X.shape[1]))):
             Xa = Xs[:, cols]
             nm = names[cols]
             res = cross_validate(Xa, ys, nm, ["arm"] * len(nm),
@@ -207,16 +212,50 @@ def run(seeds=(41, 42, 43), n_splits=None, verbose: bool = True):
     return out
 
 
+def cas9_reference(seeds=(41, 42, 43), n_splits=None, verbose: bool = True):
+    """The same family-A-only arm on the curated Cas9 cohort, for comparison.
+
+    "Family A does not predict CRISPRi fitness" means nothing without the number
+    it is being compared to, measured the same way: family A alone, gene-grouped,
+    same seeds and folds, on the cutting screen where it does work.
+    """
+    from .curated_ablation import _base, _block, _groups
+    from .run_ablation import cross_validate
+
+    n_splits = n_splits or config.N_SPLITS
+    X, y, names, protos = _base()
+    groups, ok = _groups("gene", protos)
+    A, anames = _block("a_flank", protos)
+    res = cross_validate(A[ok], y[ok], anames, ["a_flank"] * len(anames),
+                         n_features=config.N_FEATURES, seeds=list(seeds),
+                         n_splits=n_splits, verbose=False, groups=groups[ok],
+                         tag="cui_ref_cas9_flank_only", experiment="a_flank_only")
+    row = dict(cv="gene", arm="a_flank_only (curated Cas9 cohort)",
+               n_rows=int(ok.sum()), n_cols=A.shape[1],
+               spearman=res["summary"]["spearman"]["mean"],
+               spearman_sd=res["summary"]["spearman"]["sd"])
+    if verbose:
+        print(f"  Cas9 reference, family A alone: rho {row['spearman']:.4f} "
+              f"± {row['spearman_sd']:.4f}")
+    prev = pd.read_csv(OUT) if OUT.exists() and OUT.stat().st_size else pd.DataFrame()
+    prev = prev[prev.get("arm", pd.Series(dtype=str)) != row["arm"]] if len(prev) else prev
+    pd.concat([prev, pd.DataFrame([row])], ignore_index=True).to_csv(OUT, index=False)
+    return row
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--run", action="store_true")
+    ap.add_argument("--cas9-reference", action="store_true")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args(argv)
-    if a.build or not a.run:
+    if a.build or not (a.run or a.cas9_reference):
         build(force=a.force)
     if a.run:
         run()
+    if a.cas9_reference:
+        cas9_reference()
     return 0
 
 

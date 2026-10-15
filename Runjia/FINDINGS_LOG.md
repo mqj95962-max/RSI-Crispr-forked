@@ -3874,3 +3874,62 @@ re-tuning has little to win.
 **Still open:** item 4 (the teammate's human-baseline settings; request drafted
 at `docs/correspondence/request_human_baseline_settings.md`) and item 8 (the
 per-replicate read counts). Neither gates a draft.
+
+## 15 October 2026 (later) — the last untouched test, and it could have gone the other way
+
+**Cui et al.'s dCas9 CRISPRi screen, spent on the one question that could
+falsify Finding 3's mechanism.** Every external check so far has been another
+Cas9 *cutting* screen, which cannot separate "a duplex-opening step limited by
+local composition at the cut site" from a general property of Cas9 *binding* or
+of local accessibility — both would predict a flank effect. dCas9 binds and does
+not cut, and the label is fitness under silencing rather than survival after
+cleavage, so this screen can tell them apart.
+
+76,325 uniquely-targeting guides located in NC_000913.2, 70,298 inside 4,265
+named genes, same pipeline and champion, 3 seeds × 5 folds, **whole genes held
+out** — mandatory, since 30% of this label's variance is between genes
+(within-gene share 0.704, essentially the same as the curated Cas9 cohort's
+0.713) and essential genes sit 2.05 fitness units below the rest.
+
+    arm                      CRISPRi (dCas9)    cutting (curated Cas9)
+    20-mer base                     0.4577              0.5584
+    base + family A                 0.4484              0.7151
+    family A's increment           -0.0093             +0.1567
+    family A alone                  0.1333              0.3408
+
+**Family A adds nothing to a silencing screen and +0.157 to a cutting screen,
+measured the same way.** The flank-only arm is what makes it a clean null rather
+than a selection artefact — 348 columns competing for 300 slots in a 6,517-column
+pool could dilute selection, but family A alone cannot be diluted, and alone it
+reaches 0.133 against 0.341.
+
+**So the effect is specific to cleavage.** That is what Finding 3 claims, and a
+binding or accessibility explanation would have contradicted it. Two
+qualifications kept with it: 0.133 is not zero, so flanks do carry some
+information about CRISPRi fitness — plausibly because 2 kb around a gene says
+something about the gene — but it is *redundant with the 20-mer* there, the
+opposite of its behaviour on cutting data; and this changes enzyme, library,
+assay and laboratory at once, so what makes the null interpretable is that the
+base predicts 0.458 on the same rows. The pipeline works on this screen; the
+null belongs to family A.
+
+**There is now no untouched external dataset left.** The adaptive-overfitting
+caveat on the curated five-fold figures is permanent, not pending, and further
+external validation needs new data.
+
+**Parity, made quantitative.** The eSpCas9 tie was an unresolved difference,
+which is not equivalence. Paired bootstrap on the same 11,898 guides, 4,000
+resamples, margin declared first at ±0.01 ρ: **Δρ +0.0021, 95% CI [−0.0031,
++0.0072], p = 0.44, whole interval inside the margin.** And "fairest conditions
+for both models" is the wrong phrase — rows/labels/splits are equal, tuning is
+equal or against us, but **input DNA is unequal in our favour** (±1,000 nt
+against their 406). Under equal DNA the ranking depends on width: tied on the
+guide alone, crisprHAL ahead by 0.023 inside its 378 nt design span, us ahead by
+0.065 at ±1,000 nt. The report now carries the sentence that is true on all
+three axes.
+
+**Bug 13, mine, caught by a sanity print.** The coordinate cross-check reported
+that Cui's `pos` agreed with ours for 0.0% of guides, which reads as an assembly
+mismatch. The offset takes exactly two values, +3 and −21, one per strand: they
+report the PAM-proximal end. Every guide agrees exactly. A check that is wrong in
+the alarming direction is still a wrong check.
