@@ -4137,3 +4137,43 @@ than "+0.017 under a search we admit was unequal".
 SLICER's tuned arm starts from a configuration already selected by 627 draws on
 the published cohort and adds 12 per fold; their matched arm gets 60 draws and no
 such history. Stated rather than left for a reviewer to find.
+
+## 15 October 2026 (restructure) — the report as claims + evidence
+
+**The head-to-head was spread across four places and the newest results were
+sitting inside "what remains".** It is now **Finding 12**, which opens with the
+four conditions the comparison has been asked under and the three answers they
+give, and closes with the one sentence that survives all four. Part 4 is back to
+being the freeze and the remaining items.
+
+**What moved to the appendices**, on the principle that a finding states a claim
+and its evidence while the protocol that makes the evidence trustworthy sits
+behind it:
+
+* the three fairness axes, and why "fairest conditions for both models" should
+  not be used → Appendix A;
+* the six-metric bootstrap showing the metric split is noise → Appendix A;
+* the reconstructed fold alignment and its assertion → Appendix A;
+* the per-column reconstructibility table → Appendix A, beside the probe;
+* the published-matrix ladder and its selection-budget caveat → Appendix B;
+* the model-class corollary table → Appendix B;
+* the published label's tiling-library ceiling derivation → Appendix B, since
+  that figure belongs to a label we no longer train on.
+
+**What stayed in the body because it is an insight rather than plumbing:** the
+representation-versus-information decomposition (+0.011 against +0.097), the
+width-dependence of the comparison, the CRISPRi result that places the effect at
+cleavage, and the data-volume explanation for why our folds and their splits
+disagree.
+
+**Restated headline.** The opening paragraph and contribution 3 now lead with
+*parity at ~150× less compute plus better data efficiency*, not with a better
+model — and contribution 1 carries the correction that a deterministic function
+of the guide adds no information but does add ~+0.015 of performance. Finding 3
+leads with +0.164 on the cohort we train on rather than +0.080 on the published
+matrix; Finding 11 is retitled to the claim it now makes.
+
+Part 1 is twelve findings over ~660 lines, with the heaviest (2, 4, 5) carrying
+the decoding, the long-range mechanism and the transfer evidence respectively.
+Nulls that are null for unrelated reasons stay in B2 and B3, and the
+organisation note now says so.
