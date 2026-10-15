@@ -50,6 +50,7 @@ else:
     from . import config
 
 OUT = config.RESULTS / "final_eval_espcas9.csv"
+PRED = config.RESULTS / "preds_final_espcas9_{arm}.csv"
 HAL_DIR = config.EXTERNAL / "crisprHAL"
 HAL_DATA = HAL_DIR / "data"
 MODEL = "ESPCAS9"
@@ -141,6 +142,8 @@ def slicer(verbose: bool = True) -> dict:
     m.fit(X_tr[:, top], y_tr)
     pred = m.predict(X_te[:, top])
 
+    pd.DataFrame({"protospacer": protos[i_te], "y": y_te, "pred": pred}).to_csv(
+        str(PRED).format(arm="slicer"), index=False)
     row = dict(arm="slicer", model="SLICER (champion XGBoost, 300 of 6,517)",
                n_train=int(len(i_tr)), **_metrics(y_te, pred),
                seconds=round(time.time() - t0, 1))
@@ -170,6 +173,9 @@ def crisprhal(verbose: bool = True) -> dict:
     pred = np.asarray(model.predict(X, verbose=0)).ravel()
     if not np.isfinite(pred).all() or np.std(pred) == 0:
         raise SystemExit("their model returned degenerate predictions")
+    pd.DataFrame({"protospacer": te["protospacer"].to_numpy(),
+                  "y": te["score"].to_numpy(float), "pred": pred}).to_csv(
+        str(PRED).format(arm="crisprhal"), index=False)
     row = dict(arm="crisprhal", model="crisprHAL 2 (shipped ESPCAS9.keras)",
                n_train=int(len(np.unique(tr["protospacer"]))),
                **_metrics(te["score"].to_numpy(float), pred),
@@ -178,11 +184,61 @@ def crisprhal(verbose: bool = True) -> dict:
     return row
 
 
+def compare(margin: float = 0.01, n_boot: int = 4000, seed: int = 0,
+            verbose: bool = True) -> dict:
+    """Is the tie a measured equivalence, or just an unresolved difference?
+
+    "The two models are indistinguishable" cannot be established by failing to
+    find a difference -- that is the same error the 427-column claim avoided
+    with TOST. So the difference is bootstrapped **paired on guides**, which is
+    the right unit because both models predict the same test rows and their
+    errors are correlated; an unpaired interval would be far too wide.
+
+    The margin is declared here rather than chosen after seeing the interval:
+    **0.01 ρ**, twice the 0.005 used for the column-reduction claim, because
+    0.005 is below the fold-to-fold noise of either model on this screen.
+    Equivalence means the whole interval falls inside ±margin.
+    """
+    a = pd.read_csv(str(PRED).format(arm="slicer")).set_index("protospacer")
+    b = pd.read_csv(str(PRED).format(arm="crisprhal")).set_index("protospacer")
+    both = a.join(b, how="inner", lsuffix="_s", rsuffix="_h")
+    if not np.allclose(both["y_s"], both["y_h"]):
+        raise SystemExit("the two arms are not scoring the same labels")
+    y = both["y_s"].to_numpy()
+    ps, ph = both["pred_s"].to_numpy(), both["pred_h"].to_numpy()
+
+    obs = spearmanr(y, ps).statistic - spearmanr(y, ph).statistic
+    rng = np.random.default_rng(seed)
+    n = len(y)
+    diffs = np.empty(n_boot)
+    for i in range(n_boot):
+        k = rng.integers(0, n, n)
+        diffs[i] = (spearmanr(y[k], ps[k]).statistic
+                    - spearmanr(y[k], ph[k]).statistic)
+    lo, hi = np.percentile(diffs, [2.5, 97.5])
+    equivalent = bool(lo > -margin and hi < margin)
+    row = dict(arm="difference", model="SLICER - crisprHAL 2, paired on guides",
+               n_test=n, spearman=float(obs), ci_lo=float(lo), ci_hi=float(hi),
+               margin=margin, equivalent=equivalent,
+               p_two_sided=float(2 * min((diffs <= 0).mean(), (diffs >= 0).mean())))
+    _append(row)
+    if verbose:
+        print(f"\n  Delta rho = {obs:+.4f}  95% CI [{lo:+.4f}, {hi:+.4f}]  "
+              f"n = {n:,}")
+        print(f"  equivalent within +/-{margin}: {equivalent}")
+    return row
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--arm", choices=["slicer", "crisprhal"], required=True)
+    ap.add_argument("--arm", choices=["slicer", "crisprhal", "compare"],
+                    required=True)
+    ap.add_argument("--margin", type=float, default=0.01)
     a = ap.parse_args(argv)
-    (slicer if a.arm == "slicer" else crisprhal)()
+    if a.arm == "compare":
+        compare(margin=a.margin)
+    else:
+        (slicer if a.arm == "slicer" else crisprhal)()
     return 0
 
 

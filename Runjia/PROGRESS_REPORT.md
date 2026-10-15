@@ -690,6 +690,60 @@ Two independent partitions, chosen by them, neither used for any choice of ours:
 **+0.005 and +0.002**. That is a defensible claim of parity with the state of the
 art at a fraction of the compute — and it is not a claim of beating it.
 
+**And parity here is a measured equivalence, not a failure to find a
+difference.** The two arms predict the same 11,898 guides, so the difference is
+bootstrapped **paired on guides** (4,000 resamples) against a margin declared
+before the interval was seen — **±0.01 ρ**, twice the 0.005 used for the
+column-reduction claim because 0.005 is below either model's fold-to-fold noise
+on this screen:
+
+| | value |
+|---|---:|
+| Δρ, SLICER − crisprHAL 2 | **+0.0021** |
+| 95% CI, paired bootstrap | **[−0.0031, +0.0072]** |
+| two-sided p | 0.44 |
+| inside ±0.01 | **yes** |
+
+The whole interval falls inside the margin, which is the form of claim the data
+supports: not "we could not tell them apart" but "they are the same within a
+hundredth of a correlation".
+
+### What "parity" can and cannot mean here
+
+The phrase **"parity under the fairest conditions for both models" should not be
+used**, because "fairest" conflates two axes of fairness that point in different
+directions. Three things can be equalised, and only two of them are:
+
+| axis | on their splits | effect |
+|---|---|---|
+| **rows, labels, splits** | equal — theirs, untouched by us | fair |
+| **tuning effort** | equal, arguably in their favour: their arm is their *published* model, ours is a config frozen on a different dataset and never tuned for eSpCas9 | fair, or against us |
+| **input DNA** | **unequal, in our favour** — family A reads ±1,000 nt, their eSpCas9 input is 406 nt | against them |
+
+So the parity result is "each model at its own best configuration", which is a
+real and reportable condition — it is how both models would actually be used —
+but it is **not** the equal-information condition. When DNA *is* equalised
+(Finding 4), the ranking depends on the width: tied on the guide alone
+(0.5473 / 0.5494), **crisprHAL 2 ahead by 0.023** at its own 378 nt design span,
+SLICER ahead by 0.065 at ±1,000 nt.
+
+**The sentence that is true on all three axes at once:**
+
+> Given each model its own best input and its own tuning, SLICER is
+> statistically equivalent to crisprHAL 2 on both of crisprHAL 2's own published
+> splits — Δρ +0.0021, 95% CI [−0.0031, +0.0072] on eSpCas9, +0.005 on SpCas9 —
+> at roughly 150× less compute. Under equal input DNA the ranking depends on the
+> window: crisprHAL 2 is better inside its own 378 nt span, and SLICER is better
+> once the window reaches the 250–1,000 nt its input cannot see.
+
+Two further asymmetries belong beside it. Our features were designed on *E.
+coli* WT cutting data, the same organism, so design knowledge leaks into the
+eSpCas9 arm in a way no split can remove; and the SpCas9 margin compares our
+0.6997 against their *published* 0.695 rather than against a re-run under
+identical preprocessing — our own re-run of their model on that split gives
+0.6940, so that margin is +0.006 measured our way and +0.005 against their
+number.
+
 Two existing external checks, neither a substitute for that: the baseline anchor
 reproduces Noshay et al.'s published figure through our harness, and SLICER
 scores 0.6997 on crisprHAL 2's own shipped split, a partition untouched during
