@@ -3975,3 +3975,55 @@ crisprHAL 2"), making 29 claims withdrawn and 13 bugs. Appendix A gains the
 cross-assay control and the replicate-split ceiling, each with what would be
 believed without it. Appendix D gains Cui et al. Part 3's human-baseline sentence
 now says the claim rests on the sign of the transfer while item 4 is delegated.
+
+## 15 October 2026 (late) — three comparison conditions, three answers
+
+**The metric split on their eSpCas9 split is noise.** "They win some metrics, we
+win others" is the right conclusion, but not for the reason it looks like — a
+split can reflect a genuine difference in profile (better at global ranking
+against better at picking the top guide). Bootstrapped paired on the same 11,898
+guides, **all six differences have intervals containing zero**: ρ +0.0021
+[−0.0028, +0.0071], τ +0.0023 [−0.0024, +0.0073], Pearson −0.0019
+[−0.0066, +0.0030], R² −0.0030 [−0.0103, +0.0041], top-decile −0.0059
+[−0.0244, +0.0202], pick percentile −0.70 [−17.91, +3.98]. No metric resolves a
+difference at this sample size, which is what parity means. The last interval is
+22 percentile points wide, which is why a top-10 statistic cannot carry a
+headline.
+
+**The joint final exam on Cui, and it goes against us.** Both models scored
+zero-shot on the CRISPRi screen, neither trained on it, each on its own native
+input:
+
+    SLICER (curated Cas9 -> Cui)        |rho| 0.0609   within-gene 0.0770
+    crisprHAL 2 WT (shipped -> Cui)     |rho| 0.0867   within-gene 0.0998
+    paired difference                   -0.0258  95% CI [-0.0289, -0.0227]
+
+**crisprHAL transfers better, reliably.** Both numbers are near-nothing — a model
+*trained* on that screen reaches 0.458 — so this compares two small quantities.
+The likely reason is specific and unflattering: the transferable signal in a
+dCas9 screen is **guide-sequence** effects (Cui's own subject is sequence-specific
+dCas9 toxicity), which is what their input is, while our advantage is flanking
+DNA, which Finding 5 shows contributes nothing to silencing. **Our
+representation is more specialised to cutting than theirs**, and that is a real
+cost of the design.
+
+It is a cross-assay *transfer* test, not a held-out test of the task either model
+was built for, since no unused cutting screen exists. Declared asymmetry: our
+feature family had already been evaluated against this label once (the Finding 5
+mechanism test, a null); crisprHAL had never seen it.
+
+**So "parity" is condition-specific**, and the report now tabulates all three
+conditions rather than picking one: same task at each model's own best → parity
+within ±0.01; same task at equal DNA → depends on the width; different assay,
+zero-shot → crisprHAL by 0.026 with the interval clear of zero.
+
+**And "as published, with more of the genome" is a fair test of one thing only.**
+It equalises the input DNA — reversing the asymmetry, since they get raw sequence
+and family A gets a 348-column summary of the same window — but not the
+opportunity to use it: their epochs, dropout, filters and GRU width were chosen
+at 378 nt, and a 2,023 nt input multiplies the flattened layer ~5× while leaving
+its regularisation untouched. It supports "the published configuration is
+degraded by input wider than it was tuned for" and not "this architecture cannot
+exploit long-range context". What keeps it worth reporting is that 378 nt is
+their own searched optimum, so the experiment extends their curve rather than
+handicapping them at a setting nobody chose.

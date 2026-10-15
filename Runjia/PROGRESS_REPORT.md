@@ -340,6 +340,29 @@ epochs and every other setting were tuned at 378 nt, and **a re-tune at each
 width is the control we have not run.** One fold, one seed. State that limit
 beside the result.
 
+*Is "as published, with more of the genome" a fair test?* It is a fair test of
+one thing and not of another, and the distinction decides what Finding 4 can
+claim. Equalising the input DNA removes the information asymmetry — in fact it
+reverses it, since they receive **raw** sequence over the window while family A
+receives a 348-column lossy summary of it, so on information they are ahead.
+What it does not equalise is the *opportunity to use* that DNA. Their 48 epochs,
+dropout, filter count and GRU width were all chosen at 378 nt; stretching the
+input to 2,023 nt multiplies the flattened layer by ~5 while leaving its
+regularisation and training budget untouched. So the measurement supports
+
+> **the published configuration, used as published, is degraded by input wider
+> than it was tuned for**
+
+and not
+
+> ~~a convolutional-recurrent architecture cannot exploit long-range context~~.
+
+The second claim needs a re-tune at each width. What makes the first worth
+reporting anyway is that **378 nt is their own optimum, not an arbitrary
+inherited setting** — see below — so the experiment extends a curve past the
+point their own search stopped improving, rather than handicapping them at a
+setting nobody chose.
+
 *Their own paper supplies part of that control, and it points the same way.*
 Browne et al. (2026) searched input length **per dataset** and stopped at 378 nt
 for *E. coli* SpCas9 and 406 nt for eSpCas9, reporting that the gains level off:
@@ -774,6 +797,63 @@ on this screen:
 The whole interval falls inside the margin, which is the form of claim the data
 supports: not "we could not tell them apart" but "they are the same within a
 hundredth of a correlation".
+
+### Every comparison condition we can construct, and the three different answers
+
+Asked under one condition the head-to-head gives parity; asked under another it
+does not. The conditions are listed here because choosing one of them silently
+is the main way this comparison could be made to say whatever we want.
+
+| condition | what it holds fixed | result |
+|---|---|---|
+| **same task, their split, each model at its own best input and tuning** | rows, label, split, and each side's own configuration | **parity** — Δρ +0.0021, 95% CI [−0.0031, +0.0072], inside a pre-declared ±0.01; and on their SpCas9 split +0.005 |
+| **same task, equal input DNA** | rows, label, split, *and the DNA each model reads* | **depends on the width** — tied on the guide alone (0.5473 / 0.5494), crisprHAL +0.023 inside its own 378 nt span, SLICER +0.065 at ±1,000 nt |
+| **different assay, neither model trained on it** | rows, label, and that neither has seen the data | **crisprHAL, reliably** — zero-shot on Cui's CRISPRi screen, \|ρ\| 0.0867 against our 0.0609, difference **−0.0258 [−0.0289, −0.0227]** |
+
+**On their own splits the metric split is noise, not a profile difference.** It
+would be easy to read "we win the rank metrics, they win the top-of-list metrics"
+as a real difference in character — ours better at global ordering, theirs better
+at picking a guide. Bootstrapped paired on the same 11,898 guides, **all six
+differences have intervals containing zero**:
+
+| metric | Δ (SLICER − crisprHAL) | 95% CI |
+|---|---:|---|
+| Spearman ρ | +0.0021 | [−0.0028, +0.0071] |
+| Kendall τ | +0.0023 | [−0.0024, +0.0073] |
+| Pearson r | −0.0019 | [−0.0066, +0.0030] |
+| R² | −0.0030 | [−0.0103, +0.0041] |
+| top-decile precision | −0.0059 | [−0.0244, +0.0202] |
+| expected pick percentile | −0.70 | [−17.91, +3.98] |
+
+So "they win some, we win others" is the right conclusion *and* the right reason
+is not the split itself — a split can reflect a genuine difference in profile.
+It is that **no metric resolves a difference at this sample size**, which is
+what parity means. The last row also shows why a top-10 statistic should not
+carry a headline: its interval is 22 percentile points wide.
+
+**Where parity fails is the transfer test, and it fails against us.** Scored
+zero-shot on a screen neither model trained on, crisprHAL 2's raw-sequence model
+carries over better than our engineered representation: \|ρ\| 0.0867 against
+0.0609, paired difference −0.0258 with the interval clear of zero
+(`cui_final_exam.py`). Both numbers are near-nothing in absolute terms — a model
+*trained* on that screen reaches 0.458 — so this is a comparison of two small
+quantities, and it should be reported as one. The likely reason is specific and
+unflattering: the transferable signal in a dCas9 screen is **guide-sequence**
+effects (Cui's own subject is sequence-specific dCas9 toxicity), which is exactly
+what their input is, while our advantage is flanking DNA, which Finding 5 shows
+contributes nothing to silencing. **Our representation is more specialised to
+cutting than theirs.** That is a real cost of the design and belongs in the
+paper.
+
+*What this test is and is not.* It is a cross-assay transfer test: both models
+predict cutting, Cui's label is growth fitness under silencing, and those are
+different constructs, so it measures which inductive bias survives a change of
+readout rather than which predicts cutting better. It is **not** a held-out test
+of the task either model was built for — no unused cutting screen exists — and
+treating it as "the final exam" would quietly swap the question. One asymmetry
+to declare: SLICER's feature family had already been evaluated against this label
+once, in the mechanism test of Finding 5, where the result was a null; nothing
+was selected on it, and crisprHAL had never seen it.
 
 ### What "parity" can and cannot mean here
 

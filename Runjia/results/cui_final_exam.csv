@@ -1,0 +1,4 @@
+arm,model,n_test,spearman,spearman_within_gene,seconds,ci_lo,ci_hi
+slicer,"SLICER (trained on curated Cas9, zero-shot)",76325,0.0609371464053938,0.0769721788942181,17.2,,
+crisprhal,"crisprHAL 2 WT-SpCas9 (shipped, zero-shot)",76325,0.0866923952254892,0.0998434836359295,36.3,,
+difference,"|SLICER| - |crisprHAL|, paired on guides",76325,-0.025755248820095417,,,-0.02893480673766294,-0.022700151342353633
