@@ -106,12 +106,32 @@ misnomer worth retiring (`results/portability_audit.csv`):
 
 **Only two of the sixty-three need anything beyond the guide**, and both are
 positional. The other sixty-one are the guide re-described: counts instead of
-indicators, a melting temperature instead of the bases that determine it. So they
-are not a source of extra information to imitate — they are *summaries*, and
-their value is the representation effect this finding measures at **+0.011 to
-+0.019** (below, and Appendix B). Building more of them is worth about that much,
-which is the same answer the quantum tables, CRISPRoff energies and ViennaRNA
-folding all gave independently.
+indicators, a melting temperature instead of the bases that determine it.
+
+**Split along that line, all of their value is in the re-description**
+(`handnamed_split.py`, published matrix, no selection in any arm):
+
+| arm | columns | ρ | over the base |
+|---|---:|---:|---:|
+| 364 sequence indicators | 364 | 0.5189 ± 0.0010 | — |
+| **+ the 46 computable from the 20-mer** | 410 | **0.5254 ± 0.0013** | **+0.0065** |
+| + the 17 that are not (2 annotation distances, 15 undecoded `V`) | 381 | 0.5182 ± 0.0009 | **−0.0007** |
+| + all 63 | 427 | 0.5256 ± 0.0018 | +0.0066 |
+
+**The computable 46 carry the whole gain; the 17 carry none of it.** So the
+427-column result — the one this project has quoted since September — is not
+evidence that the matrix contains non-sequence information. It is another
+measurement of re-description paying a depth-limited tree, the fourth
+independent one, and it lands in the same band: quantum tables +0.011,
+`b_energy` +0.019, `c_folding` +0.014, `d_mechanics`'s guide half +0.011, the
+hand-named 46 +0.0065.
+
+**And it closes the annotation question at the guide level.** The two columns
+that genuinely need annotation — distance to the nearest gene, distance to the
+PAM — are inside the 17 and contribute nothing. Annotation helps this task only
+at the *locus* scale, where `d_supercoiling`, `e_nucleoid` and
+`g_transcription` are worth +0.145 between them, and even there they overlap so
+heavily that they are one variable measured three ways (Appendix B3).
 
 **And the reduced set is portable** (`portability.py`), which is what a move to
 another cohort actually needs. Of the 63 hand-named columns, 26 are computable from the 20-mer
@@ -935,7 +955,7 @@ measurably insensitive. Every decision that could inflate those figures, audited
 | selector = XGBoost gain | inherited; the LightGBM alternative was measured | no | **no** — 0.7033 against 0.7025 |
 | 5 folds, `random_state=41` | fixed once, reused by every arm in the report | no | reported over 5 seeds × 5 folds |
 | family A's existence | designed in **September on the published cohort**, from residuals computed there | no — a different cohort | it is the effect, so it must matter |
-| family A's window set (50/250/500/1,000) | swept on the **published** cohort, winner carried over | no, but a sweep winner carries its own curse | **being tested** — rebuilt at 75/300/600/1,200, agreement within ±0.005 declared in advance as "does not matter" |
+| family A's window set (50/250/500/1,000) | swept on the **published** cohort, winner carried over | no, but a sweep winner carries its own curse | **no** — rebuilt at 75/300/600/1,200, which shares no value with it: **+0.1634 against +0.1638**, a difference of 0.0005 against the ±0.005 declared in advance |
 | per-fold hyperparameter search (627 draws) | curated cohort, **nested inside each training fold** | no — cannot see a validation row by construction | +0.0131 |
 | the 412/427 reduced column set | published cohort | n/a — it does not transfer, and the report says so | — |
 | which families to report | all eleven are reported, including the nulls | no | — |
@@ -962,8 +982,17 @@ thing — it is a different, smaller, noisier draw. `sealed_holdout.py` bounds t
 *automatable* part of the adaptivity by re-deriving selection and tuning inside a
 development pool and scoring genes sealed from all of it; it cannot bound this.
 
-**What would have prevented it:** sealing 20% of the curated cohort on 13 October,
-before the pivot, rather than on 16 October after it. That is the one procedural
+*One of the two was testable, and it passed.* The window set is the kind of
+choice that carries a sweep's winner's curse even when the sweep happened on
+another cohort. Rebuilding family A at **75/300/600/1,200 nt** — four windows
+sharing no value with the published four — gives **+0.1634 against +0.1638**.
+A difference of **0.0005**, a tenth of the declared margin, so the four numbers
+in `config.FLANK_WINDOWS` are not where any of family A's gain lives. That is
+what Finding 4 predicts for a smooth gradient and it is one fewer thing for a
+reviewer to ask about.
+
+**What would have prevented the one that remains:** sealing 20% of the curated
+cohort on 13 October, before the pivot, rather than on 16 October after it. That is the one procedural
 lesson worth carrying to the next organism — seal first, and seal by gene.
 
 ### What the pivot re-opens
