@@ -57,12 +57,30 @@ def run(seeds=SEEDS, n_splits=None, verbose: bool = True):
     mono_di = _unit_columns(names, ("monomer", "dimer"))
     A, anames = _block("a_flank", protos)
 
+    mono_di_tri = _unit_columns(names, ("monomer", "dimer", "trimer"))
+    all_kmers = _unit_columns(names, ("monomer", "dimer", "trimer", "tetramer"))
+    sel = lambda m: [n for n, k in zip(names, m) if k]
     arms = {
-        "mono": (X[:, mono], [n for n, k in zip(names, mono) if k]),
-        "mono_di": (X[:, mono_di], [n for n, k in zip(names, mono_di) if k]),
+        "mono": (X[:, mono], sel(mono)),
+        "mono_di": (X[:, mono_di], sel(mono_di)),
+        # Finding 7 says higher-order k-mers help once selection is removed, and
+        # that was measured on the published matrix. These two arms re-ask it
+        # here, where no arm selects: trimers add 1,146 columns and tetramers a
+        # further 4,343, so if the trimer step pays and the tetramer step does
+        # not, the usable order stops at three on this cohort too.
+        "mono_di_tri": (X[:, mono_di_tri], sel(mono_di_tri)),
+        # The step from mono_di_tri to base_full adds two different things at
+        # once -- 4,343 tetramer indicators and 316 quantum-table columns -- so
+        # a gain there cannot be attributed to either. This arm is the k-mers
+        # without the quantum columns, which is what Finding 7's "the usable
+        # order stops at three" is actually a claim about.
+        "all_kmers": (X[:, all_kmers], sel(all_kmers)),
         "base_full": (X, names),
-        "mono_di+a_flank": (np.hstack([X[:, mono_di], A]),
-                            [n for n, k in zip(names, mono_di) if k] + anames),
+        "mono_di+a_flank": (np.hstack([X[:, mono_di], A]), sel(mono_di) + anames),
+        "mono_di_tri+a_flank": (np.hstack([X[:, mono_di_tri], A]),
+                                sel(mono_di_tri) + anames),
+        "all_kmers+a_flank": (np.hstack([X[:, all_kmers], A]),
+                              sel(all_kmers) + anames),
         "base_full+a_flank": (np.hstack([X, A]), names + anames),
     }
 

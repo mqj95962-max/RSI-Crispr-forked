@@ -65,9 +65,17 @@ not pure functions of the protospacer and are not reproduced.
 ### 2. Those 6,232 columns contain about 20 variables
 
 A 20-mer carries at most 40 bits; the matrix spends 6,232 columns on it in three
-overlapping spellings. **74 mononucleotide indicators are a lossless encoding** —
-every position carries at least three of its four, so the fourth is implied — and
-recover 96.4% of full-matrix ρ. Adding the 63 non-sequence columns gives **427
+overlapping spellings. **74 mononucleotide indicators are a lossless encoding.**
+There are only four bases, so the 74 are *position-specific*: one indicator per
+(position, base) pair over the 20 positions. A complete one-hot would be 80, and
+three of four determine the fourth, so 60 would do — the matrix carries **all
+four indicators at 14 positions and three at the other six** (positions 3, 4, 5,
+6, 7 and 20, each missing a different base). Those six omissions are not absent
+bases: every dropped base occurs in 20–27% of guides. **So the matrix is not even
+internally consistent in its own encoding** — 14 positions carry a column that is
+arithmetically implied by its neighbours and six do not, which is the cleanest
+single illustration of what "elaborate spelling" means here. The 74 recover 96.4%
+of full-matrix ρ. Adding the 63 non-sequence columns gives **427
 columns at ρ 0.5249 against 0.5272**: loss **+0.0023, 95% CI [−0.0008, +0.0054]**,
 formally **non-inferior against a pre-declared 0.005 ρ margin** (one-sided
 p = 0.035). The matrix decomposes as **74 sequence + 63 non-sequence + ~6,095
@@ -84,6 +92,46 @@ family A, eight classes span **0.1076 ρ** against 0.116 for sixteen classes
 without it — adding the one family that matters does not widen the gap between
 model classes at all, while the family itself is worth +0.164. Table in
 Appendix B.
+
+**What the 63 non-sequence columns actually are**, since "non-sequence" is a
+misnomer worth retiring (`results/portability_audit.csv`):
+
+| | count | computable from the 20-mer? |
+|---|---:|---|
+| whole-guide k-mer counts (4 mono + 16 di) | 20 | yes |
+| guide GC, guide Tm, guide RNA secondary structure | 3 | yes |
+| PAM base indicators | 4 | yes |
+| undecoded `V` columns | 34 | 19 yes, 15 no |
+| **distance to the nearest gene and to the PAM** | **2** | **no — needs annotation** |
+
+**Only two of the sixty-three need anything beyond the guide**, and both are
+positional. The other sixty-one are the guide re-described: counts instead of
+indicators, a melting temperature instead of the bases that determine it.
+
+**Split along that line, all of their value is in the re-description**
+(`handnamed_split.py`, published matrix, no selection in any arm):
+
+| arm | columns | ρ | over the base |
+|---|---:|---:|---:|
+| 364 sequence indicators | 364 | 0.5189 ± 0.0010 | — |
+| **+ the 46 computable from the 20-mer** | 410 | **0.5254 ± 0.0013** | **+0.0065** |
+| + the 17 that are not (2 annotation distances, 15 undecoded `V`) | 381 | 0.5182 ± 0.0009 | **−0.0007** |
+| + all 63 | 427 | 0.5256 ± 0.0018 | +0.0066 |
+
+**The computable 46 carry the whole gain; the 17 carry none of it.** So the
+427-column result — the one this project has quoted since September — is not
+evidence that the matrix contains non-sequence information. It is another
+measurement of re-description paying a depth-limited tree, the fourth
+independent one, and it lands in the same band: quantum tables +0.011,
+`b_energy` +0.019, `c_folding` +0.014, `d_mechanics`'s guide half +0.011, the
+hand-named 46 +0.0065.
+
+**And it closes the annotation question at the guide level.** The two columns
+that genuinely need annotation — distance to the nearest gene, distance to the
+PAM — are inside the 17 and contribute nothing. Annotation helps this task only
+at the *locus* scale, where `d_supercoiling`, `e_nucleoid` and
+`g_transcription` are worth +0.145 between them, and even there they overlap so
+heavily that they are one variable measured three ways (Appendix B3).
 
 **And the reduced set is portable** (`portability.py`), which is what a move to
 another cohort actually needs. Of the 63 hand-named columns, 26 are computable from the 20-mer
@@ -110,8 +158,12 @@ compared in full rather than candidate pools under a budget:
 |---|---:|---:|---:|
 | mononucleotide only | 74 | 0.5198 ± 0.0021 | −0.0251 |
 | + dinucleotide | 364 | 0.5331 ± 0.0010 | −0.0118 |
-| **regenerated base** | **6,169** | **0.5449 ± 0.0013** | — |
+| + trimer | 1,510 | 0.5354 ± 0.0003 | −0.0096 |
+| + tetramer (**all k-mers**) | 5,853 | 0.5335 ± 0.0013 | −0.0114 |
+| **regenerated base** (+ 316 quantum columns) | **6,169** | **0.5449 ± 0.0013** | — |
 | 364 + family A | 712 | 0.6937 ± 0.0010 | −0.0142 |
+| 1,510 + family A | 1,858 | 0.7011 ± 0.0009 | −0.0068 |
+| all k-mers + family A | 6,201 | 0.7005 ± 0.0004 | −0.0074 |
 | base + family A | 6,517 | **0.7079 ± 0.0004** | — |
 
 **Two results, and they point in opposite directions.**
@@ -122,16 +174,34 @@ against 0.7079. **±0.0005.** The selection budget was never the binding
 constraint, which retires both the protocol caveat above and the `n_features`
 row in Part 4.
 
-*But the reduced representation is **not** non-inferior here.* 364 columns lose
-**0.0118** and 712 lose **0.0142** — two to three times the pre-declared 0.005 ρ
-margin that 427 passed on the published matrix. The reduction claim therefore
-does not transfer: **"412 ≈ all 6,232" is a statement about the published matrix
-under a 300-column budget**, and on the curated cohort with every column
-available the higher-order k-mer columns are worth 0.012–0.014. That is Finding
-7 seen from the other side — higher-order k-mers help once selection is removed —
-and it means the paper must state the reduction with both qualifiers or not at
-all. What does transfer is the *lossless* part: 74 columns recover 95.4% of full
-ρ here against 96.4% there.
+*But no reduced representation we tested is non-inferior here.* 364 columns lose
+**0.0118**, 1,510 lose **0.0096**, and with family A present the shortfalls are
+0.0142 and 0.0068 — every one of them past the pre-declared 0.005 ρ margin that
+427 passed on the published matrix. So **"412 ≈ all 6,232" is a statement about
+the published matrix under a 300-column budget** and does not transfer; on this
+cohort the full regenerated base earns its 6,169 columns. What *does* transfer is
+the lossless part: 74 columns recover 95.4% of full ρ here against 96.4% there.
+
+*Finding 7 reproduces, and the step it does not explain is the interesting one.*
+The usable k-mer order does stop at three here as it did on the published matrix:
+trimers buy **+0.0023** and tetramers then **cost −0.0019** (−0.0006 with family
+A), against +0.0035 and −0.0028 there. Four thousand three hundred and
+forty-three tetramer indicators are too sparse to carry anything, on both
+cohorts.
+
+**What the last step buys is the 316 quantum-chemical columns, and they are worth
++0.0114** over a *complete* k-mer encoding — every mono-, di-, tri- and
+tetramer indicator the matrix contains — with no selection anywhere. With family
+A present they are still worth +0.0074. That is this project's own narrative
+turned around: those columns have been described throughout as part of the
+"elaborate spelling" of the 20-mer, and they are — every one is a lookup of a
+physical property for the base, pair or triple at a position, so they add **no
+information** whatsoever. They buy +0.011 all the same, which places Noshay et
+al.'s quantum tables **exactly in the band every other guide-only summarisation
+family occupies**: `b_energy` +0.019, `c_folding` +0.014, `d_mechanics`'s
+protospacer half +0.011, quantum tables +0.011. Four independent
+re-descriptions of the same twenty letters, four gains between one and two
+hundredths. The consistency is the result.
 
 **A consequence that is often stated as a theorem, and is false.** If the matrix
 encodes the 20-mer losslessly, it is tempting to conclude that *any* deterministic
@@ -455,6 +525,16 @@ blocks, primary set n = 8,954:
 | nearest gene | 0.040 | 0.014 | 0.026 [−0.006, 0.058] | 0.054 |
 | nearest gene, matched on distance + flank GC | 0.029 | 0.022 | **0.007 [−0.024, 0.038]** | **0.337** |
 | TSS, matched on distance + flank GC | 0.048 | 0.023 | 0.025 [−0.003, 0.053] | 0.041 |
+
+*Which file these come from, since two exist.* All figures above are the
+**pooled out-of-fold** definition — one Spearman over pooled predictions, ρ(y,
+pred_dn) − ρ(y, pred_up) — from `intergenic_orientation_controls_delta_ci.csv`,
+because the bootstrap interval and P(Δ≤0) are tied to that definition.
+`summary.csv` averages per-fold ρ first and gives TSS Δ 0.0540 against the
+0.0507 quoted here; the ~0.003 difference is fold-mean against pooled-OOF, not
+an inconsistency, and Jacky documented which to quote
+(`Jacky/orientation-controls/README.md`). The paper should use the OOF file
+throughout and say so.
 
 **Three things changed, two of them against us.**
 
@@ -860,6 +940,61 @@ the field already has several predictors, and everything needed to build one
 later exists (`featurise.matrix()` turns any 20-mer into the published
 representation).
 
+### The decision register: which choices could have inflated the five-fold figures
+
+"The curated five-fold figures carry an unknown adaptive-overfitting component"
+is the honest caveat, and it is also lazy — the component is not uniformly
+unknown, because most of the choices have a traceable provenance and several are
+measurably insensitive. Every decision that could inflate those figures, audited
+16 October:
+
+| decision | chosen where | adaptive w.r.t. the curated folds? | does it matter? |
+|---|---|---|---|
+| 300 selected columns | **inherited** from the baseline script (`N_FEATURES = 300`) | no | **no** — ±0.0005 against using every column |
+| champion XGBoost settings | **inherited** from the same script, not searched by us on either cohort | no | **no** — 0.0002 against LightGBM at its own unrelated defaults |
+| selector = XGBoost gain | inherited; the LightGBM alternative was measured | no | **no** — 0.7033 against 0.7025 |
+| 5 folds, `random_state=41` | fixed once, reused by every arm in the report | no | reported over 5 seeds × 5 folds |
+| family A's existence | designed in **September on the published cohort**, from residuals computed there | no — a different cohort | it is the effect, so it must matter |
+| family A's window set (50/250/500/1,000) | swept on the **published** cohort, winner carried over | no, but a sweep winner carries its own curse | **no** — rebuilt at 75/300/600/1,200, which shares no value with it: **+0.1634 against +0.1638**, a difference of 0.0005 against the ±0.005 declared in advance |
+| per-fold hyperparameter search (627 draws) | curated cohort, **nested inside each training fold** | no — cannot see a validation row by construction | +0.0131 |
+| the 412/427 reduced column set | published cohort | n/a — it does not transfer, and the report says so | — |
+| which families to report | all eleven are reported, including the nulls | no | — |
+| ρ as the primary metric | crisprHAL 2's own reporting convention | no | nine-metric panel in Appendix B |
+| **the choice of cohort** | **here, and partly because curation improved our score** (ρ 0.607 → 0.628 on shared rows) | **yes** | unquantified |
+
+**Two conclusions, and the second is the uncomfortable one.**
+
+*Most of the pipeline is less adaptive than the caveat implies.* The settings a
+reviewer would suspect first — 300 columns, the booster's hyperparameters, the
+selector — were **inherited from the baseline script we started from**, and the
+report said otherwise until this audit: it credited the champion to "627 draws
+against the old cohort", conflating an inherited constant with the curated
+cohort's nested per-fold search. Both of those settings are also measurably
+insensitive, at ±0.0005 and 0.0002. The per-fold search is leak-free by
+construction. So the mechanisable part of the pipeline has little room to have
+inflated anything.
+
+*The cohort choice is genuinely adaptive and cannot be undone.* We moved to
+crisprHAL's curated label partly on the evidence that it improved scores, and
+every figure since is computed on the rows that choice selected. No re-derivation
+reaches it, because the alternative cohort is not a held-out sample of the same
+thing — it is a different, smaller, noisier draw. `sealed_holdout.py` bounds the
+*automatable* part of the adaptivity by re-deriving selection and tuning inside a
+development pool and scoring genes sealed from all of it; it cannot bound this.
+
+*One of the two was testable, and it passed.* The window set is the kind of
+choice that carries a sweep's winner's curse even when the sweep happened on
+another cohort. Rebuilding family A at **75/300/600/1,200 nt** — four windows
+sharing no value with the published four — gives **+0.1634 against +0.1638**.
+A difference of **0.0005**, a tenth of the declared margin, so the four numbers
+in `config.FLANK_WINDOWS` are not where any of family A's gain lives. That is
+what Finding 4 predicts for a smooth gradient and it is one fewer thing for a
+reviewer to ask about.
+
+**What would have prevented the one that remains:** sealing 20% of the curated
+cohort on 13 October, before the pivot, rather than on 16 October after it. That is the one procedural
+lesson worth carrying to the next organism — seal first, and seal by gene.
+
 ### What the pivot re-opens
 
 Many choices were made under two constraints that no longer bind: the 13,880-row
@@ -874,7 +1009,7 @@ settled under those constraints and is **not** automatically valid on crisprHAL'
 | **the ceiling, 0.937** | Guo's replicate statistics for the published label | **closed, and it was higher as predicted: 0.946 [0.944, 0.948]**, from crisprHAL's own per-replicate counts (Finding 11) |
 | **`n_features` = 300** | selector sweep on 6,232 published columns | **closed.** Selecting 300 against using every column: 0.5445 / 0.5449 on the base and 0.7084 / 0.7079 with family A. ±0.0005 in both directions, so the budget is free on this cohort too (Finding 2) |
 | **grouped CV by `arc5` / 100 kb block** | 13,880 guides, within-gene variance share 0.844 | **re-measured — it moved.** 0.844 → **0.713** on the curated cohort: gene identity explains 29% of the label there against 16% here, so gene-grouped CV constrains the model *more*, not less (Appendix B) |
-| **champion hyperparameters** | 627 draws against the old cohort | **decided: keep the freeze.** The champion XGBoost and LightGBM at its own unrelated defaults land within **0.0002 ρ** of each other on the curated cohort with family A (0.7084 / 0.7082), so the configuration is not a knife-edge and re-tuning has little to win. Stated as a decision with its evidence rather than left as a tension |
+| **champion hyperparameters** | **inherited from the baseline script**, not searched by us on either cohort — `n_estimators`, `learning_rate=0.05`, `max_depth=4`, `subsample=0.8`, `colsample_bytree=0.8` and `N_FEATURES=300` all come from `FINAL_baseline_ecoli_sgRNA_model_5seeds.py`. The 627 draws are the *per-fold nested* search on the curated cohort, which is a different thing and cannot leak | **decided: keep the freeze.** The champion XGBoost and LightGBM at its own unrelated defaults land within **0.0002 ρ** of each other on the curated cohort with family A (0.7084 / 0.7082), so the configuration is not a knife-edge and re-tuning has little to win. Stated as a decision with its evidence rather than left as a tension |
 | **the family Δρ table** | published matrix and label | **closed — all eleven families re-measured on the curated cohort** (Appendix B3). The *ordering* transfers almost exactly (rank ρ 0.97); every family inflates, median 3.3×. So the published table is still a guide to which families matter, and not to how much |
 | **"sixteen model classes span 0.116 ρ"** | published matrix, no family A | **closed, and it holds.** Eight classes on the curated base *with* family A span **0.1076 ρ** (XGBoost 0.7084 → k-NN 0.6007), against 0.116 for sixteen classes without it. Model class spans ~0.11 either way while family A alone is worth +0.164 (Finding 2) |
 | **Noshay's iRF as baseline anchor** | the only available comparator | now provenance only; crisprHAL 2 is the baseline |
@@ -1613,6 +1748,90 @@ directions (Finding 2) — but the caveat had to be measured rather than waved
 away, and when it was, **the reduction itself stopped holding on the curated
 cohort**.
 
+### What sixteen model classes and 220× of compute tell us about the task
+
+Accuracy against cost, all on the curated cohort with family A, one seed × five
+folds, against crisprHAL 2 on the same folds (`curated_models.csv`,
+`crisprhal_tuned_folds.csv`):
+
+| | ρ | CPU-minutes, 5 folds | relative cost |
+|---|---:|---:|---:|
+| **XGBoost** (champion) | **0.7084** | 1.9 | 1× |
+| LightGBM | 0.7082 | 1.4 | 0.7× |
+| extra trees | 0.6537 | 1.2 | 0.6× |
+| random forest | 0.6482 | 1.3 | 0.7× |
+| ridge | 0.6473 | 1.0 | 0.5× |
+| PLS | 0.6450 | 1.0 | 0.5× |
+| elastic net | 0.6369 | 1.0 | 0.5× |
+| k-NN | 0.6007 | 1.0 | 0.5× |
+| crisprHAL 2, published configuration | 0.6971 | 85 | 45× |
+| crisprHAL 2, its best configuration | 0.7051 | 220 | **113×** |
+
+**Boosting beats a tuned CNN–BiGRU by +0.003 at 1/113th of the compute, and
+*ridge* is within 0.058 of it at 1/220th.** A linear model on 300 engineered
+columns, fitted in one CPU-minute, gets within six hundredths of a deep network
+that takes three and a half hours. That is the cost argument in its strongest
+form, and it does not depend on our model winning anything.
+
+**What the spread says about the task.** Reading the classes by what each is good
+at is more informative than ranking them:
+
+* **ridge ≈ PLS ≈ random forest ≈ extra trees, all within 0.009.** Three very
+  different inductive biases — penalised linear, low-rank linear, bagged trees —
+  land in the same place. When bagging buys nothing over a straight line, the
+  problem is **bias-limited, not variance-limited**, at this sample size.
+* **boosting is worth +0.055 over ridge.** Sequential bias reduction is the one
+  thing that helps, which is what a sum of many small, partly-interacting effects
+  calls for. On the published matrix *without* family A that margin was 0.03;
+  adding family A nearly doubles it, so **family A is also where the exploitable
+  interaction structure is**, not merely where the signal is.
+* **k-NN is worst, at 0.601.** Nearest neighbours in 300 dimensions find almost
+  nothing, so the signal is **smooth and global rather than clustered** — there
+  is no neighbourhood of similar guides to borrow an answer from. That is
+  consistent with Finding 4's gradient and inconsistent with a motif.
+
+**And the comparison is not architecture against architecture.** crisprHAL 2 at
+0.7051 sits between our boosters and our forests. The thing that separates the
+top two rows from the bottom six is not depth, recurrence or ensembling — it is
+**which columns the model is given**, since every row above reads the same 300.
+Representation decides the task; model class decides a tenth of a correlation
+(Finding 2).
+
+### If crisprHAL 2 were tuned at ±1,000 nt, would it beat SLICER?
+
+Almost certainly not, and the arithmetic is already on the table. Their model
+peaks at its design width and declines monotonically beyond it: 0.6799 at 378 nt,
+0.6602 at 1,023, 0.6299 at 2,023 (Finding 4). To overtake SLICER's 0.7218 from
+the 2,023 nt arm, re-tuning would have to find **+0.092** — nearly twice the
+0.050 it loses by being widened at all, and more than four times the +0.021 the
+*whole* of its own hyperparameter space was worth at 378 nt when we searched it
+(Appendix B: a nested search there found nothing better than its published
+configuration).
+
+So the honest statement is conditional and worth making in the paper: *if* a
+convolutional–recurrent architecture can be re-engineered to use 2 kb of context,
+nothing here says it cannot — but **re-tuning the existing one at that width is
+not the experiment that would show it**, because its published configuration is
+already at the optimum of its own search space, and widening its input costs it
+more than that space contains. The claim this project can defend is about the
+*published* architecture at any width, not about the class.
+
+### Does the pipeline need a selector at all?
+
+**No, and the conclusions that matter do not go through it.** The 300-column
+selector is inherited from the baseline script, kept so ablations stay comparable
+to the frozen anchor, and it is a property of our pipeline rather than of the
+biology. It is also measurably free: 300 columns against every column differ by
+**±0.0005** in both directions (Finding 2).
+
+That matters for one specific objection. A statement like "tetramer columns do not
+help" could be an artefact of a selector that never picks them — and on the
+published matrix it *was* exactly that, which is Finding 7's whole point.
+**Every arm of the reduced-representation ladder above therefore runs with no
+selection at all**, `n_features` set to each arm's own column count. The tetramer
+result (−0.0019), the quantum-column result (+0.0114) and the non-inferiority
+failures are all selector-free, and so is the biology read off them.
+
 ### Does model class matter more once the representation contains the effect?
 
 No, and that is what makes the Finding 2 corollary usable. "Sixteen model classes
@@ -2093,6 +2312,49 @@ the +0.099 (Finding 2). The representation effect is real at **+0.011 to +0.019*
 across three guide-only arms; the claim was inflated nine-fold by a family whose
 column list nobody had read.
 
+### Family G's own rule, applied here at last — and it fails
+
+`g_transcription` was built with a discipline in its module docstring: *claim
+nothing unless an interaction term beats both of its parents.* Guo et al. had
+already reported the marginals as null — target-gene expression, chromosome
+position, leading-versus-lagging strand — so the family existed to test whether a
+mechanism needing **both** transcription and strand to line up shows up where
+neither marginal does. Appendix B3 reported +0.058 here and admitted the rule had
+never been applied on this cohort. Applied (`txn_interactions.py`):
+
+| arm | columns | Δρ |
+|---|---:|---:|
+| the 15 marginals | 15 | **+0.0577** |
+| the 4 `eng.txn.ix.*` interactions alone | 4 | +0.0175 |
+| both | 19 | +0.0581 |
+
+**The interactions add +0.0004 on top of their parents.** The rule is not
+satisfied — not close — so nothing about the transcription–strand mechanism is
+supported here. What carries the family's +0.058 is the **marginals**, which is
+the opposite of the design's premise and a failure to replicate Guo's reported
+null for expression, position and strand.
+
+*The phenotype confound, checked.* The curated label is **survival after
+cutting**, so a guide aimed at an essential gene depletes the cell whether or not
+the guide is any good, and any gene-level column could predict the label through
+the phenotype rather than through Cas9 activity. Decomposed:
+
+| what the columns read | columns | Δρ |
+|---|---:|---:|
+| **essentiality alone** | 1 | **+0.0000** |
+| the expression block (level, variability, control, pseudogene) | 5 | +0.0213 |
+| the rest of the marginals — TSS distance, position in gene, gene length, template strand, replichore, distance to *oriC* | 10 | **+0.0393** |
+
+**Essentiality contributes exactly nothing**, so the phenotype channel is not
+where the family's gain comes from — a useful negative, because it was the
+obvious objection. What the +0.058 is made of is **gene geometry and position**
+(+0.039) plus a real but smaller **expression** contribution (+0.021), close to
+additive. The positional part is the same variable the other positional families
+read, which is why the three of them together realise only 54% of their sum
+(above). So family G is best described as *another measurement of position, with
+a fifth of its gain from expression* — not as evidence for a
+transcription–strand mechanism, which its own rule rejects.
+
 **Family G is the one family carrying genuinely new non-sequence information**
 — RegulonDB TSS positions and PRECISE-1K expression, neither computable from the
 genome — and at +0.058 it is now sixth. On the published matrix it was +0.015 and
@@ -2214,11 +2476,91 @@ the row population accounts for most of it (Appendix B2a). What is still unrun i
 the same test with the *published* matrix's 63 hand-named columns rather than
 this 41-column stand-in.
 
-**They are single-family increments over a common base, nothing more.** No joint
-arm has been run on this cohort, and the published cohort's joint arms are the
-reason to expect heavy overlap: `i_shape` on top of family A was worth +0.001
-there, and the three positional families collapsed into one variable. Summing
-this column would give +0.70 ρ of improvement, which is not a real quantity.
+### Are the eleven families the right organisation, and would another work better?
+
+They are an organisation by **idea** — one family per hypothesis from the
+literature — and three of the eleven have now been shown to mis-describe their
+own columns:
+
+| family | what its name claims | what its columns do |
+|---|---|---|
+| `d_mechanics` | duplex thermodynamics of the guide | 8 of 30 columns are **flanking-DNA** thermodynamics, and they carry +0.097 of its +0.099 (Finding 2) |
+| `i_shape` | DNA shape and bendability | a near-duplicate of `a_flank`: +0.0009 on top of it, exactly 0.0000 once `d_supercoiling` is in (below) |
+| `g_transcription` | a transcription–strand interaction | its own interaction rule fails; the gain is gene geometry and position, plus a fifth from expression (Finding 5) |
+
+So the family boundaries track *intent*, and a boundary that tracks intent will
+cut across the information the columns actually carry. **A better organisation
+exists and this report already uses it in places: group columns by what they are
+allowed to read.** Four blocks instead of eleven families —
+
+| block | families contributing | what it can see |
+|---|---|---|
+| guide | `b_energy`, `c_folding`, `f_methylation`, 22/30 of `d_mechanics`, the quantum tables | the 20-mer and its PAM |
+| flanks | `a_flank`, `i_shape`, 8/30 of `d_mechanics` | 50–1,000 nt either side |
+| external measurement | `d_supercoiling`, `e_nucleoid`, part of `g_transcription` | an assay or compendium |
+| position | `j_periodicity`, `h_offtarget`, the rest of `g_transcription` | where on the chromosome |
+
+— which predicts the results that the family table does not. Nothing confined to
+the guide clears +0.019; everything above +0.05 reads outside it; the two blocks
+that overlap in what they read (flanks and position) are the two whose joint arms
+lose half their sum, while the guide-only families are the most additive at 70%.
+**The reach grouping explains the joint-arm structure and the family grouping
+does not**, which is the strongest argument that it is the better one.
+
+*Why the families are kept anyway.* Each was built to test a specific published
+claim, and reporting them by reach would make it impossible to say which
+hypothesis was tested — "the external block is worth +0.139" does not tell a
+reader that GapR-seq supercoiling was tried and turned out to be read depth. The
+families are the right unit for *provenance* and the wrong unit for
+*information*, so the report now carries both, and the paper should lead with
+reach.
+
+### Can other annotation-based features help?
+
+Partly, and the ceiling on them is low for a reason that is now measured. The
+three families that read external data or annotation — `d_supercoiling`,
+`e_nucleoid`, `g_transcription` — are worth +0.139, +0.072 and +0.058 alone, and
+**+0.145 together**: 54% of their sum, the heaviest overlap of any arm tested.
+They are largely one variable measured three ways, which is why a fourth source
+should be expected to add little. Guide-level annotation is worse still: the two
+genuinely annotation-dependent columns among the 63 hand-named ones are distances
+to the nearest gene and to the PAM, and the arm isolating them is below.
+
+**The direction with room left is not more annotation of the same locus — it is
+more of the DNA itself.** Family A's +0.164 comes from a 2 kb window that no
+annotation supplies, and its gain is still rising at the edge of the window we
+built (Finding 4).
+
+### The joint arms: the column must not be added up, and here is by how much
+
+Every Δρ above is a single-family increment over a common base, and the warning
+against summing them was inherited from the published cohort rather than measured
+here. Measured (`curated_joint.py`, same base, seeds and folds):
+
+| arm | joint Δρ | sum of singles | realised |
+|---|---:|---:|---:|
+| `a_flank` + `i_shape` | +0.1647 | +0.2833 | 58% |
+| `a_flank` + `d_supercoiling` | +0.1882 | +0.3029 | 62% |
+| `d_supercoiling` + `e_nucleoid` + `g_transcription` | +0.1454 | +0.2692 | 54% |
+| `a_flank` + `d_supercoiling` + `i_shape` | +0.1882 | +0.4224 | 45% |
+| **`b_energy` + `c_folding` + `f_methylation`** (guide-only control) | +0.0289 | +0.0409 | **70%** |
+| **all eleven families** | **+0.2030** | +0.7046 | **29%** |
+
+**Summing the column would claim +0.70 ρ. The real figure for all eleven
+together is +0.203** — 29% of it, and only +0.039 beyond family A alone. So the
+table is a ranking of families, not a budget.
+
+**`i_shape` adds +0.0009 on top of family A, and exactly nothing once
+`d_supercoiling` is also present** — the two three-family arms give identical
+joint gains to four decimals (+0.1882). Its +0.120 standalone is family A's
+effect re-expressed as bendability, which reproduces the published cohort's
++0.001-on-top-of-A result on data where that number was independently measured.
+
+**The control is what licenses reading the rest.** The three guide-only families
+overlap only through the 20-mer and are the most additive at **70%**; the flank
+and positional families, which read overlapping DNA, land at 45–62%. Had the
+control also come in near 50%, the right conclusion would have been a pipeline
+artefact rather than an interpretation.
 
 ## Appendix C0 — Reproducibility: versions, seeds and protocol
 
