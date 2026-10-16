@@ -4223,3 +4223,64 @@ produced the number. I then repeated it into the Colab script's docstring, so th
 The margin therefore remains formally an upper bound; what changed is that the
 bound now rests on a measurement that reverts to their defaults rather than on a
 caveat. Corrected in the report, in `heldout_compare.py` and in the Colab script.
+
+## 16 October 2026 (audit) — the restructure had dropped things after all
+
+Asked to confirm that the restructure only summarised and moved. **It had not.**
+An audit comparing the pre-restructure report (commit `dd8bb1e`) against the
+current one, by distinct numeric token, found **25 numbers present before and
+absent after**, and a second pass by bold claim-lead and file reference found two
+substantive losses and five lost provenance pointers.
+
+What had actually gone:
+
+* **the final evaluation's six-metric table** — both models' absolute values on
+  their eSpCas9 test file (τ, Pearson, R², top-decile, pick percentile). Only
+  the Δρ had survived;
+* **the two-split margin table** (their 0.695 / our 0.6997; their 0.782 / our
+  0.7842) and the 26,830 training-row scale;
+* **"our default is not a default"** — that `tune.DEFAULT` is the 627-draw
+  champion from the published cohort, and therefore that *no* row in the
+  held-out table is symmetric in search effort. This was the worst of the
+  losses: a correction about our own protocol, found the day before and then
+  quietly deleted by a restructure;
+* the Cui transfer **confidence interval** [−0.0289, −0.0227];
+* the **+0.104 `arc5` flank gain** that is the evidence eSpCas9 was not
+  untouched;
+* the per-fold held-out values for both models;
+* the measured **5.48 min against 17.0 min** Colab speed-up;
+* script pointers for five results (`final_eval.py`, `heldout_compare.py`,
+  `cui_final_exam.py`, `portability.py`, `crisprhal_wide_window.csv`).
+
+All restored. The audit now reports zero numbers and zero file references lost,
+and every bold claim-lead that no longer appears verbatim has been checked to
+have its content elsewhere. **One deliberate drop, recorded rather than
+restored:** "the expected outcome makes the paper stronger, not weaker" was a
+prediction about the matched search, and the run superseded it.
+
+The lesson is the same shape as the silent-failure class in Appendix E: a
+restructure reports no error, and prose that disappears leaves no trace unless
+something counts it. A diff by eye over 2,300 lines would not have caught the
+`tune.DEFAULT` paragraph.
+
+## 16 October 2026 (decision) — no 40-hour search, and the caveat it leaves
+
+**Decided: the fully-matched ~40 GPU-hour search will not be run.** The 2.6-hour
+version already shows the search reverting to their published configuration in
+four folds of five, and ~100 draws per fold would most likely buy a tighter bound
+on the same conclusion.
+
+**The caveat this leaves, now written into Appendix B with both faces:**
+crisprHAL 2 **as published is at or very near the optimum of the space we
+searched, and tuning it does not appear to move it.**
+
+* *in their favour* — their published configuration is not a soft target. It
+  beat four of five inner searches, so a margin measured against it is not a
+  margin against a carelessly-configured baseline, and the paper should say so;
+* *in ours* — it retires the tuning-effort objection more firmly than equalising
+  effort could have, because the margin cannot be explained by our having
+  searched harder when searching harder on their side yields nothing.
+
+Headline stays the margin against their **best known** configuration, +0.0161,
+with the residual ~20× search asymmetry stated. Reversing the decision would
+need a reason beyond wanting a larger number.

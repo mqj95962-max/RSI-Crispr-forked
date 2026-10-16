@@ -85,8 +85,8 @@ without it — adding the one family that matters does not widen the gap between
 model classes at all, while the family itself is worth +0.164. Table in
 Appendix B.
 
-**And the reduced set is portable**, which is what a move to another cohort
-actually needs. Of the 63 hand-named columns, 26 are computable from the 20-mer
+**And the reduced set is portable** (`portability.py`), which is what a move to
+another cohort actually needs. Of the 63 hand-named columns, 26 are computable from the 20-mer
 and its PAM, 2 need gene annotation, and 34 are undecoded `V` columns — 19 of
 them reconstructible, 15 not. Dropping those 15 costs nothing, which leaves
 **412 columns computable for any 20-mer plus the reference genome**, landing
@@ -598,10 +598,20 @@ number here would be a choice of condition dressed as a finding.
 Each guide is predicted exactly once by a model that never saw it, so the five
 validation folds give 33,567 out-of-fold predictions per model over the same
 rows, and the difference can be bootstrapped paired on guides rather than across
-five folds: **+0.0115** [+0.0074, +0.0157] at each side's starting
+five folds (`heldout_compare.py`): **+0.0115** [+0.0074, +0.0157] at each side's starting
 configuration, **+0.0172** [+0.0136, +0.0209] with both tuned, and **+0.0043**
 [+0.0005, +0.0080] pitting our untuned model against their tuned one. Five of
-five folds favour SLICER.
+five folds favour SLICER: 0.7079 / 0.7121 / 0.7112 / 0.7136 for SLICER at its
+starting configuration against 0.6855 / 0.6988 / 0.6978 / 0.7022 / 0.7012 for
+crisprHAL at its published one.
+
+*"Both at defaults" is a courtesy, not a fact.* `tune.DEFAULT` —
+`n_estimators=400, learning_rate=0.05, num_leaves=16, max_depth=4,
+subsample=0.8, colsample_bytree=0.8` — is a configuration **selected by the
+627-draw search on the published cohort**, not LightGBM's defaults (100, 0.1, 31,
+−1, no subsampling). crisprHAL's arm really is its published configuration. So
+that row is asymmetric in our favour too, and **no row in this table is
+symmetric in search effort.**
 
 **A hyperparameter search of their own, run 16 October, does not close that gap —
 it widens it, and the reason is more interesting than the number.** Given a
@@ -636,18 +646,25 @@ has evidence behind it rather than only a caveat (Appendix B).
 
 **On crisprHAL 2's own two splits, evaluated against their own published
 weights, it is parity — and parity as a measured equivalence rather than as a
-failure to find a difference.** Their eSpCas9 arm reproduces their published
-figure to four decimals (0.7821 against their reported 0.782), which is what
-makes the comparison quotable. Paired on the same 11,898 guides against a margin
-declared before the interval was seen:
+failure to find a difference.** Run once on their 11,897-guide eSpCas9 test file
+(`final_eval.py`):
 
-| | value |
-|---|---:|
-| Δρ, SLICER − crisprHAL 2 | **+0.0021** |
-| 95% CI, paired bootstrap | **[−0.0031, +0.0072]** |
-| inside the pre-declared ±0.01 | **yes** |
+| | ρ | τ | Pearson | R² | top-decile | pick %ile |
+|---|---:|---:|---:|---:|---:|---:|
+| **SLICER** — champion XGBoost, 6,517 columns, selection fitted inside their training rows | **0.7842** | **0.5942** | 0.7782 | 0.5979 | 0.488 | 94.8 |
+| **crisprHAL 2** — their shipped `ESPCAS9.keras`, as distributed | 0.7821 | 0.5920 | **0.7801** | **0.6009** | **0.494** | **95.5** |
 
-and on their SpCas9 split +0.005. **All six metrics are individually
+Their arm **reproduces their published figure** — Browne et al. report ρ 0.782
+and Pearson 0.780, and their weights give 0.7821 and 0.7801 here — which is what
+makes the comparison quotable rather than a re-implementation of it. Paired on
+the same 11,898 guides against a margin declared before the interval was seen,
+Δρ = **+0.0021**, 95% CI **[−0.0031, +0.0072]**, inside the pre-declared ±0.01.
+And on both of their splits the margin is small and ours:
+
+| their split | their published ρ | SLICER | margin |
+|---|---:|---:|---:|
+| *E. coli* SpCas9, 26,830 train | 0.695 | **0.6997** | +0.005 |
+| *E. coli* eSpCas9, 47,591 train | 0.782 | **0.7842** | +0.002 | **All six metrics are individually
 indistinguishable from zero** — we lead on the two rank metrics, they lead on
 Pearson, R², top-decile precision and expected pick percentile, and every
 interval contains zero (Appendix A). So "they win some, we win others" is the
@@ -664,7 +681,8 @@ about the small-data regime; at 47.6k labelled guides it is false.
 
 **And on a screen neither model trained on, their raw-sequence model transfers
 better than our engineered one** — \|ρ\| 0.0867 against 0.0609 zero-shot on Cui's
-CRISPRi screen, a paired difference of −0.0258 with the interval clear of zero.
+CRISPRi screen, a paired difference of **−0.0258, 95% CI [−0.0289, −0.0227]**
+(`cui_final_exam.py`).
 Both numbers are near-nothing against the 0.458 a model *trained* on that screen
 reaches, so this compares two small quantities. The reason is specific and worth
 stating rather than burying: the transferable signal in a dCas9 screen is
@@ -779,8 +797,9 @@ was written in this section while it was being measured and has been moved into
 Part 1 now that it is settled. The freeze matters to it in one way worth stating
 here: **eSpCas9 was designated "the untouched final evaluation" and was not
 untouched** — four feature arms had already been run on it across three seeds and
-two CV schemes (`results/transfer.csv`). Nothing was ever *selected* on it, so it
-is confirmatory rather than contaminated, but "evaluated once" was never
+two CV schemes (`results/transfer.csv`), with a flank gain of **+0.104 under
+`arc5`** quoted in `RESULTS.md`. Nothing was ever *selected* on it, so it is
+confirmatory rather than contaminated, but "evaluated once" was never
 available, and the last genuinely unused dataset (Cui's CRISPRi screen) has now
 been spent too. **No untouched external set remains.**
 
@@ -1389,12 +1408,49 @@ prediction for a five-fold paired one. The eSpCas9 parity result
 (+0.0021, CI [−0.0031, +0.0072]) is the tight one, and it is at a different data
 volume, which is why it does not transfer to our folds either.
 
-**What the run does establish, which is not what it was run for.** The two
-models differ in **tunability**, measured: an equivalent small search on our side
-(12 draws per fold) buys **+0.0103**, while 5–8 draws on theirs buys nothing.
-Their published settings are at or near the optimum of the eleven-scalar space we
-searched; ours are not. That retires the tuning-effort objection more firmly than
-equalising effort would have, because equal effort yields them nothing.
+**The argument for running it, kept because the conclusion depended on it.**
+Every reason for skipping had expired, and one of them turned out to be an error
+of ours:
+
+| the reason | status |
+|---|---|
+| ~~17 CPU-hours locally, too expensive~~ | **gone** — 3.1× faster on a free T4 |
+| ~~their published weights already answer it~~ | **answers a different question.** They settle the comparison *on their splits*, where it is parity; they say nothing about our folds, where the margin lives |
+| ~~defaults-vs-defaults is a clean like-for-like fallback~~ | **false.** Our "default" is the 627-draw champion from the published cohort; theirs is their published configuration (Finding 12) |
+| ~~we flagged it as an upper bound, which is honest~~ | **not sufficient**, and we had pre-registered the obligation: `crisprhal_tune.py` says that if their tuned score does not close the gap, "the asymmetry is a live caveat and must be quoted alongside the result." It did not close the gap |
+
+The interpretation was fixed before the run, in three brackets: **≥ ~0.716**
+would mean the margin was mostly a tuning artefact; **0.704–0.710** that it
+survives at ~+0.005 to +0.010; **above 0.7213** that we lose on our own folds.
+The outcome, 0.6987, fell **below all three** — an outcome the brackets had not
+anticipated, which is worth recording as a limit of pre-registration rather than
+a success of it. Draw 0 doubled as the positive control and behaved: 0.6909,
+0.6851, 0.6875, 0.6909, 0.6905 on the inner splits, with finals in the
+0.686–0.702 band predicted from `crisprhal_rerun.csv`.
+
+**What the run does establish, which is not what it was run for — and the caveat
+the paper needs.** The two models differ in **tunability**, measured: an
+equivalent small search on our side (12 draws per fold) buys **+0.0103**, while
+5–8 draws on theirs buys nothing. **crisprHAL 2 as published is at or very near
+the optimum of the space we searched, and tuning it does not appear to move it.**
+That is a caveat with two faces, and both belong in the paper:
+
+* *in their favour*, and this is the one a reviewer will want stated: their
+  published configuration is not a soft target. It beat four of five inner
+  searches, so a margin measured against it is not a margin against a
+  carelessly-configured baseline;
+* *in ours*: it retires the tuning-effort objection more firmly than equalising
+  effort could have, because equal effort yields them nothing. The margin cannot
+  be explained by our having searched harder, since searching harder on their
+  side produces no gain to explain it with.
+
+**Decision, 16 October: the ~40 GPU-hour fully-matched search will not be run.**
+The 2.6-hour version already shows the search reverting to their published
+configuration in four folds of five, and ~100 draws per fold would most likely
+buy a tighter bound on the same conclusion. The honest headline is the margin
+against their **best known** configuration — **+0.0161** — with the residual
+~20× search asymmetry stated. Reversing this decision would need a reason beyond
+wanting a larger number.
 
 **And the searches are still not equal, by about 20×.** Our reported tuned arm
 used **97–157 draws per fold, 627 in total** (`results/tuning.csv`) — not the
@@ -1415,10 +1471,16 @@ bidirectional GRU, the shape that maps worst onto them; a mid-range GPU is
 cheaper and faster. The free Colab T4 was the right instrument, and the question
 was only how many fits it had to do.
 
+*The hardware first.* Their published configuration fits one fold in **5.48 min
+on a free Colab T4** against **17.0 min locally** — a measured **3.1×**
+(`crisprhal_wide_window.csv` against `crisprhal_rerun.csv`), and that is what
+made any version of this affordable.
+
 *Costed three times, and only the third was from measurement.* The first
 estimate was ~460 CPU-hours (matching 627 draws locally). The second was "2–4
 GPU-hours, one free Colab session", which priced their *default* configuration
-for a search that mostly does not use it. **The run settles it**: 33 fits across
+for a search that mostly does not use it; the local search's median fit was 44
+min against 17 for the default, because the draws average larger networks. **The run settles it**: 33 fits across
 five folds took **~2.6 GPU-hours** at 2.3–8.6 min each, because patience stopped
 every fold after 5–8 draws. A *genuinely* matched search — ~100 draws per fold,
 since that is what ours used — would be ~500 fits and **~40 GPU-hours**.
