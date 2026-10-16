@@ -1,0 +1,12 @@
+model,arm,input_nt,batch,fold,spearman,fit_minutes,note
+crisprHAL 2,core_23,23,1024,1,0.569347,0.74,
+crisprHAL 2,native_378,378,1024,1,0.690587,5.48,their published configuration
+crisprHAL 2,mid_1023,1023,1024,1,0.670844,13.13,
+crisprHAL 2,wide_2023,2023,1024,1,,0.36,cuDNN GRU workspace failed; untrained
+crisprHAL 2,core_23,23,256,1,0.549356,1.48,
+crisprHAL 2,native_378,378,256,1,0.679851,5.98,batch control
+crisprHAL 2,mid_1023,1023,256,1,0.660166,14.00,
+crisprHAL 2,wide_2023,2023,256,1,0.629853,27.24,
+SLICER,no_flank,23,,1,0.5473,,20-mer representation only
+SLICER,matched,378,,1,0.6568,,family A restricted to 189/166 nt
+SLICER,full_flank,2023,,1,0.6944,,full family A to +/-1000 nt

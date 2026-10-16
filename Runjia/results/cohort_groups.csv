@@ -1,0 +1,6 @@
+cohort,grouping,n,n_groups,guides_per_group,within_share
+published,gene,13829,1222,11.3,0.8433078760377835
+published,100kb_block,13879,47,295.3,0.9796212150947015
+curated,gene,30203,4013,7.5,0.7134177103341379
+curated,100kb_block,33567,47,714.2,0.9726661655607015
+published,gene (their annotation),13880,1225,11.3,0.8437235308351474
