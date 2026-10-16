@@ -59,7 +59,7 @@ SEAL_FRACTION = 0.20
 SEAL_SEED = 20261016          # fixed here, once, and not varied afterwards
 
 
-def _seal(protos: np.ndarray, verbose: bool = True):
+def _seal(protos: np.ndarray, seed: int = SEAL_SEED, verbose: bool = True):
     """Seal whole genes until ~20% of rows are sealed; intergenic rows stay in."""
     from .build_curated_features import load_index
 
@@ -68,7 +68,7 @@ def _seal(protos: np.ndarray, verbose: bool = True):
     gene = np.array([g if isinstance(g, str) and g else "" for g in gene],
                     dtype=object)
     genes = np.array(sorted({g for g in gene if g}))
-    rng = np.random.default_rng(SEAL_SEED)
+    rng = np.random.default_rng(seed)
     rng.shuffle(genes)
     counts = pd.Series(gene).value_counts()
     sealed_genes, n = set(), 0
@@ -132,7 +132,8 @@ def _search_in_pool(X, y, draws=8, seed=41, verbose=True):
     return best_p
 
 
-def run(match_train_size: bool = True, verbose: bool = True) -> pd.DataFrame:
+def run(match_train_size: bool = True, seal_seed: int = SEAL_SEED,
+        verbose: bool = True) -> pd.DataFrame:
     """`match_train_size` fixes a confound the first version of this had.
 
     A 5-fold CV inside the pool trains each fold on 80% of it, while the
@@ -146,13 +147,13 @@ def run(match_train_size: bool = True, verbose: bool = True) -> pd.DataFrame:
     X, y, names, protos = _base()
     A, anames = _block("a_flank", protos)
     XA = np.hstack([X, A])
-    sealed = _seal(protos, verbose=verbose)
+    sealed = _seal(protos, seed=seal_seed, verbose=verbose)
     dev = ~sealed
     dev_idx = np.where(dev)[0]
     fit_idx = dev_idx
     if match_train_size:
         n = int(len(dev_idx) * (1 - 1 / 5))
-        fit_idx = np.random.default_rng(SEAL_SEED).choice(dev_idx, n, replace=False)
+        fit_idx = np.random.default_rng(seal_seed).choice(dev_idx, n, replace=False)
         if verbose:
             print(f"  sealed-set fits use {n:,} of {len(dev_idx):,} pool rows, "
                   f"matching what each CV fold trains on")
@@ -177,14 +178,21 @@ def run(match_train_size: bool = True, verbose: bool = True) -> pd.DataFrame:
         pred = _fit_predict(Xa[fit_idx], y[fit_idx], Xa[sealed], params,
                             cfg["n_features"])
         sealed_rho = float(spearmanr(y[sealed], pred).statistic)
-        rows.append(dict(arm=arm, n_cols=Xa.shape[1], n_dev=int(dev.sum()),
+        rows.append(dict(arm=arm, seal_seed=seal_seed, n_cols=Xa.shape[1],
+                         n_dev=int(dev.sum()),
                          n_sealed=int(sealed.sum()), cv_in_pool=cv,
                          sealed=sealed_rho, gap=cv - sealed_rho,
                          params=json.dumps(params or {})))
+        prev = (pd.read_csv(OUT) if OUT.exists() and OUT.stat().st_size
+                else pd.DataFrame())
+        if len(prev):
+            prev = prev[~((prev["arm"] == arm)
+                          & (prev.get("seal_seed", -1) == seal_seed))]
         if verbose:
             print(f"  {arm:>10}: pool CV {cv:.4f}   sealed {sealed_rho:.4f}   "
                   f"gap {cv - sealed_rho:+.4f}", flush=True)
-        pd.DataFrame(rows).to_csv(OUT, index=False)
+        pd.concat([prev, pd.DataFrame([rows[-1]])],
+                  ignore_index=True).to_csv(OUT, index=False)
 
     out = pd.DataFrame(rows).set_index("arm")
     if verbose:
@@ -201,8 +209,13 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--no-match-train-size", action="store_true",
                     help="reproduce the first, confounded version")
+    ap.add_argument("--seal-seeds", type=int, nargs="*", default=[SEAL_SEED],
+                    help="repeat with several sealing draws: one draw of 872 "
+                         "genes is itself a sample, and the arms under test "
+                         "read flank properties the reference arm cannot see")
     a = ap.parse_args(argv)
-    run(match_train_size=not a.no_match_train_size)
+    for sd in a.seal_seeds:
+        run(match_train_size=not a.no_match_train_size, seal_seed=sd)
     return 0
 
 

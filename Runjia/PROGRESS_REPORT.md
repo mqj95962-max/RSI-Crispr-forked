@@ -1719,6 +1719,90 @@ directions (Finding 2) — but the caveat had to be measured rather than waved
 away, and when it was, **the reduction itself stopped holding on the curated
 cohort**.
 
+### What sixteen model classes and 220× of compute tell us about the task
+
+Accuracy against cost, all on the curated cohort with family A, one seed × five
+folds, against crisprHAL 2 on the same folds (`curated_models.csv`,
+`crisprhal_tuned_folds.csv`):
+
+| | ρ | CPU-minutes, 5 folds | relative cost |
+|---|---:|---:|---:|
+| **XGBoost** (champion) | **0.7084** | 1.9 | 1× |
+| LightGBM | 0.7082 | 1.4 | 0.7× |
+| extra trees | 0.6537 | 1.2 | 0.6× |
+| random forest | 0.6482 | 1.3 | 0.7× |
+| ridge | 0.6473 | 1.0 | 0.5× |
+| PLS | 0.6450 | 1.0 | 0.5× |
+| elastic net | 0.6369 | 1.0 | 0.5× |
+| k-NN | 0.6007 | 1.0 | 0.5× |
+| crisprHAL 2, published configuration | 0.6971 | 85 | 45× |
+| crisprHAL 2, its best configuration | 0.7051 | 220 | **113×** |
+
+**Boosting beats a tuned CNN–BiGRU by +0.003 at 1/113th of the compute, and
+*ridge* is within 0.058 of it at 1/220th.** A linear model on 300 engineered
+columns, fitted in one CPU-minute, gets within six hundredths of a deep network
+that takes three and a half hours. That is the cost argument in its strongest
+form, and it does not depend on our model winning anything.
+
+**What the spread says about the task.** Reading the classes by what each is good
+at is more informative than ranking them:
+
+* **ridge ≈ PLS ≈ random forest ≈ extra trees, all within 0.009.** Three very
+  different inductive biases — penalised linear, low-rank linear, bagged trees —
+  land in the same place. When bagging buys nothing over a straight line, the
+  problem is **bias-limited, not variance-limited**, at this sample size.
+* **boosting is worth +0.055 over ridge.** Sequential bias reduction is the one
+  thing that helps, which is what a sum of many small, partly-interacting effects
+  calls for. On the published matrix *without* family A that margin was 0.03;
+  adding family A nearly doubles it, so **family A is also where the exploitable
+  interaction structure is**, not merely where the signal is.
+* **k-NN is worst, at 0.601.** Nearest neighbours in 300 dimensions find almost
+  nothing, so the signal is **smooth and global rather than clustered** — there
+  is no neighbourhood of similar guides to borrow an answer from. That is
+  consistent with Finding 4's gradient and inconsistent with a motif.
+
+**And the comparison is not architecture against architecture.** crisprHAL 2 at
+0.7051 sits between our boosters and our forests. The thing that separates the
+top two rows from the bottom six is not depth, recurrence or ensembling — it is
+**which columns the model is given**, since every row above reads the same 300.
+Representation decides the task; model class decides a tenth of a correlation
+(Finding 2).
+
+### If crisprHAL 2 were tuned at ±1,000 nt, would it beat SLICER?
+
+Almost certainly not, and the arithmetic is already on the table. Their model
+peaks at its design width and declines monotonically beyond it: 0.6799 at 378 nt,
+0.6602 at 1,023, 0.6299 at 2,023 (Finding 4). To overtake SLICER's 0.7218 from
+the 2,023 nt arm, re-tuning would have to find **+0.092** — nearly twice the
+0.050 it loses by being widened at all, and more than four times the +0.021 the
+*whole* of its own hyperparameter space was worth at 378 nt when we searched it
+(Appendix B: a nested search there found nothing better than its published
+configuration).
+
+So the honest statement is conditional and worth making in the paper: *if* a
+convolutional–recurrent architecture can be re-engineered to use 2 kb of context,
+nothing here says it cannot — but **re-tuning the existing one at that width is
+not the experiment that would show it**, because its published configuration is
+already at the optimum of its own search space, and widening its input costs it
+more than that space contains. The claim this project can defend is about the
+*published* architecture at any width, not about the class.
+
+### Does the pipeline need a selector at all?
+
+**No, and the conclusions that matter do not go through it.** The 300-column
+selector is inherited from the baseline script, kept so ablations stay comparable
+to the frozen anchor, and it is a property of our pipeline rather than of the
+biology. It is also measurably free: 300 columns against every column differ by
+**±0.0005** in both directions (Finding 2).
+
+That matters for one specific objection. A statement like "tetramer columns do not
+help" could be an artefact of a selector that never picks them — and on the
+published matrix it *was* exactly that, which is Finding 7's whole point.
+**Every arm of the reduced-representation ladder above therefore runs with no
+selection at all**, `n_features` set to each arm's own column count. The tetramer
+result (−0.0019), the quantum-column result (+0.0114) and the non-inferiority
+failures are all selector-free, and so is the biology read off them.
+
 ### Does model class matter more once the representation contains the effect?
 
 No, and that is what makes the Finding 2 corollary usable. "Sixteen model classes
@@ -2362,6 +2446,61 @@ gain, 8% of it. So column shape accounts for a small part of the inflation and
 the row population accounts for most of it (Appendix B2a). What is still unrun is
 the same test with the *published* matrix's 63 hand-named columns rather than
 this 41-column stand-in.
+
+### Are the eleven families the right organisation, and would another work better?
+
+They are an organisation by **idea** — one family per hypothesis from the
+literature — and three of the eleven have now been shown to mis-describe their
+own columns:
+
+| family | what its name claims | what its columns do |
+|---|---|---|
+| `d_mechanics` | duplex thermodynamics of the guide | 8 of 30 columns are **flanking-DNA** thermodynamics, and they carry +0.097 of its +0.099 (Finding 2) |
+| `i_shape` | DNA shape and bendability | a near-duplicate of `a_flank`: +0.0009 on top of it, exactly 0.0000 once `d_supercoiling` is in (below) |
+| `g_transcription` | a transcription–strand interaction | its own interaction rule fails; the gain is gene geometry and position, plus a fifth from expression (Finding 5) |
+
+So the family boundaries track *intent*, and a boundary that tracks intent will
+cut across the information the columns actually carry. **A better organisation
+exists and this report already uses it in places: group columns by what they are
+allowed to read.** Four blocks instead of eleven families —
+
+| block | families contributing | what it can see |
+|---|---|---|
+| guide | `b_energy`, `c_folding`, `f_methylation`, 22/30 of `d_mechanics`, the quantum tables | the 20-mer and its PAM |
+| flanks | `a_flank`, `i_shape`, 8/30 of `d_mechanics` | 50–1,000 nt either side |
+| external measurement | `d_supercoiling`, `e_nucleoid`, part of `g_transcription` | an assay or compendium |
+| position | `j_periodicity`, `h_offtarget`, the rest of `g_transcription` | where on the chromosome |
+
+— which predicts the results that the family table does not. Nothing confined to
+the guide clears +0.019; everything above +0.05 reads outside it; the two blocks
+that overlap in what they read (flanks and position) are the two whose joint arms
+lose half their sum, while the guide-only families are the most additive at 70%.
+**The reach grouping explains the joint-arm structure and the family grouping
+does not**, which is the strongest argument that it is the better one.
+
+*Why the families are kept anyway.* Each was built to test a specific published
+claim, and reporting them by reach would make it impossible to say which
+hypothesis was tested — "the external block is worth +0.139" does not tell a
+reader that GapR-seq supercoiling was tried and turned out to be read depth. The
+families are the right unit for *provenance* and the wrong unit for
+*information*, so the report now carries both, and the paper should lead with
+reach.
+
+### Can other annotation-based features help?
+
+Partly, and the ceiling on them is low for a reason that is now measured. The
+three families that read external data or annotation — `d_supercoiling`,
+`e_nucleoid`, `g_transcription` — are worth +0.139, +0.072 and +0.058 alone, and
+**+0.145 together**: 54% of their sum, the heaviest overlap of any arm tested.
+They are largely one variable measured three ways, which is why a fourth source
+should be expected to add little. Guide-level annotation is worse still: the two
+genuinely annotation-dependent columns among the 63 hand-named ones are distances
+to the nearest gene and to the PAM, and the arm isolating them is below.
+
+**The direction with room left is not more annotation of the same locus — it is
+more of the DNA itself.** Family A's +0.164 comes from a 2 kb window that no
+annotation supplies, and its gain is still rising at the edge of the window we
+built (Finding 4).
 
 ### The joint arms: the column must not be added up, and here is by how much
 
