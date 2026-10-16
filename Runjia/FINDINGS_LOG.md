@@ -4177,3 +4177,49 @@ Part 1 is twelve findings over ~660 lines, with the heaviest (2, 4, 5) carrying
 the decoding, the long-range mechanism and the transfer evidence respectively.
 Nulls that are null for unrelated reasons stay in B2 and B3, and the
 organisation note now says so.
+
+## 16 October 2026 — the matched search found nothing, and caught an error of ours
+
+**Run on a free Colab T4, 33 fits, ~2.6 GPU-hours.** crisprHAL 2 given a nested
+search on our five folds: **0.6987 mean** (0.6890, 0.7011, 0.7044, 0.6993,
+0.6997) against their published configuration's 0.6971 and SLICER's 0.7218.
+Paired: **+0.0225, 5/5 folds, t = 19.69, p < 0.001.**
+
+**Their published configuration won the inner search in four folds of five.**
+The fifth picked a draw 0.0016 ahead on the inner split — noise. So the search
+space (eleven architecture scalars plus epochs and batch size) contains nothing
+better than what they shipped, which is consistent with their paper having tuned
+input width and epochs on this very dataset.
+
+    crisprHAL arm                        mean rho    our margin
+    published configuration                0.6971      +0.0241
+    best configuration any search found    0.7051      +0.0161
+    nested search, 5-8 draws per fold      0.6987      +0.0225
+
+**+0.0161 is the number to quote** — against the best configuration anyone has
+found for their model on these folds.
+
+**My prediction was wrong and the reasoning was the mistake.** I predicted ~0.716
+(margin narrowing to ~+0.005) by anchoring on their published WT model's 0.695
+against our 0.6997 on their own WT split. That anchor is a **single 6,737-guide
+partition** where SE(ρ) ≈ 0.006, so +0.005 and +0.017 are about two standard
+errors apart and the split cannot distinguish them. I treated a noisy one-split
+estimate as a precise prediction for a five-fold paired one.
+
+**What the run does establish, which is not what it was run for: the two models
+differ in tunability.** An equivalent small search on our side (12 draws per
+fold) buys **+0.0103**; 5–8 draws on theirs buys nothing. Their settings are at
+or near the optimum of the searched space; ours are not. That retires the
+tuning-effort objection more firmly than equalising effort would have, because
+equal effort yields them nothing.
+
+**Bug 14, and it is a reporting error rather than a code one.** The report said
+SLICER's tuned arm used "12 draws inside each of five folds". It used **97–157
+draws per fold, 627 in total** (`results/tuning.csv`); 12 is `tune.py`'s CLI
+default and the figure was taken from the flag rather than from the run that
+produced the number. I then repeated it into the Colab script's docstring, so the
+"matched" search gave them ~1/20th of our effort. A genuinely matched search is
+~100 draws per fold, ~500 fits, **~40 GPU-hours** — not the 10–15 I estimated.
+The margin therefore remains formally an upper bound; what changed is that the
+bound now rests on a measurement that reverts to their defaults rather than on a
+caveat. Corrected in the report, in `heldout_compare.py` and in the Colab script.

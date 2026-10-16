@@ -23,14 +23,21 @@ Three pairings:
               conservative comparison available to us, and the one that bounds
               how much of our margin is a tuning-effort artefact
 
-The tuned pairing carries a declared asymmetry: SLICER's search is 12 draws
-inside each of five folds, crisprHAL's is 10 draws on a single inner split of
-fold 1's training rows, because each of its fits costs ~17 CPU-minutes. Neither
-search ever touches an outer validation fold, so neither number is leaked -- but
-theirs is the weaker search, so the tuned margin is an **upper bound** on our
-advantage over a fully-searched version of their model. The answer to that
-objection is not in this file: it is the final evaluation against their own
-*published* weights, where the margin is +0.002 (Part 4).
+The tuned pairing carries a declared asymmetry, and it is larger than this file
+said until 16 October: SLICER's search ran **97-157 draws inside each of five
+folds** (627 in total, `results/tuning.csv`), while crisprHAL's best arm came
+from 10 draws on a single inner split of fold 1, because each of its fits costs
+~17 CPU-minutes locally. Neither search ever touches an outer validation fold, so
+neither number is leaked -- but theirs is ~20x weaker, so the tuned margin is an
+**upper bound**.
+
+Two things bound it from the other side. A nested search of their own on these
+folds (16 October, free T4) lands at **0.6987** against their published 0.6971,
+with their published configuration winning the inner search in four folds of
+five -- so the space contains nothing better than what they shipped. And the
+final evaluation against their own *published* weights, on their own splits,
+gives +0.002 and +0.005. The conservative margin to quote from this file is
+therefore the one against their best known configuration, **+0.0161**.
 
 **Alignment is the thing that can go wrong.** crisprHAL's predictions were saved
 one file per fold with no guide key, so the concatenation is in fold order, not

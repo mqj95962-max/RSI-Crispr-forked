@@ -598,12 +598,41 @@ number here would be a choice of condition dressed as a finding.
 Each guide is predicted exactly once by a model that never saw it, so the five
 validation folds give 33,567 out-of-fold predictions per model over the same
 rows, and the difference can be bootstrapped paired on guides rather than across
-five folds: **+0.0115** [+0.0074, +0.0157] at each side's starting configuration,
-**+0.0172** [+0.0136, +0.0209] with both tuned, and **+0.0043** [+0.0005,
-+0.0080] pitting our untuned model against their tuned one. Five of five folds
-favour SLICER. *None of these three rows is symmetric in search effort* — ours
-had 12 draws inside each of five folds, theirs 10 draws on one inner split — so a
-matched search is the outstanding control (Part 4 item 2, Appendix B).
+five folds: **+0.0115** [+0.0074, +0.0157] at each side's starting
+configuration, **+0.0172** [+0.0136, +0.0209] with both tuned, and **+0.0043**
+[+0.0005, +0.0080] pitting our untuned model against their tuned one. Five of
+five folds favour SLICER.
+
+**A hyperparameter search of their own, run 16 October, does not close that gap —
+it widens it, and the reason is more interesting than the number.** Given a
+nested search on our folds, crisprHAL 2 lands at **0.6987** (per fold 0.6890,
+0.7011, 0.7044, 0.6993, 0.6997) against our 0.7218, a paired **+0.0225, 5/5
+folds, p < 0.001**. Their *published configuration won the inner search in four
+of the five folds*; the one fold that chose otherwise picked a draw 0.0016 ahead
+on the inner split, which is noise. So:
+
+| crisprHAL 2 arm | mean ρ over folds | our margin |
+|---|---:|---:|
+| published configuration | 0.6971 | +0.0241 |
+| **best configuration found by any search** | **0.7051** | **+0.0161** |
+| nested search, 5–8 draws per fold | 0.6987 | +0.0225 |
+
+**The conservative number to quote is +0.0161**, against the best configuration
+anyone has found for their model on these folds. And the asymmetry that matters
+is not in effort but in **tunability**: an equivalent small search on our side
+buys **+0.0103** (12 draws per fold), while theirs buys nothing. Their published
+settings are at or very near the optimum of the space we searched; ours are not.
+That dissolves the tuning-effort objection in a way equalising effort could not —
+equal effort yields them nothing.
+
+*The searches are still not equal, and the residual is ~20× in our favour.* Our
+reported tuned arm used **97–157 draws per fold** (627 in total), not the "12 per
+fold" this report claimed until 16 October — the figure came from `tune.py`'s CLI
+default rather than from the run that produced the number. Theirs explored 5–8
+per fold before patience stopped it. Matching that honestly means ~100 draws per
+fold at ~5 GPU-minutes each, i.e. **~40 GPU-hours**, not the 10–15 estimated. So
+the margin remains formally an upper bound; what changed is that the bound now
+has evidence behind it rather than only a caveat (Appendix B).
 
 **On crisprHAL 2's own two splits, evaluated against their own published
 weights, it is parity — and parity as a measured equivalence rather than as a
@@ -767,7 +796,7 @@ Remaining before submission:
 | | item | cost |
 |---|---|---|
 | 1 | ~~eSpCas9 final evaluation~~ | **done, and it is a tie** — ρ 0.7842 against 0.7821 on crisprHAL's own eSpCas9 split with their published weights, at 47,591 training guides. Also corrected: eSpCas9 was never an untouched holdout (above) |
-| 2 | crisprHAL 2 given **the search we gave ourselves** — **required, not optional, and reinstated as such on 15 October.** Script ready at `colab/crisprhal_tune_matched.py`: 12 draws × 5 folds with patience, resumable, interpretation pre-declared, draw 0 as positive control. The reasons for skipping it have all expired — see "Is it fair to tune their model to convergence?" in Appendix B | 10–15 GPU-h, free T4 |
+| 2 | ~~crisprHAL 2 given a search of its own~~ | **run 16 October, and it found nothing**: 0.6987 against their published 0.6971, with their published configuration winning the inner search in 4 of 5 folds. The margin against their *best known* configuration is **+0.0161**. Still not a fully matched search — ours used 97–157 draws per fold, theirs 5–8, so ~40 GPU-h would be needed to equalise (Appendix B) |
 | 3 | ~~orientation controls~~ | **done** — Jacky, Finding 6 |
 | 4 | human baseline re-tuned at the teammate's settings — **delegated to the teammate**, request drafted (`docs/correspondence/request_human_baseline_settings.md`): the grid-search settings behind ρ 0.472 are not recorded in the repo or the log, and the script that produced `human_transfer.csv` is not in `src/`. If it does not arrive, Part 3's cross-kingdom sentence rests on the *sign* of the transfer and says so | ~1 h once supplied |
 | 5 | ~~conditional test of the GC hypothesis within matched GC strata~~ | **done** — Finding 5 |
@@ -1334,90 +1363,70 @@ curves can both reach 95% of themselves at the same n while being far apart in
 ρ. It now leads with absolute thresholds and labels the own-best figures
 diagnostic.
 
-### Is it fair to tune crisprHAL 2 to convergence? Yes — and that is why it has to be run
+### Was it fair to tune crisprHAL 2? Yes — so it was run, and it found nothing
 
 The question was put in the right form: if a matched search is the fair
-comparison, the fact that it would weaken our margin is not a reason to skip it;
-if it is arguably *not* fair, skipping it is legitimate. So the answer has to be
-argued on fairness alone.
+comparison, the fact that it would weaken our margin is not a reason to skip it.
+So it was argued on fairness alone, and the answer was yes, with one refinement —
+**"to convergence" is not a well-defined target** for a deep network, since the
+result depends on who draws the search space and when they stop, while **"equal
+effort under an equal protocol"** is. Then it was run (16 October,
+`colab/crisprhal_tune_matched.py`, free T4).
 
-**"To convergence" is not the right target, but "matched" is.** A deep network
-has no canonical convergence point for a hyperparameter search — the result
-depends entirely on who draws the search space and when they stop. What *is*
-well defined is **equal effort under an equal protocol**: the same number of
-draws, the same nesting, the same patience rule, each starting from its own
-published configuration. That is what the script runs, and it is the condition
-our own tuned-vs-tuned row implicitly claims.
+**Result: 0.6987 mean over the five folds**, against their published
+configuration's 0.6971 and the 0.7051 of the best configuration any search has
+found. **Their published configuration won the inner search in four folds of
+five.** The fifth chose a draw ahead by 0.0016 on the inner split — within its
+noise. The margin against this arm is +0.0225, 5/5 folds, p < 0.001.
 
-**Every reason we had for not running it has expired.**
+**My prediction was wrong, and the reasoning behind it was the mistake.** I
+predicted ~0.716 — the margin narrowing to ~+0.005 — by anchoring on their
+published WT model scoring 0.695 on their own WT split where we score 0.6997.
+That anchor is a **single 6,737-guide partition**, where the standard error of ρ
+is ≈0.006, so +0.005 and +0.017 sit about two standard errors apart and the split
+simply cannot distinguish them. I treated a noisy one-split estimate as a precise
+prediction for a five-fold paired one. The eSpCas9 parity result
+(+0.0021, CI [−0.0031, +0.0072]) is the tight one, and it is at a different data
+volume, which is why it does not transfer to our folds either.
 
-| the reason | status |
-|---|---|
-| ~~17 CPU-hours locally, too expensive~~ | **gone.** 3.1× faster on a free T4; 10–15 GPU-h over two to four sessions |
-| ~~their published weights already answer it~~ | **answers a different question.** They settle the comparison *on their splits*, where it is parity. They say nothing about our folds, which is where our +0.0172 lives |
-| ~~the defaults-vs-defaults row is a clean like-for-like fallback~~ | **false.** Our "default" is the 627-draw champion from the published cohort; theirs is their published configuration (Finding 12) |
-| ~~we flagged it as an upper bound, which is honest~~ | **not sufficient.** Flagging a bound you could measure is weaker than measuring it, and we pre-registered the obligation: `crisprhal_tune.py` states that if their tuned score does not close the gap, "the asymmetry is a live caveat and must be quoted alongside the result." It did not close the gap. The caveat is live |
+**What the run does establish, which is not what it was run for.** The two
+models differ in **tunability**, measured: an equivalent small search on our side
+(12 draws per fold) buys **+0.0103**, while 5–8 draws on theirs buys nothing.
+Their published settings are at or near the optimum of the eleven-scalar space we
+searched; ours are not. That retires the tuning-effort objection more firmly than
+equalising effort would have, because equal effort yields them nothing.
 
-**So no on-our-folds number we report is symmetric in search effort**, and the
-matched run is the only thing that would make one. It should be run.
+**And the searches are still not equal, by about 20×.** Our reported tuned arm
+used **97–157 draws per fold, 627 in total** (`results/tuning.csv`) — not the
+"12 per fold" this report stated until 16 October, a figure taken from
+`tune.py`'s CLI default rather than from the run that produced the number, and
+then repeated into the Colab script's own docstring. A genuinely matched search
+is ~100 draws per fold at ~5 GPU-minutes each, **~40 GPU-hours**. So the margin
+is still formally an upper bound. What has changed is that the bound now rests on
+a measurement — a search that reverts to their defaults — rather than on a
+caveat.
 
-**The expected outcome makes the paper stronger, not weaker.** Their own
-fully-tuned published WT model lands ~0.005 behind SLICER on their own WT split
-at the same data scale, so the matched search is expected to take +0.0172 down to
-roughly +0.005. **"Parity with the state of the art at ~150× less compute,
-confirmed under a matched search" is a harder claim to attack than "+0.017 under
-a search we admit was unequal."** A number that survives the obvious objection
-is worth more than a larger number that invites it.
+### What an equal-footing search costs, and what it cost in the end
 
-**One asymmetry the matched run will not remove, and it favours us.** SLICER's
-tuned arm starts from a configuration already selected by 627 draws on the
-published cohort and then adds 12 draws per fold; their matched arm would get 60
-draws and no such history. Strict equality of *total* search would need a larger
-budget on their side. The matched run removes the largest asymmetry, not all of
-it, and the residual should be stated rather than left for a reviewer to find.
+The margin's weakest point was that crisprHAL got 10 configurations and SLICER
+627. **A TPU would be the wrong instrument for closing it** — TPUs earn their
+keep on large dense matmul under XLA, and this model's recurrent branch is a
+bidirectional GRU, the shape that maps worst onto them; a mid-range GPU is
+cheaper and faster. The free Colab T4 was the right instrument, and the question
+was only how many fits it had to do.
 
-### Would renting a TPU settle the tuning asymmetry? Yes, and it should not be a budget item
+*Costed three times, and only the third was from measurement.* The first
+estimate was ~460 CPU-hours (matching 627 draws locally). The second was "2–4
+GPU-hours, one free Colab session", which priced their *default* configuration
+for a search that mostly does not use it. **The run settles it**: 33 fits across
+five folds took **~2.6 GPU-hours** at 2.3–8.6 min each, because patience stopped
+every fold after 5–8 draws. A *genuinely* matched search — ~100 draws per fold,
+since that is what ours used — would be ~500 fits and **~40 GPU-hours**.
 
-The margin's weakest point is that crisprHAL got 10 configurations and SLICER
-627. Matching 627 draw-for-draw is ~460 CPU-hours, which is where a £20–50
-rental estimate came from. **That estimate was wrong**: the trace shows 40 draws
-captured 100% of SLICER's gain, so an equal-footing search means running *their*
-search to *its own* patience criterion — about **55 fits**.
-
-*And the cost of those fits is now measured rather than guessed, which revises
-the estimate upward.* Their published configuration fits one fold in **5.48 min
-on a Colab T4** against **17.0 min locally** — a **3.1× speed-up**
-(`crisprhal_wide_window.csv`, `crisprhal_rerun.csv`). But a search's draws
-average *larger* than their default: the local search's median fit was 44 min
-against 17 for the default, so ~14 min/fit is the right T4 budget. Twelve draws
-inside each of five folds plus five refits is 65 fits, so **10–15 GPU-hours, two
-to four free sessions with resume** — not the "2–4 GPU-hours, one free Colab
-session" this section claimed before any Colab timing existed. That figure was
-too optimistic by 3–5×, because it priced the *default* configuration for a
-search that mostly does not use it.
-
-**What a matched search is expected to buy, bounded rather than extrapolated.**
-Their own fully-tuned **published** WT model scores 0.695 on their own WT split,
-where SLICER scores 0.6997 at the same data scale (~26.8k training rows). That is
-the best available estimate of what their architecture reaches when *its authors*
-tune it at this cohort size, and it sits ~0.005 behind us. So the expected
-endpoint of a matched search on our folds is the margin narrowing from **+0.0172
-to roughly +0.005**, not to zero. The interpretation is fixed in advance in
-`colab/crisprhal_tune_matched.py`: at **≥ ~0.716** the margin was mostly a
-tuning-effort artefact and parity is the honest conclusion on our folds too; at
-**0.704–0.710** it survives and ~+0.005 to +0.010 is the number to quote; **above
-0.7213** we lose on our own folds once their search is equalised, and should say
-so plainly. Draw 0 is their published configuration, so it doubles as the
-positive control — its fold scores must land near 0.686–0.702.
-
-**A TPU would be the wrong instrument.** TPUs earn their keep on large dense
-matmul under XLA; this model's recurrent branch is a bidirectional GRU — a
-sequential loop, the shape that maps worst onto them. A mid-range GPU is both
-cheaper and faster for it.
-
-*When:* once, at data freeze. Re-tuning is required only when rows, label or
-folds change (both models) or the feature set changes (SLICER only);
-documentation and analyses outside the curated arm require none.
+So the cheap version is cheap because it gives up early, and the reason it gives
+up is the result: nothing in the space beats their published configuration, so
+patience fires after four consecutive non-improvements. The expensive version
+would buy a tighter bound on the same conclusion.
 
 **For the comparison on *their* splits it is moot; for ours it is not.** The
 objection applies to *our* runs of their architecture, which is exactly what the

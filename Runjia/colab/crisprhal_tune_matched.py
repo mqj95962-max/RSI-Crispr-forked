@@ -1,13 +1,28 @@
 # ============================================================================
-# Give crisprHAL 2 the search WE got: 12 draws inside each of five folds.
+# Give crisprHAL 2 a search of its own: nested, 12 draws per fold with patience.
 #   -- run in Google Colab on a GPU runtime (Runtime -> Change runtime type -> T4)
+#
+# RAN 16 OCTOBER. Result: 0.6987 mean over the five folds (0.6890, 0.7011,
+# 0.7044, 0.6993, 0.6997) against their published configuration's 0.6971 and
+# SLICER's 0.7218. Their published configuration WON the inner search in four
+# folds of five; the fifth picked a draw 0.0016 ahead on the inner split, which
+# is noise. 33 fits, ~2.6 GPU-hours, because patience stopped every fold after
+# 5-8 draws.
+#
+# CORRECTION to the premise below: this is NOT the search SLICER got. SLICER's
+# tuned arm used 97-157 draws per fold (627 total, results/tuning.csv); the
+# "12 per fold" came from tune.py's CLI default rather than from the run that
+# produced the number. Equalising honestly is ~100 draws per fold, ~500 fits,
+# ~40 GPU-hours. What this run establishes is weaker but still useful: a small
+# search finds nothing better than their defaults, while the same small search
+# on our side buys +0.0103.
 #
 # WHY. The held-out-fold margin is SLICER 0.7213 against crisprHAL 0.7040,
 # +0.0172 with a guide-paired 95% CI of [+0.0136, +0.0209]. That margin is an
 # UPPER BOUND, and the report says so, because the two searches were not equal:
 #
-#   SLICER      12 random draws inside EACH of 5 outer folds, chosen on an
-#               inner 80/20 split of that fold's training rows
+#   SLICER      97-157 random draws inside EACH of 5 outer folds, chosen on an
+#               inner 80/20 split of that fold's training rows (627 total)
 #   crisprHAL   10 draws on ONE inner split of fold 1's training rows, because
 #               each fit cost ~17 CPU-minutes locally (7.3 h for the search)
 #
