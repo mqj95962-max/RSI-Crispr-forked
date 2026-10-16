@@ -110,8 +110,10 @@ compared in full rather than candidate pools under a budget:
 |---|---:|---:|---:|
 | mononucleotide only | 74 | 0.5198 ± 0.0021 | −0.0251 |
 | + dinucleotide | 364 | 0.5331 ± 0.0010 | −0.0118 |
+| + trimer | 1,510 | 0.5354 ± 0.0003 | −0.0096 |
 | **regenerated base** | **6,169** | **0.5449 ± 0.0013** | — |
 | 364 + family A | 712 | 0.6937 ± 0.0010 | −0.0142 |
+| 1,510 + family A | 1,858 | 0.7011 ± 0.0009 | −0.0068 |
 | base + family A | 6,517 | **0.7079 ± 0.0004** | — |
 
 **Two results, and they point in opposite directions.**
@@ -122,16 +124,23 @@ against 0.7079. **±0.0005.** The selection budget was never the binding
 constraint, which retires both the protocol caveat above and the `n_features`
 row in Part 4.
 
-*But the reduced representation is **not** non-inferior here.* 364 columns lose
-**0.0118** and 712 lose **0.0142** — two to three times the pre-declared 0.005 ρ
-margin that 427 passed on the published matrix. The reduction claim therefore
-does not transfer: **"412 ≈ all 6,232" is a statement about the published matrix
-under a 300-column budget**, and on the curated cohort with every column
-available the higher-order k-mer columns are worth 0.012–0.014. That is Finding
-7 seen from the other side — higher-order k-mers help once selection is removed —
-and it means the paper must state the reduction with both qualifiers or not at
-all. What does transfer is the *lossless* part: 74 columns recover 95.4% of full
-ρ here against 96.4% there.
+*But no reduced representation we tested is non-inferior here.* 364 columns lose
+**0.0118**, 1,510 lose **0.0096**, and with family A present the shortfalls are
+0.0142 and 0.0068 — every one of them past the pre-declared 0.005 ρ margin that
+427 passed on the published matrix. So **"412 ≈ all 6,232" is a statement about
+the published matrix under a 300-column budget** and does not transfer; on this
+cohort the full regenerated base earns its 6,169 columns. What *does* transfer is
+the lossless part: 74 columns recover 95.4% of full ρ here against 96.4% there.
+
+*And this is Finding 7 from the other side, where it does not reproduce.* On the
+published matrix the usable k-mer order stopped at three — trimers +0.0035,
+tetramers −0.0028. Here the trimer step is worth only **+0.0023** without family
+A while the remaining step to the full base is worth **+0.0095**, four times as
+much. But that step adds two different things at once, 4,343 tetramer indicators
+*and* 316 quantum-table columns, so it cannot be attributed yet; an arm with the
+k-mers and without the quantum columns is running. Until it reports, the honest
+statement is that **higher-order columns are worth more on this cohort than
+Finding 7's "stops at three" allows**, and which kind is unresolved.
 
 **A consequence that is often stated as a theorem, and is false.** If the matrix
 encodes the 20-mer losslessly, it is tempting to conclude that *any* deterministic
