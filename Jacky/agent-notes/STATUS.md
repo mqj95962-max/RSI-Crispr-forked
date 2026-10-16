@@ -1,3 +1,5 @@
+
+Canonical human-boundary folder: `Jacky/human-boundary/`.
 # Work-plan status
 
 Last updated after orientation controls.
