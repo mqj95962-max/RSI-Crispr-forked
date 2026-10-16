@@ -2149,6 +2149,36 @@ the +0.099 (Finding 2). The representation effect is real at **+0.011 to +0.019*
 across three guide-only arms; the claim was inflated nine-fold by a family whose
 column list nobody had read.
 
+### Family G's own rule, applied here at last — and it fails
+
+`g_transcription` was built with a discipline in its module docstring: *claim
+nothing unless an interaction term beats both of its parents.* Guo et al. had
+already reported the marginals as null — target-gene expression, chromosome
+position, leading-versus-lagging strand — so the family existed to test whether a
+mechanism needing **both** transcription and strand to line up shows up where
+neither marginal does. Appendix B3 reported +0.058 here and admitted the rule had
+never been applied on this cohort. Applied (`txn_interactions.py`):
+
+| arm | columns | Δρ |
+|---|---:|---:|
+| the 15 marginals | 15 | **+0.0577** |
+| the 4 `eng.txn.ix.*` interactions alone | 4 | +0.0175 |
+| both | 19 | +0.0581 |
+
+**The interactions add +0.0004 on top of their parents.** The rule is not
+satisfied — not close — so nothing about the transcription–strand mechanism is
+supported here. What carries the family's +0.058 is the **marginals**, which is
+the opposite of the design's premise and a failure to replicate Guo's reported
+null for expression, position and strand.
+
+*And there is a confound that has to be checked before that reads as biology.*
+The curated label is **survival after cutting**, so a guide aimed at an essential
+gene depletes the cell whether or not the guide is any good. Any gene-level
+column — essentiality most of all — can therefore predict the label through the
+*phenotype* rather than through Cas9 activity. Arms isolating the expression
+block and essentiality alone are running; until they report, **+0.058 should be
+read as "a gene-level signal of unknown provenance", not as transcription.**
+
 **Family G is the one family carrying genuinely new non-sequence information**
 — RegulonDB TSS positions and PRECISE-1K expression, neither computable from the
 genome — and at +0.058 it is now sixth. On the published matrix it was +0.015 and

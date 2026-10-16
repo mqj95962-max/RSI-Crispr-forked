@@ -52,9 +52,19 @@ def run(seeds=None, n_splits=None, n_features=300, verbose: bool = True):
     base = pd.read_csv(config.RESULTS / "ablation_curated.csv").set_index("family")
     base_rho = float(base.loc["baseline", "spearman"])
 
+    # Why these two extra arms. The curated label is *survival after cutting*,
+    # so targeting an essential gene depletes the cell whether or not the guide
+    # is any good. Any gene-level column -- essentiality above all -- can
+    # therefore predict the label through the phenotype rather than through Cas9
+    # activity. If the family's gain is carried by `expr.essential` alone, it is
+    # measuring the assay, not transcription.
+    is_ess = np.array([f.endswith(".expr.essential") for f in fnames])
+    is_expr = np.array([".expr." in f for f in fnames])
     rows = []
     for arm, mask in (("marginals", ~is_ix), ("interactions", is_ix),
-                      ("both", np.ones(len(fnames), dtype=bool))):
+                      ("both", np.ones(len(fnames), dtype=bool)),
+                      ("essential_only", is_ess), ("expression_only", is_expr),
+                      ("no_expression", ~is_expr & ~is_ix)):
         sub = [f for f, m in zip(fnames, mask) if m]
         Xa = np.hstack([X, v[:, mask]])
         res = cross_validate(Xa, y, names + sub,
@@ -77,6 +87,10 @@ def run(seeds=None, n_splits=None, n_features=300, verbose: bool = True):
         print(f"\n  interactions on top of their parents: {b - m:+.4f}")
         print(f"  the rule is satisfied only if that exceeds what four dense "
               f"columns buy alone ({i:+.4f})")
+        if "essential_only" in out.index:
+            print(f"  essentiality alone: {out.loc['essential_only', 'd_spearman']:+.4f}"
+                  f"   expression block: {out.loc['expression_only', 'd_spearman']:+.4f}"
+                  f"   family without it: {out.loc['no_expression', 'd_spearman']:+.4f}")
         print(f"written -> {OUT}")
     return out.reset_index()
 
