@@ -132,12 +132,30 @@ def _search_in_pool(X, y, draws=8, seed=41, verbose=True):
     return best_p
 
 
-def run(verbose: bool = True) -> pd.DataFrame:
+def run(match_train_size: bool = True, verbose: bool = True) -> pd.DataFrame:
+    """`match_train_size` fixes a confound the first version of this had.
+
+    A 5-fold CV inside the pool trains each fold on 80% of it, while the
+    sealed-set fit trains on 100%. The sealed number is therefore flattered by
+    ~25% more training data -- worth roughly +0.005 ρ at this point on the
+    sample-complexity curve, and *more* for arms that benefit most from data,
+    which is exactly the arms under test. Subsampling the sealed-set fit to the
+    same 80% removes it, so that the only remaining difference between the two
+    estimates is the population.
+    """
     X, y, names, protos = _base()
     A, anames = _block("a_flank", protos)
     XA = np.hstack([X, A])
     sealed = _seal(protos, verbose=verbose)
     dev = ~sealed
+    dev_idx = np.where(dev)[0]
+    fit_idx = dev_idx
+    if match_train_size:
+        n = int(len(dev_idx) * (1 - 1 / 5))
+        fit_idx = np.random.default_rng(SEAL_SEED).choice(dev_idx, n, replace=False)
+        if verbose:
+            print(f"  sealed-set fits use {n:,} of {len(dev_idx):,} pool rows, "
+                  f"matching what each CV fold trains on")
 
     arms = {
         "base_only":  dict(X=X,  n_features=None, tune=False),
@@ -156,7 +174,8 @@ def run(verbose: bool = True) -> pd.DataFrame:
             if verbose:
                 print(f"    chosen: {params}")
         cv = _cv_in_pool(Xa[dev], y[dev], params, cfg["n_features"])
-        pred = _fit_predict(Xa[dev], y[dev], Xa[sealed], params, cfg["n_features"])
+        pred = _fit_predict(Xa[fit_idx], y[fit_idx], Xa[sealed], params,
+                            cfg["n_features"])
         sealed_rho = float(spearmanr(y[sealed], pred).statistic)
         rows.append(dict(arm=arm, n_cols=Xa.shape[1], n_dev=int(dev.sum()),
                          n_sealed=int(sealed.sum()), cv_in_pool=cv,
@@ -179,8 +198,11 @@ def run(verbose: bool = True) -> pd.DataFrame:
 
 
 def main(argv=None) -> int:
-    argparse.ArgumentParser(description=__doc__.splitlines()[0]).parse_args(argv)
-    run()
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--no-match-train-size", action="store_true",
+                    help="reproduce the first, confounded version")
+    a = ap.parse_args(argv)
+    run(match_train_size=not a.no_match_train_size)
     return 0
 
 

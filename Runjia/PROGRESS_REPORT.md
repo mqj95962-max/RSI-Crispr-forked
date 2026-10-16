@@ -65,9 +65,17 @@ not pure functions of the protospacer and are not reproduced.
 ### 2. Those 6,232 columns contain about 20 variables
 
 A 20-mer carries at most 40 bits; the matrix spends 6,232 columns on it in three
-overlapping spellings. **74 mononucleotide indicators are a lossless encoding** —
-every position carries at least three of its four, so the fourth is implied — and
-recover 96.4% of full-matrix ρ. Adding the 63 non-sequence columns gives **427
+overlapping spellings. **74 mononucleotide indicators are a lossless encoding.**
+There are only four bases, so the 74 are *position-specific*: one indicator per
+(position, base) pair over the 20 positions. A complete one-hot would be 80, and
+three of four determine the fourth, so 60 would do — the matrix carries **all
+four indicators at 14 positions and three at the other six** (positions 3, 4, 5,
+6, 7 and 20, each missing a different base). Those six omissions are not absent
+bases: every dropped base occurs in 20–27% of guides. **So the matrix is not even
+internally consistent in its own encoding** — 14 positions carry a column that is
+arithmetically implied by its neighbours and six do not, which is the cleanest
+single illustration of what "elaborate spelling" means here. The 74 recover 96.4%
+of full-matrix ρ. Adding the 63 non-sequence columns gives **427
 columns at ρ 0.5249 against 0.5272**: loss **+0.0023, 95% CI [−0.0008, +0.0054]**,
 formally **non-inferior against a pre-declared 0.005 ρ margin** (one-sided
 p = 0.035). The matrix decomposes as **74 sequence + 63 non-sequence + ~6,095
@@ -84,6 +92,26 @@ family A, eight classes span **0.1076 ρ** against 0.116 for sixteen classes
 without it — adding the one family that matters does not widen the gap between
 model classes at all, while the family itself is worth +0.164. Table in
 Appendix B.
+
+**What the 63 non-sequence columns actually are**, since "non-sequence" is a
+misnomer worth retiring (`results/portability_audit.csv`):
+
+| | count | computable from the 20-mer? |
+|---|---:|---|
+| whole-guide k-mer counts (4 mono + 16 di) | 20 | yes |
+| guide GC, guide Tm, guide RNA secondary structure | 3 | yes |
+| PAM base indicators | 4 | yes |
+| undecoded `V` columns | 34 | 19 yes, 15 no |
+| **distance to the nearest gene and to the PAM** | **2** | **no — needs annotation** |
+
+**Only two of the sixty-three need anything beyond the guide**, and both are
+positional. The other sixty-one are the guide re-described: counts instead of
+indicators, a melting temperature instead of the bases that determine it. So they
+are not a source of extra information to imitate — they are *summaries*, and
+their value is the representation effect this finding measures at **+0.011 to
++0.019** (below, and Appendix B). Building more of them is worth about that much,
+which is the same answer the quantum tables, CRISPRoff energies and ViennaRNA
+folding all gave independently.
 
 **And the reduced set is portable** (`portability.py`), which is what a move to
 another cohort actually needs. Of the 63 hand-named columns, 26 are computable from the 20-mer
@@ -111,9 +139,11 @@ compared in full rather than candidate pools under a budget:
 | mononucleotide only | 74 | 0.5198 ± 0.0021 | −0.0251 |
 | + dinucleotide | 364 | 0.5331 ± 0.0010 | −0.0118 |
 | + trimer | 1,510 | 0.5354 ± 0.0003 | −0.0096 |
-| **regenerated base** | **6,169** | **0.5449 ± 0.0013** | — |
+| + tetramer (**all k-mers**) | 5,853 | 0.5335 ± 0.0013 | −0.0114 |
+| **regenerated base** (+ 316 quantum columns) | **6,169** | **0.5449 ± 0.0013** | — |
 | 364 + family A | 712 | 0.6937 ± 0.0010 | −0.0142 |
 | 1,510 + family A | 1,858 | 0.7011 ± 0.0009 | −0.0068 |
+| all k-mers + family A | 6,201 | 0.7005 ± 0.0004 | −0.0074 |
 | base + family A | 6,517 | **0.7079 ± 0.0004** | — |
 
 **Two results, and they point in opposite directions.**
@@ -132,15 +162,26 @@ the published matrix under a 300-column budget** and does not transfer; on this
 cohort the full regenerated base earns its 6,169 columns. What *does* transfer is
 the lossless part: 74 columns recover 95.4% of full ρ here against 96.4% there.
 
-*And this is Finding 7 from the other side, where it does not reproduce.* On the
-published matrix the usable k-mer order stopped at three — trimers +0.0035,
-tetramers −0.0028. Here the trimer step is worth only **+0.0023** without family
-A while the remaining step to the full base is worth **+0.0095**, four times as
-much. But that step adds two different things at once, 4,343 tetramer indicators
-*and* 316 quantum-table columns, so it cannot be attributed yet; an arm with the
-k-mers and without the quantum columns is running. Until it reports, the honest
-statement is that **higher-order columns are worth more on this cohort than
-Finding 7's "stops at three" allows**, and which kind is unresolved.
+*Finding 7 reproduces, and the step it does not explain is the interesting one.*
+The usable k-mer order does stop at three here as it did on the published matrix:
+trimers buy **+0.0023** and tetramers then **cost −0.0019** (−0.0006 with family
+A), against +0.0035 and −0.0028 there. Four thousand three hundred and
+forty-three tetramer indicators are too sparse to carry anything, on both
+cohorts.
+
+**What the last step buys is the 316 quantum-chemical columns, and they are worth
++0.0114** over a *complete* k-mer encoding — every mono-, di-, tri- and
+tetramer indicator the matrix contains — with no selection anywhere. With family
+A present they are still worth +0.0074. That is this project's own narrative
+turned around: those columns have been described throughout as part of the
+"elaborate spelling" of the 20-mer, and they are — every one is a lookup of a
+physical property for the base, pair or triple at a position, so they add **no
+information** whatsoever. They buy +0.011 all the same, which places Noshay et
+al.'s quantum tables **exactly in the band every other guide-only summarisation
+family occupies**: `b_energy` +0.019, `c_folding` +0.014, `d_mechanics`'s
+protospacer half +0.011, quantum tables +0.011. Four independent
+re-descriptions of the same twenty letters, four gains between one and two
+hundredths. The consistency is the result.
 
 **A consequence that is often stated as a theorem, and is false.** If the matrix
 encodes the 20-mer losslessly, it is tempting to conclude that *any* deterministic
@@ -2180,13 +2221,26 @@ supported here. What carries the family's +0.058 is the **marginals**, which is
 the opposite of the design's premise and a failure to replicate Guo's reported
 null for expression, position and strand.
 
-*And there is a confound that has to be checked before that reads as biology.*
-The curated label is **survival after cutting**, so a guide aimed at an essential
-gene depletes the cell whether or not the guide is any good. Any gene-level
-column — essentiality most of all — can therefore predict the label through the
-*phenotype* rather than through Cas9 activity. Arms isolating the expression
-block and essentiality alone are running; until they report, **+0.058 should be
-read as "a gene-level signal of unknown provenance", not as transcription.**
+*The phenotype confound, checked.* The curated label is **survival after
+cutting**, so a guide aimed at an essential gene depletes the cell whether or not
+the guide is any good, and any gene-level column could predict the label through
+the phenotype rather than through Cas9 activity. Decomposed:
+
+| what the columns read | columns | Δρ |
+|---|---:|---:|
+| **essentiality alone** | 1 | **+0.0000** |
+| the expression block (level, variability, control, pseudogene) | 5 | +0.0213 |
+| the rest of the marginals — TSS distance, position in gene, gene length, template strand, replichore, distance to *oriC* | 10 | **+0.0393** |
+
+**Essentiality contributes exactly nothing**, so the phenotype channel is not
+where the family's gain comes from — a useful negative, because it was the
+obvious objection. What the +0.058 is made of is **gene geometry and position**
+(+0.039) plus a real but smaller **expression** contribution (+0.021), close to
+additive. The positional part is the same variable the other positional families
+read, which is why the three of them together realise only 54% of their sum
+(above). So family G is best described as *another measurement of position, with
+a fifth of its gain from expression* — not as evidence for a
+transcription–strand mechanism, which its own rule rejects.
 
 **Family G is the one family carrying genuinely new non-sequence information**
 — RegulonDB TSS positions and PRECISE-1K expression, neither computable from the
