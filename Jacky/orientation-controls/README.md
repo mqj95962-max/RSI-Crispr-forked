@@ -47,6 +47,23 @@ Runner: `scripts/run_orientation_controls.py (paths still point at Jacky/agent-n
 Matched = greedy 1:1 NN on z-scored (`gene_dist` or `tss_dist`, `flank_gc500`),
 caliper `0.75√p`.
 
+## Which file to quote (Runjia’s question)
+
+**For the paper, use `intergenic_orientation_controls_delta_ci.csv` only** — not
+`summary.csv` for the headline asymmetries or Δ.
+
+| quantity | `summary.csv` | `delta_ci.csv` |
+|---|---|---|
+| method | mean of **per-fold** Spearman ρ per arm, then `gain_dn_matched − gain_up` | **one** Spearman ρ on **pooled OOF** predictions: ρ(y, pred_dn) − ρ(y, pred_up) |
+| TSS opposite asym | 0.0645 | **0.0614** |
+| TSS same asym | 0.0104 | **0.0106** |
+| TSS Δ | 0.0540 (by subtraction) | **0.0507** (reported; bootstrap uses same OOF point) |
+
+The bootstrap CI [0.020, 0.082] and P(Δ≤0)=0 are tied to the OOF definition.
+`summary.csv` is still useful for per-arm fold-mean gains and debugging, but
+the ~0.003 gap on TSS opposite is **fold-mean vs pooled-OOF**, not an internal
+inconsistency within either file.
+
 ## Reading (for Runjia / the paper)
 
 1. **TSS orientation is the cleanest positive control.** Opposite-TSS asymmetry
@@ -83,3 +100,7 @@ Full sequence-bearing index is local-only (`*_controls_index.csv`, ~19 MB).
 > guides. Matching on distance-to-TSS and flank GC attenuates but does not
 > reverse it. Nearest-gene orientation shows a similar pattern that does **not**
 > survive the same matching, so the paper should lead with TSS, not nearest gene.
+
+**Withdrawn for main text:** unweighted “0.047 opposite / 0.005 same” nearest-gene
+split from the first intergenic pass; block bootstrap on nearest gene is
+0.040 vs 0.014, Δ 0.026 [−0.006, 0.058], and matched dist+GC kills the Δ.
