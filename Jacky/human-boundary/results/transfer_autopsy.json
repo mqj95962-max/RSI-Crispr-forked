@@ -1,0 +1,8 @@
+{
+  "overall_transfer_rho": -0.048687336691124815,
+  "transfer_rho_after_residualising_gc2": -0.049357019823559126,
+  "spearman_error_vs_spacer_gc": -0.406258862394219,
+  "n_human": 17421,
+  "n_ecoli_train": 13880,
+  "n_shared_cols": 6216
+}
