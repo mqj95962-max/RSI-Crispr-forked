@@ -456,6 +456,16 @@ blocks, primary set n = 8,954:
 | nearest gene, matched on distance + flank GC | 0.029 | 0.022 | **0.007 [−0.024, 0.038]** | **0.337** |
 | TSS, matched on distance + flank GC | 0.048 | 0.023 | 0.025 [−0.003, 0.053] | 0.041 |
 
+*Which file these come from, since two exist.* All figures above are the
+**pooled out-of-fold** definition — one Spearman over pooled predictions, ρ(y,
+pred_dn) − ρ(y, pred_up) — from `intergenic_orientation_controls_delta_ci.csv`,
+because the bootstrap interval and P(Δ≤0) are tied to that definition.
+`summary.csv` averages per-fold ρ first and gives TSS Δ 0.0540 against the
+0.0507 quoted here; the ~0.003 difference is fold-mean against pooled-OOF, not
+an inconsistency, and Jacky documented which to quote
+(`Jacky/orientation-controls/README.md`). The paper should use the OOF file
+throughout and say so.
+
 **Three things changed, two of them against us.**
 
 1. **Lead with TSS, not nearest gene.** Against a curated TSS the interaction is
@@ -2260,11 +2270,36 @@ the row population accounts for most of it (Appendix B2a). What is still unrun i
 the same test with the *published* matrix's 63 hand-named columns rather than
 this 41-column stand-in.
 
-**They are single-family increments over a common base, nothing more.** No joint
-arm has been run on this cohort, and the published cohort's joint arms are the
-reason to expect heavy overlap: `i_shape` on top of family A was worth +0.001
-there, and the three positional families collapsed into one variable. Summing
-this column would give +0.70 ρ of improvement, which is not a real quantity.
+### The joint arms: the column must not be added up, and here is by how much
+
+Every Δρ above is a single-family increment over a common base, and the warning
+against summing them was inherited from the published cohort rather than measured
+here. Measured (`curated_joint.py`, same base, seeds and folds):
+
+| arm | joint Δρ | sum of singles | realised |
+|---|---:|---:|---:|
+| `a_flank` + `i_shape` | +0.1647 | +0.2833 | 58% |
+| `a_flank` + `d_supercoiling` | +0.1882 | +0.3029 | 62% |
+| `d_supercoiling` + `e_nucleoid` + `g_transcription` | +0.1454 | +0.2692 | 54% |
+| `a_flank` + `d_supercoiling` + `i_shape` | +0.1882 | +0.4224 | 45% |
+| **`b_energy` + `c_folding` + `f_methylation`** (guide-only control) | +0.0289 | +0.0409 | **70%** |
+| **all eleven families** | **+0.2030** | +0.7046 | **29%** |
+
+**Summing the column would claim +0.70 ρ. The real figure for all eleven
+together is +0.203** — 29% of it, and only +0.039 beyond family A alone. So the
+table is a ranking of families, not a budget.
+
+**`i_shape` adds +0.0009 on top of family A, and exactly nothing once
+`d_supercoiling` is also present** — the two three-family arms give identical
+joint gains to four decimals (+0.1882). Its +0.120 standalone is family A's
+effect re-expressed as bendability, which reproduces the published cohort's
++0.001-on-top-of-A result on data where that number was independently measured.
+
+**The control is what licenses reading the rest.** The three guide-only families
+overlap only through the 20-mer and are the most additive at **70%**; the flank
+and positional families, which read overlapping DNA, land at 45–62%. Had the
+control also come in near 50%, the right conclusion would have been a pipeline
+artefact rather than an interpretation.
 
 ## Appendix C0 — Reproducibility: versions, seeds and protocol
 
