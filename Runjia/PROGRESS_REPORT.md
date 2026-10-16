@@ -1198,9 +1198,9 @@ which is the most common error in this literature.
 ceiling is a property of the measurement and has to be estimated from replicates
 rather than from model performance.
 *Without it:* "the model is out of material" would be a claim about the model.
-With it, it is a claim about how much signal the label contains — and the figure
-is **inherited from the published label and not yet re-derived for the curated
-one**, which is Part 4 item 8.
+With it, it is a claim about how much signal the label contains — **0.946
+[0.944, 0.948]** for the label we train on, from crisprHAL's own per-replicate
+counts (Finding 11), and 0.937 for the published one by a different route.
 
 **The cross-assay control: a screen where the mechanism should *not* apply.**
 *Why it works:* every other external check is another Cas9 cutting screen, so a
@@ -2205,8 +2205,14 @@ and wider population.
 
 **They are not clean estimates of each family's biological contribution.** A
 family that supplies dense summaries is rewarded for its shape as well as its
-content on this base. Separating the two requires adding the portable hand-named
-summaries to the curated base and re-measuring, which has not been done.
+content on this base. *Partly separated, 13 October* (`base_enrichment.py`):
+giving the base 41 dense guide-only summary columns — `b_energy`, `c_folding` and
+`d_mechanics`'s protospacer half, none of which carries information beyond the
+20-mer — raises it from 0.5445 to 0.5692 and takes **0.013** off family A's
+gain, 8% of it. So column shape accounts for a small part of the inflation and
+the row population accounts for most of it (Appendix B2a). What is still unrun is
+the same test with the *published* matrix's 63 hand-named columns rather than
+this 41-column stand-in.
 
 **They are single-family increments over a common base, nothing more.** No joint
 arm has been run on this cohort, and the published cohort's joint arms are the
