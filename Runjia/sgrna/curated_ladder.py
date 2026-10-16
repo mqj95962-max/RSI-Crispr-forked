@@ -57,12 +57,21 @@ def run(seeds=SEEDS, n_splits=None, verbose: bool = True):
     mono_di = _unit_columns(names, ("monomer", "dimer"))
     A, anames = _block("a_flank", protos)
 
+    mono_di_tri = _unit_columns(names, ("monomer", "dimer", "trimer"))
+    sel = lambda m: [n for n, k in zip(names, m) if k]
     arms = {
-        "mono": (X[:, mono], [n for n, k in zip(names, mono) if k]),
-        "mono_di": (X[:, mono_di], [n for n, k in zip(names, mono_di) if k]),
+        "mono": (X[:, mono], sel(mono)),
+        "mono_di": (X[:, mono_di], sel(mono_di)),
+        # Finding 7 says higher-order k-mers help once selection is removed, and
+        # that was measured on the published matrix. These two arms re-ask it
+        # here, where no arm selects: trimers add 1,146 columns and tetramers a
+        # further 4,343, so if the trimer step pays and the tetramer step does
+        # not, the usable order stops at three on this cohort too.
+        "mono_di_tri": (X[:, mono_di_tri], sel(mono_di_tri)),
         "base_full": (X, names),
-        "mono_di+a_flank": (np.hstack([X[:, mono_di], A]),
-                            [n for n, k in zip(names, mono_di) if k] + anames),
+        "mono_di+a_flank": (np.hstack([X[:, mono_di], A]), sel(mono_di) + anames),
+        "mono_di_tri+a_flank": (np.hstack([X[:, mono_di_tri], A]),
+                                sel(mono_di_tri) + anames),
         "base_full+a_flank": (np.hstack([X, A]), names + anames),
     }
 

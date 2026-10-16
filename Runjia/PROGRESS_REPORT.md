@@ -860,6 +860,52 @@ the field already has several predictors, and everything needed to build one
 later exists (`featurise.matrix()` turns any 20-mer into the published
 representation).
 
+### The decision register: which choices could have inflated the five-fold figures
+
+"The curated five-fold figures carry an unknown adaptive-overfitting component"
+is the honest caveat, and it is also lazy — the component is not uniformly
+unknown, because most of the choices have a traceable provenance and several are
+measurably insensitive. Every decision that could inflate those figures, audited
+16 October:
+
+| decision | chosen where | adaptive w.r.t. the curated folds? | does it matter? |
+|---|---|---|---|
+| 300 selected columns | **inherited** from the baseline script (`N_FEATURES = 300`) | no | **no** — ±0.0005 against using every column |
+| champion XGBoost settings | **inherited** from the same script, not searched by us on either cohort | no | **no** — 0.0002 against LightGBM at its own unrelated defaults |
+| selector = XGBoost gain | inherited; the LightGBM alternative was measured | no | **no** — 0.7033 against 0.7025 |
+| 5 folds, `random_state=41` | fixed once, reused by every arm in the report | no | reported over 5 seeds × 5 folds |
+| family A's existence | designed in **September on the published cohort**, from residuals computed there | no — a different cohort | it is the effect, so it must matter |
+| family A's window set (50/250/500/1,000) | swept on the **published** cohort, winner carried over | no, but a sweep winner carries its own curse | **being tested** — rebuilt at 75/300/600/1,200, agreement within ±0.005 declared in advance as "does not matter" |
+| per-fold hyperparameter search (627 draws) | curated cohort, **nested inside each training fold** | no — cannot see a validation row by construction | +0.0131 |
+| the 412/427 reduced column set | published cohort | n/a — it does not transfer, and the report says so | — |
+| which families to report | all eleven are reported, including the nulls | no | — |
+| ρ as the primary metric | crisprHAL 2's own reporting convention | no | nine-metric panel in Appendix B |
+| **the choice of cohort** | **here, and partly because curation improved our score** (ρ 0.607 → 0.628 on shared rows) | **yes** | unquantified |
+
+**Two conclusions, and the second is the uncomfortable one.**
+
+*Most of the pipeline is less adaptive than the caveat implies.* The settings a
+reviewer would suspect first — 300 columns, the booster's hyperparameters, the
+selector — were **inherited from the baseline script we started from**, and the
+report said otherwise until this audit: it credited the champion to "627 draws
+against the old cohort", conflating an inherited constant with the curated
+cohort's nested per-fold search. Both of those settings are also measurably
+insensitive, at ±0.0005 and 0.0002. The per-fold search is leak-free by
+construction. So the mechanisable part of the pipeline has little room to have
+inflated anything.
+
+*The cohort choice is genuinely adaptive and cannot be undone.* We moved to
+crisprHAL's curated label partly on the evidence that it improved scores, and
+every figure since is computed on the rows that choice selected. No re-derivation
+reaches it, because the alternative cohort is not a held-out sample of the same
+thing — it is a different, smaller, noisier draw. `sealed_holdout.py` bounds the
+*automatable* part of the adaptivity by re-deriving selection and tuning inside a
+development pool and scoring genes sealed from all of it; it cannot bound this.
+
+**What would have prevented it:** sealing 20% of the curated cohort on 13 October,
+before the pivot, rather than on 16 October after it. That is the one procedural
+lesson worth carrying to the next organism — seal first, and seal by gene.
+
 ### What the pivot re-opens
 
 Many choices were made under two constraints that no longer bind: the 13,880-row
@@ -874,7 +920,7 @@ settled under those constraints and is **not** automatically valid on crisprHAL'
 | **the ceiling, 0.937** | Guo's replicate statistics for the published label | **closed, and it was higher as predicted: 0.946 [0.944, 0.948]**, from crisprHAL's own per-replicate counts (Finding 11) |
 | **`n_features` = 300** | selector sweep on 6,232 published columns | **closed.** Selecting 300 against using every column: 0.5445 / 0.5449 on the base and 0.7084 / 0.7079 with family A. ±0.0005 in both directions, so the budget is free on this cohort too (Finding 2) |
 | **grouped CV by `arc5` / 100 kb block** | 13,880 guides, within-gene variance share 0.844 | **re-measured — it moved.** 0.844 → **0.713** on the curated cohort: gene identity explains 29% of the label there against 16% here, so gene-grouped CV constrains the model *more*, not less (Appendix B) |
-| **champion hyperparameters** | 627 draws against the old cohort | **decided: keep the freeze.** The champion XGBoost and LightGBM at its own unrelated defaults land within **0.0002 ρ** of each other on the curated cohort with family A (0.7084 / 0.7082), so the configuration is not a knife-edge and re-tuning has little to win. Stated as a decision with its evidence rather than left as a tension |
+| **champion hyperparameters** | **inherited from the baseline script**, not searched by us on either cohort — `n_estimators`, `learning_rate=0.05`, `max_depth=4`, `subsample=0.8`, `colsample_bytree=0.8` and `N_FEATURES=300` all come from `FINAL_baseline_ecoli_sgRNA_model_5seeds.py`. The 627 draws are the *per-fold nested* search on the curated cohort, which is a different thing and cannot leak | **decided: keep the freeze.** The champion XGBoost and LightGBM at its own unrelated defaults land within **0.0002 ρ** of each other on the curated cohort with family A (0.7084 / 0.7082), so the configuration is not a knife-edge and re-tuning has little to win. Stated as a decision with its evidence rather than left as a tension |
 | **the family Δρ table** | published matrix and label | **closed — all eleven families re-measured on the curated cohort** (Appendix B3). The *ordering* transfers almost exactly (rank ρ 0.97); every family inflates, median 3.3×. So the published table is still a guide to which families matter, and not to how much |
 | **"sixteen model classes span 0.116 ρ"** | published matrix, no family A | **closed, and it holds.** Eight classes on the curated base *with* family A span **0.1076 ρ** (XGBoost 0.7084 → k-NN 0.6007), against 0.116 for sixteen classes without it. Model class spans ~0.11 either way while family A alone is worth +0.164 (Finding 2) |
 | **Noshay's iRF as baseline anchor** | the only available comparator | now provenance only; crisprHAL 2 is the baseline |
