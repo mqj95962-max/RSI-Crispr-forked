@@ -23,7 +23,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
-ROOT = Path(os.environ.get("RSI09_ROOT", "/workspace/Runjia")).resolve()
+_REPO = Path(__file__).resolve().parents[3]
+ROOT = Path(os.environ.get("RSI09_ROOT", str(_REPO / "Runjia"))).resolve()
 os.environ["RSI09_ROOT"] = str(ROOT)
 (ROOT / "external_data").mkdir(parents=True, exist_ok=True)
 (ROOT / "data" / "raw").mkdir(parents=True, exist_ok=True)
@@ -33,7 +34,7 @@ from sgrna import config, featurise, genome, qct  # noqa: E402
 from sgrna.features import a_flank  # noqa: E402
 from sgrna.run_ablation import cross_validate, _impute  # noqa: E402
 
-OUT = Path("/workspace/Jacky/human-boundary/results")
+OUT = _REPO / "Jacky" / "human-boundary" / "results"
 CACHE = config.INTERIM / "human_boundary"
 OUT.mkdir(parents=True, exist_ok=True)
 CACHE.mkdir(parents=True, exist_ok=True)

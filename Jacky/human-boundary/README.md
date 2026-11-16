@@ -16,9 +16,13 @@ this folder tracks what explains the kingdom boundary.
 | **Family A alone — human→*E. coli*** | **+0.108** |
 | K562 DNase/ATAC as features | **+0.001 to +0.005** vs base (null) |
 | GC+GC² as human features | **+0.00** vs base (ablation null) |
+| Gene/transcription strand vs human cut score | **ρ −0.010** (null; CRISPRi contrast: ~0.66) |
+| Family A given strand | **+0.048** (survives; was +0.052) |
+| up1000 purine vs score | **ρ +0.020** (null; CRISPRi contrast: ~0.40) |
 
 Artefacts under `results/`. Runners: `scripts/run_human_boundary.py` (Tier 1),
-`scripts/run_tier2_tier3.py` (D1 / E1 / E2).
+`scripts/run_tier2_tier3.py` (D1 / E1 / E2),
+`scripts/run_human_strand_audit.py` (strand / purine control).
 
 ---
 
@@ -97,6 +101,22 @@ Status key: **DONE** / **PARTIAL** / **BLOCKED** / **TODO**
 | E1 | Cross-kingdom with Family A on both sides | **DONE** | base E→H **−0.049**; **a_flank alone E→H +0.042 / H→E +0.108**; base+A E→H **+0.022** / H→E **+0.017** — flanks flip the sign — `results/family_a_kingdom_transfer.csv` |
 | E2 | GC-matched / residualised transfer | **DONE** | Shared-col stays ≈−0.049 under residualise / GC-range / hist-match. With Family A, raw already +0.022; GC controls do not move it much — `results/gc_matched_transfer.csv` |
 
+### F. Strand / purine control (Runjia CRISPRi finding → human cutting)
+
+| # | item | status | result |
+|---|---|---|---|
+| F1 | Gene-strand vs human cut score | **DONE** | ρ **−0.010** — not a phenotype driver on this cutting matrix |
+| F2 | Family A with strand supplied | **DONE** | base+A **+0.052** → given strand **+0.048** (survives ~92%) — `results/human_strand_family_a.csv` |
+| F3 | Flank purine as strand proxy | **DONE** | up1000 purine vs score **+0.020**; as feature **+0.001** over base; vs coding-strand ρ **−0.15** (weak) — opposite of CRISPRi where purine ≈ strand |
+| F4 | Strand held constant (within coding / template) | **DONE** | Family A still **+0.058 / +0.064** inside each strand |
+
+**Cross-species read:** the bacterial “Family A collapses to strand” result is a
+**CRISPRi / silencing** property. On human **cutting**, strand does not explain
+the label or the Family A gain. So the kingdom wall is **not** “human was
+secretly a strand assay.” Live levers remain: flank representation (+0.022 sign
+flip), GC-shape inversion, and whatever still differs after flanks (repair /
+cell state / label) — not coding-strand.
+
 ---
 
 ## 3. How to re-run
@@ -105,8 +125,9 @@ Status key: **DONE** / **PARTIAL** / **BLOCKED** / **TODO**
 # Needs: human + ecoli matrices, qct_lookup_tables.json, v_column_mapping.json, hg38.fa.gz
 # Optional for D1: ENCODE bigWigs under data/reference/chromatin/
 export RSI09_ROOT=/workspace/Runjia
-python3 Jacky/human-boundary/scripts/run_human_boundary.py   # Tier 1
-python3 Jacky/human-boundary/scripts/run_tier2_tier3.py       # D1 / E1 / E2
+python3 Jacky/human-boundary/scripts/run_human_boundary.py      # Tier 1
+python3 Jacky/human-boundary/scripts/run_tier2_tier3.py          # D1 / E1 / E2
+python3 Jacky/human-boundary/scripts/run_human_strand_audit.py   # F1–F4 (needs refGene.txt.gz)
 ```
 
 Caches land in `Runjia/data/interim/human_boundary/` (decoded, located, `X_*.npy`, `a_flank_human.csv`).
@@ -129,6 +150,10 @@ Small tables land in `Jacky/human-boundary/results/`.
    actual cell-type tracks.
 5. **Putting GC/GC² in the human model** adds nothing. The kingdom break is not
    “forgot to include GC².”
+6. **Strand is not the human cutting story.** Unlike bacterial CRISPRi (strand
+   ρ≈0.66; Family A ≈ gone given strand), human cutting strand is null and
+   Family A survives. Cross-species difference is assay/representation, not
+   “same strand rule everywhere.”
 
 ---
 

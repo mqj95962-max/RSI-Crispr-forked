@@ -1,0 +1,15 @@
+{
+  "n_located": 16490,
+  "n_with_strand": 16490,
+  "frac_genic": 0.9984232868405094,
+  "frac_coding_strand": 0.5440266828380836,
+  "spearman_coding_strand_vs_y": -0.009758903792901041,
+  "spearman_up1000_purine_vs_y": 0.020236597420967548,
+  "spearman_up1000_purine_vs_coding": -0.1539415113038286,
+  "spearman_up1000_gc_vs_y": 0.0054957283166571546,
+  "family_a_delta_over_base": 0.052453928379622594,
+  "family_a_delta_given_strand": 0.04830665931607597,
+  "family_a_survives_strand": true,
+  "interpretation": "If family_a_delta_given_strand \u2248 family_a_delta_over_base, human cutting Family A is NOT a CRISPRi-style strand proxy \u2014 kingdom wall is not strand. If it collapses toward 0, reframe: human flanks were partly orientation.",
+  "cross_species_note": "Bacterial CRISPRi: strand alone \u03c1\u22480.66, Family A given strand \u2248+0.01 pooled. Human cutting numbers above are the analogue test on the wrong assay by design \u2014 expected survival of Family A if cutting \u2260 silencing."
+}

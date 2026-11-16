@@ -19,14 +19,15 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
-ROOT = Path(os.environ.get("RSI09_ROOT", "/workspace/Runjia")).resolve()
+_REPO = Path(__file__).resolve().parents[3]
+ROOT = Path(os.environ.get("RSI09_ROOT", str(_REPO / "Runjia"))).resolve()
 os.environ["RSI09_ROOT"] = str(ROOT)
 sys.path.insert(0, str(ROOT))
 
 from sgrna import config, featurise  # noqa: E402
 from sgrna.run_ablation import _impute, cross_validate  # noqa: E402
 
-OUT = Path("/workspace/Jacky/human-boundary/results")
+OUT = _REPO / "Jacky" / "human-boundary" / "results"
 CACHE = config.INTERIM / "human_boundary"
 OUT.mkdir(parents=True, exist_ok=True)
 
