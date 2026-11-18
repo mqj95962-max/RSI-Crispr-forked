@@ -135,6 +135,18 @@ Small tables land in `Jacky/human-boundary/results/`.
 
 ---
 
+## 3b. Discovery phase (improve human + retest transfer)
+
+Plan: [`DISCOVERY_PLAN.md`](DISCOVERY_PLAN.md) · Results: [`DISCOVERY_RESULTS.md`](DISCOVERY_RESULTS.md) · Runner: `scripts/run_human_discovery.py`
+
+**First discovery finding:** deeper/faster HPs raise located-set ρ from ~0.38 → ~0.47 (base) and with Family A → ~0.50 (3 seeds). Shape / mechanics / folding on top of A are nulls. Transfer still only flips with flanks (~+0.02), not with extras.
+
+```bash
+python3 Jacky/human-boundary/scripts/run_human_discovery.py --only all --seeds 41 42 43
+```
+
+---
+
 ## 4. Plain-English takeaway
 
 1. **Family A is real on human** (+0.052 ρ), smaller than the curated *E. coli* jump

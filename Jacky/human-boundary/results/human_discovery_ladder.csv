@@ -1,0 +1,10 @@
+experiment,tag,n,n_cols,spearman,spearman_sd,r2,n_folds,incomplete
+base_champion,hdisc_base_champion,16490,6169,0.38187893500200587,,0.16646238037465652,5,False
+base_human_hps,hdisc_base_human_hps,16490,6169,0.4755449159972843,,0.19422741917557837,5,False
+baseA_champion,hdisc_baseA_champion,16490,6517,0.43433286338162846,,0.2034449239652071,5,False
+baseA_human_hps,hdisc_baseA_human_hps,16490,6517,0.507353993738257,,0.2311224880080677,5,False
+baseA_shape,hdisc_baseA_shape,16490,6669,0.4218932550978443,,0.19409821323664253,5,False
+baseA_mechanics,hdisc_baseA_mechanics,16490,6547,0.43427372944744613,,0.20297303314402476,5,False
+baseA_folding,hdisc_baseA_folding,16490,6526,0.43168444709890885,,0.20326908938596877,5,False
+baseA_shape_mech_fold,hdisc_baseA_all,16490,6708,0.43099296679959964,,0.19988441695761877,5,False
+baseA_shape_mech_fold_human_hps,hdisc_baseA_all_hps,16490,6708,0.4909853251544959,,0.22549819644205754,5,False

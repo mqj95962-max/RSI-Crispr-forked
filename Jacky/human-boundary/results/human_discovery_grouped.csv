@@ -1,0 +1,5 @@
+experiment,tag,n,n_cols,spearman,spearman_sd,r2,n_folds,incomplete
+base_random,hdisc_grp_base_random,16490,6169,0.38187893500200587,,0.16646238037465655,5,False
+base_gene,hdisc_grp_base_gene,16490,6169,0.29720203169274806,,0.08813382500608172,5,False
+baseA_random,hdisc_grp_baseA_random,16490,6517,0.43433286338162846,,0.2034449239652071,5,False
+baseA_gene,hdisc_grp_baseA_gene,16490,6517,0.3413237766508147,,0.11394672087084083,5,False
