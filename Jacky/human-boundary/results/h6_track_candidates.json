@@ -1,0 +1,50 @@
+[
+  {
+    "exp": "ENCSR345XUN",
+    "file": "ENCFF153PRF",
+    "output": "signal p-value",
+    "href": "https://encode-public.s3.amazonaws.com/2021/09/14/6044c1c5-4344-4a30-8f76-c4e0bde3f530/ENCFF153PRF.bigWig",
+    "bio": [
+      1
+    ],
+    "title": "ATAC-seq",
+    "cell": "HCT116",
+    "label": "HCT116_ATAC"
+  },
+  {
+    "exp": "ENCSR986ZSH",
+    "file": "ENCFF251RIU",
+    "output": "read-depth normalized signal",
+    "href": "https://encode-public.s3.amazonaws.com/2025/08/21/a67f4179-ace6-472e-97fe-d030b6f631c9/ENCFF251RIU.bigWig",
+    "bio": [
+      2
+    ],
+    "title": "DNase-seq",
+    "cell": "HCT116",
+    "label": "HCT116_DNase"
+  },
+  {
+    "exp": "ENCSR000ENO",
+    "file": "ENCFF830FDL",
+    "output": "read-depth normalized signal",
+    "href": "https://encode-public.s3.amazonaws.com/2017/08/24/5baee494-b650-4af7-9845-10d8c61b149f/ENCFF830FDL.bigWig",
+    "bio": [
+      1
+    ],
+    "title": "DNase-seq",
+    "cell": "HeLa-S3",
+    "label": "HeLa-S3_DNase"
+  },
+  {
+    "exp": "ENCSR000ENU",
+    "file": "ENCFF634ZUJ",
+    "output": "read-depth normalized signal",
+    "href": "https://encode-public.s3.amazonaws.com/2017/08/24/d7e09821-7f09-4976-a52b-c34a31497996/ENCFF634ZUJ.bigWig",
+    "bio": [
+      1
+    ],
+    "title": "DNase-seq",
+    "cell": "HL-60",
+    "label": "HL-60_DNase"
+  }
+]
