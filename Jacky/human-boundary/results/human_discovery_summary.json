@@ -1,0 +1,13 @@
+{
+  "elapsed_sec": 1299.0680646896362,
+  "seeds": [
+    41
+  ],
+  "outputs": [
+    "human_discovery_ladder.csv",
+    "human_discovery_additivity.csv",
+    "human_discovery_grouped.csv",
+    "human_discovery_transfer.csv",
+    "DISCOVERY_PLAN.md"
+  ]
+}
