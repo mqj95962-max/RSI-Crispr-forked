@@ -1,0 +1,52 @@
+{
+  "window_nt": 500,
+  "n_guides": 16490,
+  "tracks": {
+    "HCT116_ATAC": {
+      "file": "HCT116_ATAC.bigWig",
+      "encode": "ENCFF153PRF",
+      "cell": "HCT116",
+      "assay": "ATAC"
+    },
+    "HCT116_DNase": {
+      "file": "HCT116_DNase.bigWig",
+      "encode": "ENCFF251RIU",
+      "cell": "HCT116",
+      "assay": "DNase"
+    },
+    "HCT116_H3K27ac": {
+      "file": "HCT116_H3K27ac.bigWig",
+      "encode": "ENCFF585BWA",
+      "cell": "HCT116",
+      "assay": "H3K27ac"
+    },
+    "HEK293T_DNase": {
+      "file": "HEK293T_DNase.bigWig",
+      "encode": "ENCFF148BGE",
+      "cell": "HEK293T",
+      "assay": "DNase"
+    },
+    "HeLaS3_DNase": {
+      "file": "HeLaS3_DNase.bigWig",
+      "encode": "ENCFF830FDL",
+      "cell": "HeLa-S3",
+      "assay": "DNase"
+    },
+    "HeLaS3_H3K27ac": {
+      "file": "HeLaS3_H3K27ac.bigWig",
+      "encode": "ENCFF010QGR",
+      "cell": "HeLa-S3",
+      "assay": "H3K27ac"
+    },
+    "HL60_DNase": {
+      "file": "HL60_DNase.bigWig",
+      "encode": "ENCFF634ZUJ",
+      "cell": "HL-60",
+      "assay": "DNase"
+    }
+  },
+  "note": "No per-guide cell-line labels in the Noshay matrix; each track is tested as a locus feature for the whole pool. A375 ENCODE DNase/ATAC was not available as a released GRCh38 signal in this sweep.",
+  "elapsed_sec": 1271.5863437652588,
+  "base_rho": 0.38187893500200587,
+  "baseA_rho": 0.43433286338162846
+}

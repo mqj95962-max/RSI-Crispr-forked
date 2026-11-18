@@ -141,6 +141,8 @@ Plan: [`DISCOVERY_PLAN.md`](DISCOVERY_PLAN.md) · Results: [`DISCOVERY_RESULTS.m
 
 **First discovery finding:** deeper/faster HPs raise located-set ρ from ~0.38 → ~0.47 (base) and with Family A → ~0.50 (3 seeds). Shape / mechanics / folding on top of A are nulls. Transfer still only flips with flanks (~+0.02), not with extras.
 
+**H6 (matched chromatin):** ENCODE tracks for HCT116 / HEK293T / HeLa / HL-60 give at most ~+0.01 on base and ~null given Family A — see `H6_CHROMATIN_RESULTS.md`.
+
 ```bash
 python3 Jacky/human-boundary/scripts/run_human_discovery.py --only all --seeds 41 42 43
 ```

@@ -58,4 +58,5 @@ We can search and download these once the screen’s cell type is confirmed.
 | ID | Status |
 |---|---|
 | H1–H5 | **DONE** — see `DISCOVERY_RESULTS.md` (capacity is the large human gain; shape/mech/fold null; transfer unchanged) |
-| H6–H9 | **Next** — Noshay human mixes A375 + HCT116/HEK293T/HeLa/HL60; fetch matched ENCODE tracks / expression / second screen |
+| H6 | **DONE** — matched-line ENCODE tracks (HCT116/HEK293T/HeLa/HL60 DNase/ATAC/H3K27ac); tiny Δρ on base (≲+0.013), ~null given Family A. See `results/human_h6_*.csv` |
+| H7–H9 | **Next** — expression / second human cutting screen / repair annotations |
