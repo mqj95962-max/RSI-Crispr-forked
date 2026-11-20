@@ -24,3 +24,6 @@ __pycache__/
 *.gb
 *.fasta
 *.fa
+
+# Local-only meeting notes (not for main)
+Jacky/PROJECT_STORY_NARRATION.md
