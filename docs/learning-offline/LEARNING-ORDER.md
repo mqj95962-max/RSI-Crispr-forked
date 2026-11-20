@@ -66,3 +66,9 @@ Offline guides `01`–`06` already cover 1–9 (qct is inside the pipeline guide
 5. Everything else only when you need it for a claim
 
 See `CHECKLIST-all-codes.md` for the full tick-list with priority tags.
+
+
+## Literal line-by-line (beginner)
+
+For zero coding background, use **`p0-line-by-line/`** (glossary + every line of the 9 P0 files explained in plain English).
+Start at `p0-line-by-line/README.md` / `00-glossary.md`.
