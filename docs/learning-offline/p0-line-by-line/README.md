@@ -19,3 +19,14 @@ These guides explain the **9 P0 files** as literally as possible, for readers wi
 | 09 | [09-human-boundary.md](09-human-boundary.md) | `Jacky/human-boundary/scripts/run_human_boundary.py` |
 
 Also see parent folder `LEARNING-ORDER.md` for P1+ priorities.
+
+
+## Prefer readable pages (not raw Markdown)?
+
+Open the pre-rendered HTML pack instead:
+
+- Start at **[`html/index.html`](html/index.html)**
+- Works offline in any phone/laptop browser
+- Want PDF? Open an HTML file → Print → **Save as PDF**
+
+Also see `html/HOW-TO-OPEN.txt` for device tips and free online converters (Dillinger, StackEdit, md-to-pdf).
