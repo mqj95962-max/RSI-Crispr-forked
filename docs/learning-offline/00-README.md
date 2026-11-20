@@ -1,29 +1,23 @@
 # Offline learning pack
 
-Flight-readable walkthroughs of the first 6 learning-order topics, plus a
-checklist of **every** code file in the GitHub repo (including Jacky / Joshua
-Colab scripts that have no `.py` extension).
+## Start here
 
-## Guides (read in order)
+1. Read **`LEARNING-ORDER.md`** — recommended P0→P1→P2 path (includes Jacky + Joshua).
+2. Work through guides `01`–`06` (they cover the P0 spine).
+3. Tick boxes in **`CHECKLIST-all-codes.md`** (or import the `.tsv` into Sheets and filter by Priority).
 
-| # | File | Topic |
-|---|---|---|
-| 1 | `01-baseline-model.md` | 5-seed XGBoost baseline |
-| 2 | `02-core-config.md` | `config.py` + `io_utils.py` |
-| 3 | `03-pipeline-build.md` | guide index → featurise → matrix |
-| 4 | `04-feature-family-a.md` | Family A (`a_flank.py`) |
-| 5 | `05-model-harness.md` | Ablation harness |
-| 6 | `06-human-experiments.md` | Jacky human-boundary runners |
+## Counts
 
-## Checklist for Google Docs / Sheets
+| Owner | Files |
+|---|---:|
+| Jacky | 24 |
+| Joshua | 11 |
+| Runjia | 161 |
+| root | 1 |
+| **Total** | **197** |
 
-- `CHECKLIST-all-codes.md` — checkboxes, **grouped by owner** (Jacky → Joshua → Runjia)
-- `CHECKLIST-all-codes.tsv` — same list for Sheets import
+## Download from GitHub
 
-### How to download this pack from GitHub
+Branch ZIP: open the PR branch → Code → Download ZIP, then go to `docs/learning-offline/`.
 
-1. Open this folder on the PR branch in the GitHub UI
-2. Click the raw file you want, then Save As — **or**
-3. On the PR branch page: Code → Download ZIP (gets the whole branch; pack is under `docs/learning-offline/`)
-
-Cursor cloud artifact Download can fail for overwritten zips; GitHub is the reliable path.
+Or browse: `docs/learning-offline/` on branch `cursor/learning-offline-pack-82a3`.
