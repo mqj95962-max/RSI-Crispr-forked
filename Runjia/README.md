@@ -19,11 +19,45 @@ folds → R² 0.2937 ± 0.0015, Spearman 0.5278, Pearson 0.5424 on Noshay's 13,8
 guides — kept because reproducing it to four decimal places is how this pipeline
 is checked, not because it is the current baseline.
 
-**Working figure (curated frame):** base + family A, ρ **0.7218** on the curated
-five folds; **0.6985** on crisprHAL 2's own held-out partition against the
-**0.695** Browne et al. report for it.
+**Extension (this fork only).** Work outside the frozen pipeline (`sgrna/post_freeze/`, `EXTENSION_LOG.md`).
+Two representation ideas the freeze deferred, as Findings 8–9: the flank's shape and 3D structure add nothing to
+its composition, and nuclease descriptors carry an unseen enzyme's PAM usage and little else. Then, from 9 November,
+**a joint hyperparameter search that changes the headline** (`EXTENSION_LOG.md` §11–15): +0.014 ρ on genes it never
+saw, which turns the parity below into a **lead of +0.023 to +0.029 ρ** on both of crisprHAL 2's own splits, with
+about **three times fewer labels** to match it and **13–21× faster** end-to-end scoring once the flank featuriser is
+computed on arrays. Four of six metrics are clear; the two top-end metrics are tied. crisprHAL 2 was **not** retuned
+on its own splits, so the lead is against their released model. Everything quoted for the extension is recomputed from
+its result files by `./run_audit.sh`.
 
-**Against the state of the art: parity at a fraction of the cost.** On
+**Then, on 19 November, a review of the whole project against its own files** (`EXTENSION_LOG.md` §16–17), which
+produced the two results worth knowing about before reading anything else:
+
+* **The tuning gain is the flank columns, not the learner.** Family A's increment is **+0.1563** at the champion's
+  settings and **+0.1697** at the tuned ones — it *grows* when the model improves — while the same hyperparameter
+  change is worth **+0.0162** with those columns present and only **+0.0028** without them. So Finding 4's "the model
+  is out of material" is strengthened rather than refuted by the retuning (§16.1).
+* **A contribution-level claim was withdrawn.** "The two kingdoms differ in interaction order" rested on the human
+  matrix, where **49% of rows repeat a guide that appears elsewhere**. Under folds that keep duplicates together the
+  ridge/boosting ratio goes 63.7% → **88.8%** and the corroborating depth effect changes sign (+0.0585 → **−0.0062**).
+  Withdrawn, not rescoped; the row-wise arms reproduce every published figure to four decimals in the same run, as a
+  positive control (§16.2). A note for the teammate whose baseline this was: `NOTE_human_twin_leak.md`.
+
+* **The tuning payoff replicates on a second gene split.** A fresh 40-draw search on a different 70% of the genes gives
+  **+0.0121 [+0.0092, +0.0152]** on genes it never saw, against +0.0143 on the first split, with a *different* winning
+  configuration in the same region of the space. It also showed the thing one split cannot: the champion's absolute ρ
+  moves **0.026** between two random gene partitions — twice the tuning gain — so differences between arms replicate and
+  levels do not (§16.3).
+
+**Part 6 of the report** now compares this work with the field — what each published predictor reads, how it validates,
+and where this project is novel (the kilobase reach) and explicitly is not (boosted trees matching a deep model, which
+BoostMEC did first).
+
+**Working figures (curated frame).** Frozen champion: base + family A, ρ **0.7218** on the curated
+five folds; **0.6985** on crisprHAL 2's own held-out partition against the
+**0.695** Browne et al. report for it. Tuned (fork): **0.7314** on the whole cohort under the standard
+gene-grouped protocol, **0.7215** on held-out genes, **0.8107** and **0.7172** on crisprHAL 2's two splits.
+
+**Against the state of the art, before retuning: parity at a fraction of the cost.** On
 crisprHAL 2's **own two published splits**, evaluated against their own published
 weights, SLICER is statistically equivalent to it — Δρ **+0.0021**, 95% CI
 [−0.0031, +0.0072] on eSpCas9 — equivalence at any margin from 0.0072 up, with no
@@ -42,7 +76,7 @@ guides (reproducing their published Pearson 0.502 / R² 0.249 at 0.488 / 0.235);
 SLICER on the identical rows and label reaches **0.6060** — **+0.128**, of which
 +0.049 is the model class and **+0.078 is the flank features**. So the two
 comparisons say different things and both are real: Noshay's model is beaten
-decisively, crisprHAL 2 is matched.
+decisively, crisprHAL 2 is matched by the frozen champion and led by the tuned one.
 
 **On size**, crisprHAL 2 holds **790,533** trainable parameters across 37 layers;
 SLICER stores **6,348 leaf values** over 400 trees, or 18,244 numbers counting
@@ -63,18 +97,20 @@ not a better model. Details and all four conditions: Finding 7 of
 (The source paper this extends reports Pearson 0.502 / R² 0.249 on the same
 feature set.)
 
-**The effect is specific to cleavage, and the label's ceiling is now measured.**
+**The effect is larger with cleavage, and the label's ceiling is now measured.**
 In a dCas9 **CRISPRi** screen — the last external dataset never used for
 anything here — family A adds **−0.009**, against **+0.157** on the cutting
 screen under the same whole-gene-holdout protocol. That screen-wide figure is an
 average over a cohort 85% of which is non-essential genes, where knockdown barely
 moves growth; restricted to its essential genes family A reads **+0.268**, and
 that +0.268 is the screen's own strand rule — a single strand indicator scores
-ρ 0.662 there on its own, and given it family A adds **+0.007 to +0.025**, on
-Cui and on a second screen (Rousset) this project had never used. So the
-flanking-context effect belongs to a step that requires a break, not to Cas9
-binding or local accessibility, and the strand result is the positive control the
-comparison previously lacked. Separately, the ceiling
+ρ 0.662 there on its own, and given it family A adds **+0.007 to +0.025** to the
+pooled ranking, on Cui and on a second screen (Rousset) this project had never
+used. The pooled ranking hides what happens *inside* genes: among coding-strand
+guides family A adds **+0.102 / +0.114** to the within-gene ranking on the two
+dCas9 screens, against **+0.085** on the cutting screen measured the same way,
+which is 13–14% of the attainable gain against 26%. So the flanking-context effect
+does not need a break; it is two to three times larger with one (Finding 3). Separately, the ceiling
 for the label we train on is **0.946 [0.944, 0.948]**, derived from crisprHAL's
 own published per-replicate counts rather than inherited from a different label,
 leaving ~0.22 ρ unaccounted for.
