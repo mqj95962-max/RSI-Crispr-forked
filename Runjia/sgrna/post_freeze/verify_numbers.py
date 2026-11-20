@@ -567,6 +567,93 @@ for s, mn, fi in (("curated / gene-grouped", 3, 0.0), ("curated / random rows", 
     chk(f"20.2 {s}: fraction identical", float(fd.loc[s, "frac_identical"]), fi, 3)
 chk("20.2 twin count predicts the leak fraction (0.49 x 0.8)", 0.49 * 0.8, float(fd.loc["human / random rows", "frac_identical"]), 2)
 
+print("21 mechanism")
+dp = pd.read_csv(OUT / "mechanism_distance_profile.csv")
+g = dp[dp.statistic == "gc"].set_index(["side", "window_nt"]).partial_given_target_gc
+for side, vals in (("up", {50: 0.172, 250: 0.203, 500: 0.196, 1000: 0.173}),
+                   ("dn", {50: 0.146, 250: 0.197, 500: 0.194, 1000: 0.181})):
+    for w, v in vals.items():
+        chk(f"21.1 GC {side} {w}nt partial", float(g[(side, w)]), v, 3)
+pu = dp[dp.statistic == "purine"].partial_given_target_gc.abs().max()
+chk("21.1 purine: largest |partial| at any window/side", float(pu), 0.018, 3)
+chk("21.1 GC peaks at 250nt upstream", 1.0 if g[("up", 250)] == g[("up",)].max() else 0.0, 1, 0)
+chk("21.1 up/dn largest disagreement", float(max(abs(g[("up", w)] - g[("dn", w)]) for w in (50, 250, 500, 1000))), 0.026, 3)
+pb = pd.read_csv(OUT / "mechanism_position_base.csv").set_index(["position", "base"])
+for pos, b, v in ((20, "T", 0.348), (20, "G", -0.322), (18, "G", -0.266), (18, "T", 0.210),
+                  (20, "A", 0.193), (19, "C", -0.161), (19, "T", 0.152), (14, "C", -0.147),
+                  (14, "T", 0.141), (19, "G", 0.138), (15, "C", -0.133), (15, "G", 0.103)):
+    chk(f"21.2 position {pos} base {b}", float(pb.loc[(pos, b), "effect_sd"]), v, 3)
+chk("21.2 G at 20 interval excludes zero", 1.0 if pb.loc[(20, "G"), "hi"] < 0 else 0.0, 1, 0)
+early = pd.read_csv(OUT / "mechanism_position_base.csv").query("position <= 7").effect_sd.abs().max()
+chk("21.2 largest |effect| at positions 1-7", float(early), 0.039, 3)
+chk("21.2 strongest effect overall is position 20", float(pd.read_csv(OUT / "mechanism_position_base.csv").effect_sd.abs().max()), 0.348, 3)
+
+print("21.3-21.5 cross-kingdom rules, resolution floor, interaction pairs")
+cmp_ = pd.read_csv(OUT / "mechanism_position_base_compare.csv").set_index(["position", "base"])
+from scipy.stats import spearmanr as _sp
+chk("21.3 rank correlation of the two matrices", float(_sp(cmp_.ecoli, cmp_.human).statistic), -0.052, 3)
+both_clear = cmp_[cmp_.ecoli_clear & cmp_.human_clear]
+chk("21.3 cells clear of zero in both", float(len(both_clear)), 27, 0)
+chk("21.3 of those, opposite in sign", float((np.sign(both_clear.ecoli) != np.sign(both_clear.human)).sum()), 15, 0)
+for pos, b, ec, hu in ((20, "G", -0.322, 0.131), (20, "T", 0.348, -0.170)):
+    chk(f"21.3 position {pos} {b}, E. coli", float(cmp_.loc[(pos, b), "ecoli"]), ec, 3)
+    chk(f"21.3 position {pos} {b}, human", float(cmp_.loc[(pos, b), "human"]), hu, 3)
+chk("21.3 position 20 G inverts", 1.0 if cmp_.loc[(20, "G"), "ecoli"] < 0 < cmp_.loc[(20, "G"), "human"] else 0.0, 1, 0)
+
+res = pd.read_csv(OUT / "novel_resolution.csv").set_index("arm")
+base, ref = float(res.loc["base only", "rho"]), float(res.loc["base + family A comp block (24 cols)", "rho"])
+chk("21.4 base only", base, 0.5617, 4)
+chk("21.4 family A comp block reference", ref, 0.6732, 4)
+for cols, rho, share in ((4, 0.6462, 75.7), (8, 0.6616, 89.6), (16, 0.6679, 95.2),
+                         (32, 0.6701, 97.2), (80, 0.6718, 98.7), (200, 0.6687, 96.0)):
+    lbl = [a for a in res.index if a.startswith(f"base + {cols} binned")][0]
+    chk(f"21.4 {cols} binned columns", float(res.loc[lbl, "rho"]), rho, 4)
+    chk(f"21.4 {cols} columns, share of composition signal", (float(res.loc[lbl, "rho"]) - base) / (ref - base) * 100, share, 1)
+chk("21.4 the curve turns over at 200 columns",
+    1.0 if float(res.loc[[a for a in res.index if a.startswith("base + 200 binned")][0], "rho"])
+    < float(res.loc[[a for a in res.index if a.startswith("base + 32 binned")][0], "rho"]) else 0.0, 1, 0)
+chk("21.4 all of family A", float(res.loc["base + all of family A (348 cols)", "rho"]), 0.7314, 4)
+
+bp = pd.read_csv(OUT / "mechanism_pairs_blocks.csv").set_index("block_pair").gain_share
+chk("21.5 largest block pair share", float(bp.max()), 0.058, 3)
+chk("21.5 flank composition x protospacer basepair quantum",
+    float(bp["flank: window composition x protospacer quantum: basepair"]), 0.048, 3)
+cp = pd.read_csv(OUT / "mechanism_pairs_columns.csv").set_index("col_pair").gain_share
+chk("21.5 strongest single pair share", float(cp.max()), 0.0186, 4)
+chk("21.5 strongest pair is up250 GC x position 20",
+    1.0 if "up250.gc" in cp.idxmax() and "p20" in cp.idxmax() else 0.0, 1, 0)
+
+print("21.6 human flank gain under twin-grouped folds")
+tw = pd.read_csv(OUT / "human_shape_ablation_twin.csv").set_index("arm").spearman
+rw = pd.read_csv(OUT / "human_shape_ablation.csv").set_index("arm").spearman
+chk("21.6 twin h_base", float(tw["h_base"]), 0.3063, 4)
+chk("21.6 twin h_base+A", float(tw["h_base+A"]), 0.3289, 4)
+chk("21.6 twin h_base+A+mc", float(tw["h_base+A+mc"]), 0.3466, 4)
+chk("21.6 twin family A increment", float(tw["h_base+A"] - tw["h_base"]), 0.0226, 4)
+chk("21.6 row-wise family A increment", float(rw["h_base+A"] - rw["h_base"]), 0.0480, 4)
+chk("21.6 increment survives (clear of zero)", 1.0 if tw["h_base+A"] - tw["h_base"] > 0.01 else 0.0, 1, 0)
+chk("21.6 shape on A, twin folds", float(tw["h_base+A+mc"] - tw["h_base+A"]), 0.0177, 4)
+chk("21.6 shape on A, row-wise folds", float(rw["h_base+A+mc"] - rw["h_base+A"]), 0.0183, 4)
+
+print("cross-kingdom transfer, re-quoted at champion")
+kt = pd.read_csv(config.RESULTS / "kingdom_transfer_boot.csv").set_index(["direction", "settings"])
+for d, s, v, lo, hi in (("ecoli -> human", "champion", -0.046, -0.061, -0.031),
+                        ("human -> ecoli", "champion", -0.016, -0.032, 0.001),
+                        ("ecoli -> human", "human_fitted", -0.039, -0.054, -0.024),
+                        ("human -> ecoli", "human_fitted", -0.006, -0.023, 0.011)):
+    chk(f"transfer {d} ({s})", float(kt.loc[(d, s), "spearman"]), v, 3)
+    chk(f"transfer {d} ({s}) lo", float(kt.loc[(d, s), "ci_lo"]), lo, 3)
+    chk(f"transfer {d} ({s}) hi", float(kt.loc[(d, s), "ci_hi"]), hi, 3)
+chk("transfer: ecoli->human excludes zero at champion",
+    1.0 if bool(kt.loc[("ecoli -> human", "champion"), "excludes_zero"]) else 0.0, 1, 0)
+chk("transfer: human->ecoli does NOT exclude zero at champion",
+    0.0 if bool(kt.loc[("human -> ecoli", "champion"), "excludes_zero"]) else 1.0, 1, 0)
+chk("transfer: the asymmetry holds under both settings",
+    1.0 if (bool(kt.loc[("ecoli -> human", "champion"), "excludes_zero"])
+            and bool(kt.loc[("ecoli -> human", "human_fitted"), "excludes_zero"])
+            and not bool(kt.loc[("human -> ecoli", "champion"), "excludes_zero"])
+            and not bool(kt.loc[("human -> ecoli", "human_fitted"), "excludes_zero"])) else 0.0, 1, 0)
+
 print(f"\n{n} checks, {len(bad)} mismatches")
 for b in bad:
     print("  MISMATCH", b)

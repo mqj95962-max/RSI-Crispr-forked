@@ -1159,3 +1159,222 @@ twin-grouped folds, none. And 39.1% is what the twin count predicts independentl
 and 5-fold CV puts 80% of the matrix in training, so 0.49 x 0.8 = 39.2% of validation rows should find their twin
 across the split. A performance collapse (0.5076 -> 0.2515) and a distance statistic computed from sequence alone,
 arriving at the same number from opposite directions.
+
+## 21. Biology out of the model, by routes redundancy does not disqualify (20 Nov; `mechanism.py`)
+
+*Why this was overdue.* The user's criticism was fair: most of what this project contributes beyond the model is a
+warning. Finding 5 is partly to blame -- it says that on a matrix where 99% of columns regenerate from the 20-mer,
+column-level importance is a statement about the selector -- so the project had been cautious about reading mechanism
+off the model at all. The way out is to use routes where there is no model to be confounded: the label against the
+sequence directly, and partial associations.
+
+### 21.1 The flank effect is GC, it is symmetric, and it peaks at 250-500 nt
+
+Partial Spearman of each flank window's composition with the label, holding **target** GC fixed (33,567 guides, no
+model involved; `mechanism_distance_profile.csv`). Sign convention checked twice against the report: flank GC is
+positively associated with activity and target GC negatively, and both reproduce here (+0.14 to +0.16 marginal for
+flank GC, -0.147 for target GC), so a positive number means more cutting.
+
+| statistic | side | 50 nt | 250 nt | 500 nt | 1,000 nt |
+|---|---|---:|---:|---:|---:|
+| GC | upstream | +0.172 | **+0.203** | +0.196 | +0.173 |
+| GC | downstream | +0.146 | **+0.197** | +0.194 | +0.181 |
+| purine | upstream | -0.000 | +0.001 | -0.005 | -0.005 |
+| purine | downstream | -0.007 | -0.018 | -0.014 | -0.000 |
+
+**Three statements, each a constraint on mechanism rather than a feature importance.**
+
+1. **It is GC, not base composition in general.** Purine fraction is flat at every distance and on both sides, within
+   +-0.018 of zero, while GC runs +0.15 to +0.20. So this is not a generic composition or strand-chemistry effect. It
+   rules out anything keyed to purine/pyrimidine asymmetry and points at GC-specific physics -- duplex stability,
+   stacking, melting -- which is the same direction as 20.1's finding that the effect tracks *absolute* composition
+   rather than enrichment against genomic background, and as Finding 8's result that shape descriptors are a
+   reparameterisation of composition.
+2. **It is symmetric.** Upstream and downstream profiles agree to within 0.026 at every window. A directional process
+   -- replication fork direction, transcription direction, one-sided resection -- would not produce that. Worth putting
+   beside the orientation result (Jacky's, delta 0.051 against a curated TSS): orientation matters, but it cannot be
+   acting through flank *composition*, because composition is side-blind. Those are two separate effects.
+3. **There is a length scale, and it is 250-500 nt.** The association rises from 50 nt to 250 nt and falls again by
+   1,000 nt, on both sides. That is far longer than anything Cas9 contacts (~20-30 nt) and far shorter than nucleoid
+   macrodomains (hundreds of kb). It is one to three persistence lengths of duplex DNA (~150 bp). *Hypothesis, not a
+   result:* the effect tracks the local mechanical or topological environment over a few persistence lengths. It is
+   stated as a hypothesis because the measurement is a length scale and nothing here tests the physics.
+
+### 21.2 Position x base design rules, and one of them inverts between kingdoms
+
+Effect of each base at each guide position on the label, in SD units, computed straight from the 33,567 protospacers
+and their labels -- no model, no selector (`mechanism_position_base.csv`; 95% intervals from the normal approximation
+to the SE of a mean over thousands of guides). Position 1 is PAM-distal, 20 is PAM-proximal.
+
+| | A | C | G | T |
+|---|---:|---:|---:|---:|
+| positions 1-7 | all within +-0.04 | | | |
+| 14 | -0.008 | **-0.147** | +0.012 | **+0.141** |
+| 15 | -0.033 | -0.133 | +0.103 | +0.088 |
+| 17 | -0.022 | +0.125 | -0.086 | -0.015 |
+| 18 | +0.075 | -0.060 | **-0.266** | **+0.210** |
+| 19 | -0.115 | -0.161 | +0.138 | +0.152 |
+| 20 | +0.193 | -0.142 | **-0.322** | **+0.348** |
+
+**The seed region carries all of it.** Positions 1-7 are flat -- every base within 0.04 SD of zero -- and the strongest
+twelve effects are all at positions 14-20. That agrees with two independent measurements: our own gain-by-position
+profile (eight PAM-proximal positions carry 63% / 62% of split gain, section 14) and Orro et al.'s SHAP profile on a
+human base-editing screen, which peaks at positions 19 and 20. Three routes, two organisms, two assays, one answer
+about where along the guide the signal lives.
+
+**It is mostly the GC rule, but not entirely.** Positions 18 and 20 follow it -- G and C depressed, A and T raised --
+which is the target-GC effect resolved by position. Position 19 breaks it: G is *favoured* there (+0.138) while C is
+disfavoured (-0.161). So there is position-specific base chemistry on top of composition.
+
+**And the largest single effect appears to invert between kingdoms.** G at position 20, immediately 5' of the PAM, is
+the most disfavoured base-position combination we measure, at **-0.322 SD** [-0.343, -0.300]. The eukaryotic literature
+consistently reports the opposite: G at position 20 is a *favoured* base and one of the main drivers of the Doench
+score. If that holds, it joins the GC inversion already in the report (target GC against activity: -0.20 here, +0.02 in
+human) to make a coherent statement -- **the guide-intrinsic design rules invert between *E. coli* and human** -- which
+would also explain, mechanistically rather than by appeal to "different organism", the field's repeated observation
+that mammalian-trained predictors transfer poorly to bacteria.
+
+*Status: our measurement is firm, the comparison is not yet.* The human side comes from reviews and a third-party
+calculator, not from primary weights, and positional numbering conventions differ between papers (some number from the
+PAM, some from the 5' end), which is exactly the kind of detail that can flip a sign. Confirming it needs Doench et
+al.'s 2016 supplementary weights read directly. **Do not put the inversion in a draft until that is done**; the
+*E. coli* matrix itself can go in now.
+
+### 21.3 The design rules do not transfer between kingdoms, and the strongest one inverts
+
+The right way to settle 21.2's open question was not to read Doench et al.'s fitted weights -- those come from a
+regularised regression over many correlated features and are not per-position marginals, so comparing them with our
+statistic would be apples to oranges. Instead: **run our estimator on their data.** Same code, same units, both
+organisms. The human matrix is deduplicated first (17,421 rows decode to 13,138 distinct 20-mers, and a repeat is a
+repeat *measurement*, so labels are averaged within a guide), which also sidesteps section 16.2's problem.
+
+*Sign convention checked before reading anything*, because it is the one thing that could manufacture this result.
+Target GC against the label: **-0.147 in *E. coli*** (report: -0.20) and **+0.018 in human** (report: +0.02). Both
+reproduce the report's independently established signs, so in both cohorts a higher label means more activity.
+
+| position 20 (PAM-proximal) | *E. coli* | human |
+|---|---:|---:|
+| G | **-0.322** | **+0.131** |
+| T | **+0.348** | **-0.170** |
+| A | +0.193 | +0.060 |
+| C | -0.142 | -0.121 |
+
+| | value |
+|---|---|
+| rank correlation of the two full position x base matrices (80 cells) | **-0.052** |
+| cells clear of zero in *both* organisms that have **opposite** signs | **15 of 27** |
+
+**Result: the position-specific base preferences of the guide are essentially unrelated between the two kingdoms**
+(rho = -0.05, i.e. no relationship rather than an attenuated one), **and the strongest preference in each inverts.** G
+immediately 5' of the PAM is the most *disfavoured* base-position combination in *E. coli* and a *favoured* one in
+human -- which is what the eukaryotic literature reports independently, where G at position 20 is described as a main
+driver of the Doench score. T inverts with it.
+
+This is the finding 21.2 flagged and would not claim, now settled by matched measurement rather than by cross-reading
+someone else's weights. Three things follow:
+
+1. **It is a positive biological result, not a warning.** Together with the GC inversion already in the report it says
+   the *guide-intrinsic* design rules are kingdom-specific, while the *flanking-context* effect is the half that
+   crosses (Part 3).
+2. **It explains an observation the bacterial literature keeps making without an explanation** -- that
+   mammalian-trained predictors predict poorly in bacteria. The reason is not "different organism" in the abstract: the
+   position weights they encode point the wrong way.
+3. **It is a design rule a bench scientist can use today.** Avoid G and prefer T immediately 5' of the PAM in
+   *E. coli*; the opposite of what a human-derived tool will tell you.
+
+*Limits.* Two different assays (survival after cutting against an indel/knockout score), so the comparison is of
+design rules rather than of mechanisms, and nothing here says *why* they invert. The human matrix is a single cohort.
+The 15-of-27 figure is about sign agreement among jointly-significant cells, not a formal test of the matrices'
+independence.
+
+### 21.4 The flank signal has no structure finer than about 250 nt
+
+Browne et al. searched input *length* and found the gains level off. The orthogonal question is *resolution*: how
+finely does the flank have to be described? If Finding 2 is right that the effect is a smooth gradient with no motif
+and no dependence on window edges, there should be a resolution floor. Equal-width bins of the 1,000 nt each side, GC
+and purine per bin, gene-grouped 5 folds x 3 seeds, tuned configuration (`novel_resolution.csv`):
+
+| description | columns added | rho | share of the composition signal |
+|---|---:|---:|---:|
+| base only | 0 | 0.5617 | |
+| one bin per side (1,000 nt) | 4 | 0.6462 | **75.7%** |
+| two bins (500 nt) | 8 | 0.6616 | 89.6% |
+| four bins (250 nt) | 16 | 0.6679 | **95.2%** |
+| eight bins (125 nt) | 32 | 0.6701 | 97.2% |
+| twenty bins (50 nt) | 80 | 0.6718 | 98.7% |
+| fifty bins (20 nt) | 200 | 0.6687 | 96.0% -- *it turns over* |
+| family A's four nested windows | 24 | **0.6732** | 100% (reference) |
+| all of family A | 348 | 0.7314 | |
+
+**There is a floor and it is coarse.** Four numbers -- GC and purine over the whole kilobase on each side -- carry
+three quarters of the composition signal. Sixteen carry 95%. Doubling the resolution past 250 nt bins buys +0.0022 and
+redoubling buys +0.0017. And at 20 nt bins it **turns over** -- 200 columns score below 80 and below 32 -- because fine bins are noisier
+individually and crowd the base columns out of a fixed selector budget. So **the flank effect has essentially no
+spatial structure below ~250 nt, and describing it more finely actively costs**, which is the same
+length scale 21.1's distance profile peaks at, reached by a completely different construction. (Family A's 24 nested
+columns beat 80 equal bins, which is what one would expect: nested windows at four scales are a better basis for a
+signal with one characteristic scale than fine bins at a single scale.)
+
+Two consequences. *Mechanistically*, a process that produced fine structure -- a motif, a positioned protein, a
+periodic feature -- would not give this curve; a bulk property averaged over a few hundred bases would. *Practically*,
+the flank featuriser could be about four columns per side rather than 174, which is most of the remaining end-to-end
+cost (section 13) and would make the representation trivially portable.
+
+### 21.5 Which pairs carry the interaction: the flank meets the seed
+
+Section 14 found 37% of what trees add over a linear model is pairwise but never said *which* pairs. A depth-2 model
+can express exactly pairs, so its (root, child) splits **are** the interactions, with none of SHAP's additivity
+assumptions. Gain share by block pair and by specific column pair (`mechanism_pairs_*.csv`):
+
+| block pair | share of interaction gain |
+|---|---:|
+| flank window composition x flank window quantum | 0.058 |
+| **protospacer indicators, positions 16-20 (seed) x protospacer dimer quantum** | 0.048 |
+| **flank window composition x protospacer basepair quantum** | 0.048 |
+| flank window quantum x protospacer basepair quantum | 0.047 |
+| flank window composition x protospacer dimer quantum | 0.043 |
+| seed indicators x seed indicators | 0.039 |
+
+| strongest specific pairs | share |
+|---|---:|
+| `eng.flank.comp.up250.gc` x `p20basepair.Hlgap.eVEraw` | 0.0186 |
+| `p18dimer.Hbond.energyraw` x `p19dimer.Hbond.stackingraw` | 0.0163 |
+| `eng.flank.win.dn500.trimer.Hbondenergy.mean` x `p20basepair.Hlgap.eVEraw` | 0.0159 |
+| `eng.flank.comp.up250.gc` x `eng.flank.win.dn500.trimer.Hbondenergy.mean` | 0.0137 |
+
+**The dominant interaction is between the flanking kilobase and the seed region**, and the single strongest pair is
+250 nt upstream GC against a property of **position 20** -- the same window that 21.1 finds the distance profile peaks
+at and the same position that 21.2 finds carries the strongest base preference and the cross-kingdom inversion. Three
+analyses built on different principles (partial correlation, marginal base effects, depth-2 split gain) converge on
+the same two objects. So the flank effect and the seed effect are **not additive**: how much the surrounding
+composition matters depends on what the PAM-proximal bases are.
+
+*And the interaction is diffuse.* No block pair exceeds 5.8% of interaction gain and no specific pair exceeds 1.9%, so
+this is not a handful of special pairs but a broad coupling between two regions -- which is what Finding 2's "smooth
+gradient, no motif" predicts, and the reason the pairwise term is 37% of a small total rather than a discrete rule.
+
+### 21.6 The human flank gain, re-run honestly: it survives at half the size
+
+Section 16.2 left three statements resting on row-wise human folds. The additivity ratio was withdrawn there. This is
+the second: the **+0.052** (measured here as +0.048) family-A increment on the human matrix, which Part 2 uses for the
+claim that flanking context is the half of the representation that crosses kingdoms. Re-run with folds that keep
+identical protospacers together (`human_shape --stage 7 --twin`, 3 seeds x 5 folds, 16,490 located guides):
+
+| arm | row-wise folds | twin-grouped folds |
+|---|---:|---:|
+| `h_base` | 0.3807 | 0.3063 |
+| `h_base+A` | 0.4287 | **0.3289** |
+| `h_base+A+mc` (shape on top) | 0.4470 | 0.3466 |
+| **family A increment** | **+0.0480** | **+0.0226** (sd 0.003 over 15 fits) |
+
+**The claim survives at half the size.** Family A is still worth +0.0226 on the human matrix with honest folds, clear
+of zero, so "flanking context is the part of the representation that crosses kingdoms" stands -- it is simply a +0.023
+effect rather than a +0.05 one. Both levels drop under grouped folds (0.38 -> 0.31 for the base), which is the leak
+being removed from the baseline as well as from the arm, and the *increment* is what the claim rests on.
+
+*An observation not developed here.* Shape on top of family A adds **+0.0177** in human under twin-grouped folds and
++0.0183 under row-wise ones -- stable across fold schemes, so not a leak artefact -- against essentially zero in
+*E. coli* (Finding 8). That is a kingdom difference in whether DNA-shape descriptors are a second channel or a
+reparameterisation, and it is the kind of thing Finding 8's limits section anticipated. The human family A is a
+teammate's hg38 build rather than ours, so the two are not strictly comparable, and the human arm is otherwise stopped;
+flagged for whoever picks it up.
