@@ -21,3 +21,9 @@
 Branch ZIP: open the PR branch → Code → Download ZIP, then go to `docs/learning-offline/`.
 
 Or browse: `docs/learning-offline/` on branch `cursor/learning-offline-pack-82a3`.
+
+
+## Deep dive (literal line-by-line, beginner)
+
+See **`p0-line-by-line/`** — glossary + 9 guides that walk every line of the P0 spine.
+Start at `p0-line-by-line/README.md`.
