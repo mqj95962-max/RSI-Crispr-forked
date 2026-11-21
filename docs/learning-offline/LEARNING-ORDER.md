@@ -23,6 +23,22 @@ These nine files are the whole project in miniature. Match them to offline guide
 
 Offline guides `01`–`06` already cover 1–9 (qct is inside the pipeline guide).
 
+
+
+## Contextual guides (preferred — rewritten after feedback)
+
+The first topics are rewritten to teach **purpose + data flow**, not syntax:
+
+| Topic | File |
+|---|---|
+| Baseline (P0 #1) | [`p0-contextual/01-baseline.md`](p0-contextual/01-baseline.md) |
+| Config + I/O (P0 #2–#3) | [`p0-contextual/02-config-and-io.md`](p0-contextual/02-config-and-io.md) |
+| Pipeline build (P0 #4–#6) | [`p0-contextual/03-pipeline-build.md`](p0-contextual/03-pipeline-build.md) |
+
+HTML: `p0-contextual/html/index.html`.
+
+The older `p0-line-by-line/` guides remain as optional literal notes.
+
 ## Next wave (P1)
 
 | File | Why |

@@ -1,5 +1,8 @@
 # 02 — Core config & I/O (line walkthrough)
 
+
+> **Updated teaching guide:** for purpose/data-flow explanations (recommended), read [`p0-contextual/02-config-and-io.md`](p0-contextual/02-config-and-io.md) instead of relying only on this shorter summary.
+
 **Files:**  
 - `Runjia/sgrna/config.py` (~198 lines)  
 - `Runjia/sgrna/io_utils.py` (~87 lines)

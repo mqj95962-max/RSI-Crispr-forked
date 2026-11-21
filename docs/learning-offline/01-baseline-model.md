@@ -1,5 +1,8 @@
 # 01 — Baseline model (line walkthrough)
 
+
+> **Updated teaching guide:** for purpose/data-flow explanations (recommended), read [`p0-contextual/01-baseline.md`](p0-contextual/01-baseline.md) instead of relying only on this shorter summary.
+
 **File:** `USE THIS!! FINAL_baseline_ecoli_sgRNA_model_5seeds.py` (~642 lines)  
 **Role:** The trusted E. coli cutting model. Everything later is compared to this.
 

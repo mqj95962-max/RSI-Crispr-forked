@@ -1,5 +1,8 @@
 # 03 — Pipeline build (guide index → featurise → matrix)
 
+
+> **Updated teaching guide:** for purpose/data-flow explanations (recommended), read [`p0-contextual/03-pipeline-build.md`](p0-contextual/03-pipeline-build.md) instead of relying only on this shorter summary.
+
 **Primary files:**  
 - `Runjia/sgrna/build/build_guide_index.py` (~165)  
 - `Runjia/sgrna/build/featurise.py` (~125)  

@@ -1,0 +1,270 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>01-baseline — P0 contextual</title><style>
+:root { --bg:#f6f7f9; --card:#fff; --text:#1f2328; --muted:#656d76; --border:#d0d7de; --code-bg:#f0f3f6; --accent:#0969da; --plain:#1a7f37; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#0d1117; --card:#161b22; --text:#e6edf3; --muted:#8b949e; --border:#30363d; --code-bg:#0d1117; --accent:#2f81f7; --plain:#3fb950; }
+}
+* { box-sizing: border-box; }
+body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); background:var(--bg); }
+.wrap { max-width:820px; margin:0 auto; padding:1.25rem 1rem 4rem; }
+nav.top { position:sticky; top:0; z-index:5; background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--border); margin:-1.25rem -1rem 1.5rem; padding:.75rem 1rem; display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
+nav.top a { color:var(--accent); text-decoration:none; font-size:.92rem; }
+nav.top .title { font-weight:600; color:var(--text); margin-right:auto; }
+h1 { font-size:1.55rem; margin-top:0; }
+h2 { font-size:1.22rem; border-bottom:1px solid var(--border); padding-bottom:.3rem; margin-top:2rem; }
+h3 { font-size:1.05rem; margin-top:1.35rem; }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.88em; background:var(--code-bg); border:1px solid var(--border); border-radius:4px; padding:.1em .35em; }
+pre { background:var(--code-bg); border:1px solid var(--border); border-radius:8px; padding:.85rem 1rem; overflow-x:auto; }
+pre code { border:none; background:transparent; padding:0; font-size:.82rem; }
+table { border-collapse:collapse; width:100%; margin:1rem 0; background:var(--card); font-size:.95rem; }
+th,td { border:1px solid var(--border); padding:.45rem .6rem; text-align:left; vertical-align:top; }
+th { background:color-mix(in srgb, var(--card) 80%, var(--border)); }
+blockquote { margin:1rem 0; padding:.4rem .9rem; border-left:4px solid var(--accent); color:var(--muted); background:var(--card); }
+hr { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+.footer { margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--muted); font-size:.9rem; }
+@media print { nav.top { position:static; } pre { white-space:pre-wrap; } }
+</style></head><body><div class="wrap">
+<nav class="top"><a href="index.html">Contents</a><span></span><span class="title">01-baseline</span><a href="02-config-and-io.html">next →</a></nav>
+<article><h1>P0 #1 — The baseline model (contextual guide)</h1>
+<p><strong>Source file:</strong> <code>USE THIS!! FINAL_baseline_ecoli_sgRNA_model_5seeds.py</code> (~642 lines)<br />
+<strong>Audience:</strong> little/no coding background<br />
+<strong>Job of this file in the project:</strong> prove how well we can predict E. coli Cas9 cutting efficiency from a big spreadsheet of guide features — fairly, without cheating.</p>
+<hr />
+<h2>Where this sits in the whole pipeline</h2>
+<pre><code class="language-text">Lab measured cut.score for ~14k guides
+        +
+Published / engineered feature columns (thousands of numbers per guide)
+        │
+        ▼
+ ★ THIS SCRIPT ★
+ Leakage-safe XGBoost evaluation (5 seeds × 5 folds)
+        │
+        ▼
+Official numbers you quote (≈ R² 0.29, Spearman ≈ 0.53)
+        │
+        ▼
+Later: Family A, ablations, human transfer all ask
+“did we beat THIS baseline?”
+</code></pre>
+<p>If you only remember one thing: <strong>this script is the yardstick</strong>. Everything Runjia/Jacky/Joshua add later is compared to the scores CELL 7 prints here.</p>
+<hr />
+<h2>The scientific question in plain English</h2>
+<p>Each row is one CRISPR guide. Columns are measurements / encodings of that guide’s DNA (and sometimes engineered extras). One special column, <code>cut.score</code>, is the lab’s answer: how well that guide cut.</p>
+<p>We want a computer model that, given the other columns, predicts <code>cut.score</code>.</p>
+<p><strong>Fairness rule (called “leakage-safe”):</strong> when we grade the model, it must not have peeked at the exam answers while studying. In code terms: for every train/validation split, blank-filling and “which 300 columns matter?” are decided using <strong>training rows only</strong>.</p>
+<hr />
+<h2>How to read this file (map, not every keystroke)</h2>
+<p>The script is written as Colab “cells” (<code># %% CELL …</code>). Think of them as chapters of one experiment:</p>
+<table>
+<thead>
+<tr>
+<th>Cell</th>
+<th>Purpose in the workflow</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0–1</td>
+<td>Make sure toolboxes exist; connect Drive (Colab only)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Settings: which CSV, 300 features, 400 trees, seeds 41–45</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Helper recipes reused every fold (impute, score, model knobs)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Load spreadsheet → numeric matrix <code>X</code> and label vector <code>y</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Core science:</strong> one seed’s 5-fold CV</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Repeat for all five seeds; write CSVs</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Report</strong> the averages (trust these)</td>
+</tr>
+<tr>
+<td>8–9</td>
+<td>Train a “production” model on all data (deploy, don’t quote as validation)</td>
+</tr>
+<tr>
+<td>10–11</td>
+<td>Save a contract test + verify 25 fold artifacts</td>
+</tr>
+</tbody>
+</table>
+<p>Below we walk those chapters with <strong>why</strong>, then show the important code grouped by intent.</p>
+<hr />
+<h2>Chapter A — Settings that freeze the experiment (CELL 2)</h2>
+<p><strong>Why it exists:</strong> so everyone re-runs the <em>same</em> protocol. If Joshua changes <code>N_FEATURES</code> to 500 and Jacky keeps 300, their Spearman numbers are not comparable.</p>
+<pre><code class="language-python">DATA_PATH = &quot;.../ecoli_feature_matrix_seed_nonadd.csv&quot;
+TARGET_COLUMN = &quot;cut.score&quot;
+N_FEATURES = 300
+N_ESTIMATORS = 400
+N_SPLITS = 5
+SEEDS = [41, 42, 43, 44, 45]
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Role in the CRISPR/ML story</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DATA_PATH</code></td>
+<td><strong>Input:</strong> the big feature table (E. coli). Comment/uncomment lines swap E. coli vs human CSVs.</td>
+</tr>
+<tr>
+<td><code>TARGET_COLUMN</code></td>
+<td><strong>Output we’re predicting:</strong> measured cutting efficiency.</td>
+</tr>
+<tr>
+<td><code>N_FEATURES</code></td>
+<td>After ranking all columns, keep only the top 300 for the real model. Shrinks noise and matches the frozen paper figure.</td>
+</tr>
+<tr>
+<td><code>N_ESTIMATORS</code></td>
+<td>Champion forest size (400 trees).</td>
+</tr>
+<tr>
+<td><code>N_SPLITS</code> / <code>SEEDS</code></td>
+<td>5 exam splits × 5 different shuffles → 25 mini-exams, then average.</td>
+</tr>
+</tbody>
+</table>
+<p><code>NON_FEATURE_COLUMNS</code> lists ID/sequence-looking names that must <strong>not</strong> be treated as predictors (they identify the guide; they aren’t chemistry features).</p>
+<p><code>ENGINEERED_PREFIXES</code> / <code>is_engineered_feature</code> only <strong>label</strong> columns that start with <code>eng.</code> or <code>regional_qct</code>. This baseline does not <em>create</em> Family A; it can still <em>notice</em> engineered columns if your CSV already contains them.</p>
+<p><strong>Outputs of this chapter:</strong> a folder <code>five_seed_champion_ecoli_xgboost_baseline/</code> for CSVs, models, and fold metadata.</p>
+<hr />
+<h2>Chapter B — Helper recipes (CELL 3)</h2>
+<p>These are small tools CELL 5 calls repeatedly. Understanding them once unlocks the whole CV loop.</p>
+<h3>Filling blanks without cheating</h3>
+<pre><code class="language-python">def median_impute_train_val(X_train, X_val):
+    medians = np.nanmedian(X_train, axis=0)   # from TRAIN only
+    # … fill NaNs in train AND val using those medians …
+</code></pre>
+<p><strong>Workflow meaning:</strong> real screens have missing chemistry values. We fill blanks with the column’s middle value. Using validation rows to compute that middle value would leak exam information — so medians come from train only, then get applied to both sets.</p>
+<p><code>median_impute_full</code> is the same idea for CELL 8’s production model (all rows allowed, because there is no held-out exam in that chapter).</p>
+<h3>Scoring predictions</h3>
+<pre><code class="language-python">def stable_spearman(y_true, y_pred): ...
+def stable_pearson(y_true, y_pred): ...
+</code></pre>
+<p><strong>Workflow meaning:</strong> after the model predicts validation guides, we need a grade.</p>
+<ul>
+<li><strong>Spearman</strong> — do the <em>rankings</em> agree? (Usually the headline for guide design: “pick the better guides.”)</li>
+<li><strong>Pearson / R² / MSE</strong> — numeric agreement / error size.</li>
+</ul>
+<p><code>stable_*</code> returns 0 instead of crashing if the statistic is undefined (tiny/odd folds).</p>
+<h3>Two models with different jobs</h3>
+<pre><code class="language-python">def selector_params(seed):   # 300 trees — ranks columns
+def champion_params(seed):   # 400 trees — real predictor
+</code></pre>
+<p><strong>Workflow meaning:</strong></p>
+<ol>
+<li><strong>Selector</strong> = disposable “which columns look useful?” model. Its predictions are thrown away; we only keep <code>feature_importances_</code>.</li>
+<li><strong>Champion</strong> = the model whose validation Spearman you report.</li>
+</ol>
+<p>Same hyperparameter <em>style</em> as later <code>run_ablation.py</code> / <code>config.py</code>, so Family A ablations stay comparable to this baseline.</p>
+<hr />
+<h2>Chapter C — Load the spreadsheet into <code>X</code> and <code>y</code> (CELL 4)</h2>
+<p><strong>Input:</strong> CSV at <code>DATA_PATH</code>.<br />
+<strong>Output:</strong> <code>X_raw</code> (guides × features), <code>y</code> (cut.score), <code>feature_names</code>.</p>
+<p>Critical detail:</p>
+<pre><code class="language-python">df = pd.read_csv(DATA_PATH, header=1, ...)  # row 0 is a title banner
+</code></pre>
+<p>Noshay’s table has a junk title row first; real headers are on row 1. Every honest reader in this repo uses <code>header=1</code> for that reason (<code>config.BASE_MATRIX_HEADER_ROW</code> later).</p>
+<p>Then the script:</p>
+<ol>
+<li>Requires <code>sgRNAID</code> + <code>cut.score</code></li>
+<li>Drops ID/sequence columns so they can’t become fake features</li>
+<li>Forces remaining columns to numbers (<code>coerce</code> → blanks become NaN)</li>
+<li>Drops all-NaN columns and rows with missing <code>y</code></li>
+<li>Prints a <strong>feature hash</strong> — a fingerprint of column names so you can prove two runs used the same feature order</li>
+</ol>
+<p><strong>How later code uses this:</strong> CELL 5 indexes into <code>X_raw</code> / <code>y</code> by row number. Saved fold metadata stores those indices so Joshua’s SHAP script can reload the exact train/val split.</p>
+<hr />
+<h2>Chapter D — The heart: leakage-safe CV for one seed (CELL 5)</h2>
+<pre><code class="language-python">def run_cv_for_seed(seed, ...):
+    kf = KFold(n_splits=5, shuffle=True, random_state=seed)
+    for fold, (train_idx, val_idx) in enumerate(kf.split(X_raw), start=1):
+        # 1) split
+        # 2) impute using train medians
+        # 3) fit selector on train → pick top 300 columns
+        # 4) fit champion on those 300 train columns
+        # 5) predict val → record R² / Spearman / Pearson / MSE
+        # 6) save model JSON + fold metadata (indices, medians, selected names)
+</code></pre>
+<h3>Data flow inside one fold</h3>
+<pre><code class="language-text">All guides
+   │
+   ├─ train_idx ──► X_tr, y_tr ──► medians, selector, champion
+   │
+   └─ val_idx  ──► X_val, y_val ──► predict &amp; score only
+                      ▲
+                      └── uses medians + selected columns from TRAIN
+</code></pre>
+<p><strong>Why save fold artifacts?</strong> Downstream interpretability (SHAP) and audits need the <em>exact</em> model that produced a fold’s score — not a re-fit that might differ.</p>
+<p><strong>Engineered counts in the fold log</strong> (<code>eng_selected</code>, etc.) answer: “when engineered columns are present, how often do they enter the top 300?” On the plain published matrix those stay 0.</p>
+<hr />
+<h2>Chapter E — Five seeds, then the number you trust (CELLs 6–7)</h2>
+<p>CELL 6 loops <code>SEEDS</code>, concatenates fold rows, writes:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it’s for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>all_seed_fold_results.csv</code></td>
+<td>Every seed×fold score (raw evidence)</td>
+</tr>
+<tr>
+<td><code>per_seed_summary.csv</code></td>
+<td>Mean ± spread within each seed</td>
+</tr>
+<tr>
+<td><code>selected_feature_counts.csv</code></td>
+<td>How often each column was picked across 25 folds</td>
+</tr>
+</tbody>
+</table>
+<p>CELL 7 prints the <strong>overall means across seed means</strong>. Those lines are the project’s frozen baseline (~R² 0.294, Spearman ~0.528). <code>config.BASELINE</code> and ablation <code>d_spearman</code> later refer back to this idea.</p>
+<hr />
+<h2>Chapter F — Production model (CELLs 8–9) — useful, but not the grade</h2>
+<pre><code class="language-python"># Fit selector + champion on ALL rows (seed 42)
+# Save .pkl model, selected indices, imputer medians, metadata JSON
+</code></pre>
+<p><strong>Why it exists:</strong> so you can score a <em>new</em> guide later without redoing CV.<br />
+<strong>Why you must not quote its training fit:</strong> it studied every row — there’s no honest exam left.</p>
+<p>CELL 10–11 write a tiny inference self-test and verify that all 25 fold models reload with 300 inputs and 400 trees. That’s quality control for the artifact pack, not new biology.</p>
+<hr />
+<h2>What “success” looks like after this file</h2>
+<p>You should be able to say:</p>
+<ol>
+<li><strong>Input</strong> = feature matrix + <code>cut.score</code>  </li>
+<li><strong>Process</strong> = 5×5 leakage-safe select-300 + XGBoost  </li>
+<li><strong>Output</strong> = CV metrics (CELL 7) + optional production model  </li>
+<li><strong>Consumers</strong> = every ablation / human ladder that asks “Δ vs baseline”</li>
+</ol>
+<hr />
+<h2>Checklist</h2>
+<ul>
+<li>[ ] I can draw the train→impute→select→champion→val diagram  </li>
+<li>[ ] I know CELL 7 is reported and CELL 8 is not  </li>
+<li>[ ] I know why medians and feature picks must not use validation rows  </li>
+<li>[ ] I know this file’s scores are the yardstick Family A tries to beat  </li>
+</ul></article>
+<p class="footer">Contextual P0 guide · Print → Save as PDF if needed.</p>
+</div></body></html>

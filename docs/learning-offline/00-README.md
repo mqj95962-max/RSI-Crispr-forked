@@ -27,3 +27,14 @@ Or browse: `docs/learning-offline/` on branch `cursor/learning-offline-pack-82a3
 
 See **`p0-line-by-line/`** — glossary + 9 guides that walk every line of the P0 spine.
 Start at `p0-line-by-line/README.md`.
+
+
+## Preferred reading (contextual, not literal syntax)
+
+Start with **`p0-contextual/`** — rewritten so each block explains role in the CRISPR/XGBoost pipeline:
+
+1. `p0-contextual/01-baseline.md`
+2. `p0-contextual/02-config-and-io.md`
+3. `p0-contextual/03-pipeline-build.md`
+
+Open `p0-contextual/html/index.html` for browser reading.
