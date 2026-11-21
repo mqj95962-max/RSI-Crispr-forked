@@ -41,3 +41,12 @@ Start with **`p0-contextual/`** — purpose/data-flow guides for the full P0 spi
 6. `p0-contextual/06-human-boundary.md`
 
 Open `p0-contextual/html/index.html` for browser reading.
+
+Then **`p1-contextual/`** — next recommended codes (same style; no twin/H6 discovery):
+
+1. `p1-contextual/01-build-glue.md`
+2. `p1-contextual/02-controls-floors-diagnose.md`
+3. `p1-contextual/03-joshua-and-baselines.md`
+4. `p1-contextual/04-jacky-human-and-orientation.md`
+
+Open `p1-contextual/html/index.html` for browser reading.

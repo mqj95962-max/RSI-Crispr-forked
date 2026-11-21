@@ -58,13 +58,26 @@ The older `p0-line-by-line/` guides remain as optional literal notes.
 | `Jacky/.../run_human_strand_audit.py` | Strand does **not** collapse human Family A |
 | `Jacky/.../run_tier2_tier3.py` | Chromatin null + transfer with A on both sides |
 | `Jacky/.../run_human_discovery.py` | H1–H5 capacity / grouped / extras |
-| `Jacky/.../run_twin_honest_followups.py` | Twin-honest Δ (~+0.023) |
+| `Jacky/.../run_twin_honest_followups.py` | Twin-honest Δ (~+0.023) — **P2/optional for this pack** |
 | `Jacky/orientation-controls/scripts/run_intergenic_orientation.py` | Orientation story (prefer this copy, not agent-notes/) |
+
+### P1 contextual guides (preferred)
+
+Same purpose/data-flow style as P0 contextual. Twin/H6 discovery stays in P2.
+
+| Topic | File | P1 coverage |
+|---|---|---|
+| Build glue | [`p1-contextual/01-build-glue.md`](p1-contextual/01-build-glue.md) | genome / build_features / build_matrix / notebook |
+| Controls | [`p1-contextual/02-controls-floors-diagnose.md`](p1-contextual/02-controls-floors-diagnose.md) | floors + diagnose |
+| Joshua + baselines | [`p1-contextual/03-joshua-and-baselines.md`](p1-contextual/03-joshua-and-baselines.md) | teammate baselines, Colab template, SHAP |
+| Jacky human + orientation | [`p1-contextual/04-jacky-human-and-orientation.md`](p1-contextual/04-jacky-human-and-orientation.md) | human Tier-1→4 + orientation/strand controls |
+
+HTML: `p1-contextual/html/index.html`.
 
 ## Deepen (P2)
 
 - Other families after A: `d_mechanics`, `d_supercoiling`, `g_transcription`, `c_folding`, `i_shape`
-- Human follow-ups: `run_h6_chromatin.py`, `run_h6_gc_coverage_control.py`
+- Human follow-ups: `run_h6_chromatin.py`, `run_h6_gc_coverage_control.py`, twin-honest follow-ups
 - Cross-screen: `screens/kingdom_transfer.py`, `human_baseline.py`, `cui_screen.py`
 - Strand (E. coli CRISPRi): `strand/strand_families.py`
 - One Joshua regional-QCT Colab + his random-control test
@@ -79,11 +92,10 @@ The older `p0-line-by-line/` guides remain as optional literal notes.
 
 ## Suggested flight plan
 
-1. Guides 01–06 + tick every **P0** checkbox  
-2. P1 human + Joshua template (while the human story is fresh)  
-3. P1 controls + build glue  
-4. One P2 family + H6 / twin honesty  
-5. Everything else only when you need it for a claim
+1. `p0-contextual/` guides 01–06 + tick every **P0** checkbox  
+2. `p1-contextual/` 01–04 (glue → controls → Joshua/SHAP → human tiers + orientation)  
+3. One P2 family + H6 / twin honesty only when you need those claims  
+4. Everything else only when you need it for a claim
 
 See `CHECKLIST-all-codes.md` for the full tick-list with priority tags.
 
