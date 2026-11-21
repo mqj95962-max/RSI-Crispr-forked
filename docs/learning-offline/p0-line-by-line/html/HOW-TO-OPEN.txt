@@ -1,0 +1,21 @@
+How to open these guides on other devices
+=========================================
+
+1. Download the branch ZIP from GitHub, or just this html/ folder.
+2. Unzip on your phone/laptop.
+3. Open:  docs/learning-offline/p0-line-by-line/html/index.html
+   - iPhone: Files app → tap the .html (opens in Safari)
+   - Android: Files → Chrome
+   - Laptop: double-click, or drag into Chrome/Edge/Safari
+
+Want PDF?
+- Open any .html in a browser
+- Print → "Save as PDF" / "Microsoft Print to PDF"
+
+Online converters (if you prefer Markdown → PDF yourself):
+- https://md-to-pdf.fly.dev/
+- https://dillinger.io/  (Export as PDF / HTML)
+- https://stackedit.io/  (Export)
+- Pandoc (desktop): pandoc file.md -o file.pdf
+
+GitHub also renders .md nicely if you view the file online while you have wifi.
