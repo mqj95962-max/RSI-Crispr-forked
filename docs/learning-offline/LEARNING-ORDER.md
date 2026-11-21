@@ -27,17 +27,21 @@ Offline guides `01`–`06` already cover 1–9 (qct is inside the pipeline guide
 
 ## Contextual guides (preferred — rewritten after feedback)
 
-The first topics are rewritten to teach **purpose + data flow**, not syntax:
+Purpose + data-flow teaching for the **full P0 spine** (not syntax line-by-line):
 
-| Topic | File |
-|---|---|
-| Baseline (P0 #1) | [`p0-contextual/01-baseline.md`](p0-contextual/01-baseline.md) |
-| Config + I/O (P0 #2–#3) | [`p0-contextual/02-config-and-io.md`](p0-contextual/02-config-and-io.md) |
-| Pipeline build (P0 #4–#6) | [`p0-contextual/03-pipeline-build.md`](p0-contextual/03-pipeline-build.md) |
+| Topic | File | P0 coverage |
+|---|---|---|
+| Baseline | [`p0-contextual/01-baseline.md`](p0-contextual/01-baseline.md) | #1 |
+| Config + I/O | [`p0-contextual/02-config-and-io.md`](p0-contextual/02-config-and-io.md) | #2–#3 |
+| Pipeline build | [`p0-contextual/03-pipeline-build.md`](p0-contextual/03-pipeline-build.md) | #4–#6 |
+| Family A | [`p0-contextual/04-a-flank.md`](p0-contextual/04-a-flank.md) | #7 |
+| Ablation harness | [`p0-contextual/05-run-ablation.md`](p0-contextual/05-run-ablation.md) | #8 |
+| Human Tier-1 | [`p0-contextual/06-human-boundary.md`](p0-contextual/06-human-boundary.md) | #9 |
 
 HTML: `p0-contextual/html/index.html`.
 
 The older `p0-line-by-line/` guides remain as optional literal notes.
+
 
 ## Next wave (P1)
 

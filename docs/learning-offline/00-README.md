@@ -31,10 +31,13 @@ Start at `p0-line-by-line/README.md`.
 
 ## Preferred reading (contextual, not literal syntax)
 
-Start with **`p0-contextual/`** — rewritten so each block explains role in the CRISPR/XGBoost pipeline:
+Start with **`p0-contextual/`** — purpose/data-flow guides for the full P0 spine:
 
 1. `p0-contextual/01-baseline.md`
 2. `p0-contextual/02-config-and-io.md`
 3. `p0-contextual/03-pipeline-build.md`
+4. `p0-contextual/04-a-flank.md`
+5. `p0-contextual/05-run-ablation.md`
+6. `p0-contextual/06-human-boundary.md`
 
 Open `p0-contextual/html/index.html` for browser reading.

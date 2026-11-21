@@ -1,5 +1,8 @@
 # 05 — Model harness / `run_ablation.py` (line walkthrough)
 
+
+> **Updated teaching guide:** for purpose/data-flow explanations (recommended), read [`p0-contextual/05-run-ablation.md`](p0-contextual/05-run-ablation.md).
+
 **File:** `Runjia/sgrna/harness/run_ablation.py` (559 lines)  
 *(After reorg: `from sgrna.harness.run_ablation import ...`; older Jacky scripts may still say `from sgrna.run_ablation import ...`.)*
 

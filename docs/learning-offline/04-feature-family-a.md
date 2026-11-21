@@ -1,5 +1,8 @@
 # 04 — Family A / `a_flank.py` (line-by-line)
 
+
+> **Updated teaching guide:** for purpose/data-flow explanations (recommended), read [`p0-contextual/04-a-flank.md`](p0-contextual/04-a-flank.md).
+
 **File:** `Runjia/sgrna/features/a_flank.py` (~239 lines)  
 **Role:** The project’s big positive biology feature family — DNA *around* the cut, not just the 20-mer.
 

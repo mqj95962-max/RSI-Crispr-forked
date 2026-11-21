@@ -1,5 +1,8 @@
 # 06 — Human experiments (Jacky runners)
 
+
+> **Updated teaching guide:** for purpose/data-flow explanations (recommended), read [`p0-contextual/06-human-boundary.md`](p0-contextual/06-human-boundary.md).
+
 **Folder:** `Jacky/human-boundary/scripts/` (7 runners)  
 **Role:** Port the E. coli story to human Cas9 *cutting* and test the cross-kingdom wall.
 

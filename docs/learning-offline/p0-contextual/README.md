@@ -1,13 +1,16 @@
 # P0 contextual guides (preferred)
 
-These rewrite the first learning topics so each section answers **why this exists in the CRISPR/XGBoost workflow**, what the **inputs/outputs** are, and **who consumes them next** — not “this line calls a function.”
+Purpose + data-flow teaching for the full P0 spine (LEARNING-ORDER #1–#9). Not literal syntax walkthroughs.
 
-| Guide | Covers (LEARNING-ORDER P0) | Source files |
+| Guide | Covers | Source files |
 |---|---|---|
-| [`01-baseline.md`](01-baseline.md) | #1 | `USE THIS!! FINAL_baseline_…` |
-| [`02-config-and-io.md`](02-config-and-io.md) | #2–#3 | `config.py`, `io_utils.py` |
-| [`03-pipeline-build.md`](03-pipeline-build.md) | #4–#6 | `qct.py`, `build_guide_index.py`, `featurise.py` |
+| [`01-baseline.md`](01-baseline.md) | P0 #1 | `USE THIS!! FINAL_baseline_…` |
+| [`02-config-and-io.md`](02-config-and-io.md) | P0 #2–#3 | `config.py`, `io_utils.py` |
+| [`03-pipeline-build.md`](03-pipeline-build.md) | P0 #4–#6 | `qct.py`, `build_guide_index.py`, `featurise.py` |
+| [`04-a-flank.md`](04-a-flank.md) | P0 #7 | `features/a_flank.py` |
+| [`05-run-ablation.md`](05-run-ablation.md) | P0 #8 | `harness/run_ablation.py` |
+| [`06-human-boundary.md`](06-human-boundary.md) | P0 #9 | `Jacky/.../run_human_boundary.py` |
 
-**Readable HTML (offline):** open [`html/index.html`](html/index.html) after download.
+**Readable HTML:** [`html/index.html`](html/index.html)
 
-The older `../p0-line-by-line/` pack is still there if you want ultra-literal syntax notes; start here instead for understanding.
+Older literal notes (optional): `../p0-line-by-line/`.
