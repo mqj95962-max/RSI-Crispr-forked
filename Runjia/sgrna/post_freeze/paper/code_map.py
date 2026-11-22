@@ -30,35 +30,33 @@ PACKAGES = [
     ("features", "The eleven feature families A-J (family A, the flanking-DNA composition, is the one that matters)."),
     ("harness", "The leakage-safe cross-validation harness every experiment runs through, plus the notebook front end."),
     ("cohorts", "Ablations on the curated cohort and the arguments about what its numbers mean (ceilings, inflation, label noise)."),
-    ("compare", "Head-to-head against crisprHAL 2 and the inherited baseline, as of the freeze."),
+    ("compare", "Every comparison with something else (Part 6 of the report): crisprHAL 2, the inherited baseline, and other screens, assays and kingdoms."),
     ("controls", "The adversarial phase: nulls, shuffles, floors, selector and leakage audits."),
     ("cost", "What each model costs to train and to run, measured rather than estimated."),
-    ("screens", "Other screens and other kingdoms: CRISPRi, the human matrix, transfer between kingdoms."),
     ("strand", "The strand-of-transcription confound in the dCas9 screens, and the controls that remove it."),
     ("interpret", "What the model uses and whether that is the data's property or the model's."),
     ("post_freeze", "Shared paths for the extension work, and the resolver for the main project's untracked results (`common.py`). Everything else is in the themed folders below."),
-    ("post_freeze/tuning", None), ("post_freeze/vs_crisprhal", None), ("post_freeze/speed", None), ("post_freeze/shape", None),
-    ("post_freeze/nuclease", None), ("post_freeze/human", None), ("post_freeze/signal", None), ("post_freeze/paper", None),
+    ("post_freeze/tuning", None), ("post_freeze/speed", None), ("post_freeze/shape", None),
+    ("post_freeze/human", None), ("post_freeze/signal", None), ("post_freeze/paper", None),
 ]
 
 
 # Modules whose conclusion the report states without naming the module or its files. Applied only when the automatic lookup
 # finds nothing, so a name in the report always wins. Each was checked by searching the report for the conclusion itself.
 STATED_UNNAMED = {
-    "blend_with_hal": "Finding 7", "clean_vs_hal": "Finding 7", "e2e_bench": "Finding 7", "topend": "Finding 7",
-    "topk_panel": "Finding 7", "data_efficiency": "Finding 7", "equiv_check": "Finding 7", "cost_bench": "Finding 7",
-    "esp_replicate": "Finding 8", "ridge_check": "Finding 8", "analyze": "Finding 8", "geom_importance": "Finding 8",
-    "local_sequence_bound": "Finding 8", "redundancy": "Finding 8", "shape_build": "Finding 8", "shape_ablate": "Finding 8",
-    "enzyme_contacts": "Finding 9", "lono_summary": "Finding 9", "nuclease_model": "Finding 9", "nuclease_desc": "Finding 9",
-    "pam_analyze": "Finding 9", "pam_learn": "Finding 9", "pam_predict": "Finding 9", "pam_variants": "Finding 9",
+    "blend_with_hal": "Part 6", "clean_vs_hal": "Part 6", "e2e_bench": "Part 6", "topend": "Part 6",
+    "topk_panel": "Part 6", "data_efficiency": "Part 6", "equiv_check": "Part 6", "cost_bench": "Part 6",
+    "esp_replicate": "Appendix B4", "ridge_check": "Appendix B4", "analyze": "Appendix B4", "geom_importance": "Appendix B4",
+    "local_sequence_bound": "Appendix B4", "redundancy": "Appendix B4", "shape_build": "Appendix B4", "shape_ablate": "Appendix B4",
     "ceiling_table": "Finding 6", "fold_distance": "Part 6", "lit_followups": "Part 6",
     "human_shape": "Part 2", "human_twin_check": "Part 2", "human_additivity_twin": "Part 2", "human_flank": "Part 2",
-    "tune_split2": "Finding 7", "tune_analyze": "Finding 7", "family_a_at_tuned": "Finding 4", "interpret": "Finding 5",
-    "mix_ecoli": "Finding 7", "mlp_worker": "Finding 7", "flank_locus": "Finding 7", "a_flank_fast": "Finding 7", "base_fast": "Finding 7",
-    "cut_within_gene": "Finding 3", "novel_followups": "Finding 10",
+    "tune_split2": "Part 6", "tune_analyze": "Part 6", "family_a_at_tuned": "Finding 4", "interpret": "Finding 5",
+    "mix_ecoli": "Part 6", "mlp_worker": "Part 6", "flank_locus": "Part 6", "a_flank_fast": "Part 6", "base_fast": "Part 6",
+    "cut_within_gene": "Finding 3", "novel_followups": "Finding 7",
     "import_check": "Part 4", "doc_refs": "Part 4", "code_map": "Part 4", "verify_numbers": "Part 4",
-    "why_inflation": "Appendix B2a", "floors": "Appendix A", "diagnose": "Finding 4", "headtohead": "Finding 7", "panel_vs_hal": "Finding 7",
-    "vs_crisprhal": "Finding 7", "vs_crisprhal_wt_hal": "Finding 7", "dnashape": "Finding 8", "importance_models": "Finding 5",
+    "why_inflation": "Appendix B2a", "floors": "Appendix A", "diagnose": "Finding 4", "headtohead": "Part 6", "panel_vs_hal": "Part 6",
+    "vs_crisprhal": "Part 6", "vs_crisprhal_wt_hal": "Part 6", "dnashape": "Appendix B4", "importance_models": "Finding 5",
+    "panel": "Part 6", "attribution": "Finding 5", "faithfulness": "Finding 5", "importance": "Finding 5",
 }
 
 
@@ -68,17 +66,28 @@ LIBRARY_PACKAGES = {"", "build", "features", "harness", "post_freeze"}      # us
 
 
 def _doc(tree: ast.Module) -> str:
+    """The first sentence of a module's docstring, whole. Only a very long sentence is shortened, and then at a clause boundary
+    with an explicit ellipsis, never in the middle of a word."""
     d = (ast.get_docstring(tree) or "").strip()
     para = " ".join(d.split("\n\n")[0].split())
+    head = para
     # end of the first sentence, skipping abbreviations and initials ("E. coli", "et al.", "e.g.") that are not sentence ends
     for m in re.finditer(r"[.?!](?=\s|$)", para):
-        head = para[:m.end()]
-        last = re.findall(r"[A-Za-z.]+[.?!]$", head)
+        h = para[:m.end()]
+        last = re.findall(r"[A-Za-z.]+[.?!]$", h)
         word = last[0].rstrip(".?!") if last else ""
         if m.end() < 20 or word in {"E", "e.g", "i.e", "al", "vs", "Fig", "et", "cf", "no", "approx"} or (len(word) == 1 and word.isupper()):
             continue
-        return head[:170].replace("|", "/")
-    return para[:170].replace("|", "/")
+        head = h
+        break
+    head = head.replace("|", "/")
+    LIMIT = 230
+    if len(head) <= LIMIT:
+        return head
+    cut = max(head.rfind(sep, 0, LIMIT) for sep in (", ", "; ", " -- ", " — ", ": ", " ("))
+    if cut < 60:
+        cut = head.rfind(" ", 0, LIMIT)
+    return head[:cut].rstrip(" ,;:-—(") + " …"
 
 
 def _results(tree: ast.Module, existing: set[str]) -> list[str]:
@@ -214,7 +223,7 @@ def by_section(data: dict[str, list[dict]]) -> str:
         pk = sorted({p.replace("post_freeze/", "pf/") for p, _ in L})
         title = TITLES.get(label) or {"—": "no section of the report points at it", "tooling": "the audit, the figures, the guards and this map",
                                        "library": "shared code the experiments are built on"}.get(label, "")
-        lines.append(f"| {label} | {title[:78].replace('|', '/')} | {len(L)} | {sum(i['lines'] for _, i in L):,} | {len(files)} | {', '.join(pk)} |")
+        lines.append(f"| {label} | {title.replace('|', '/')} | {len(L)} | {sum(i['lines'] for _, i in L):,} | {len(files)} | {', '.join(pk)} |")
     return "\n".join(lines)
 
 
@@ -241,8 +250,7 @@ def render(data: dict[str, list[dict]]) -> str:
              "Read the table above as the price list for the report: each claim carries its code and its result files with it. "
              "A module is placed in the section that cites it (or the result files it writes) most often. The `—` row, if "
              "there is one, is completed work that no section of the report points at. Each such module is listed in "
-             "`REMOVED.md` under \"Candidates for removal\", with what it found, because whether it leaves is a decision about "
-             "the report and not about the code.", "",
+             "`REMOVED.md` under \"Considered for removal and kept\", with what it found; they were kept by decision, not by oversight.", "",
              "#### Result files that exist only outside this repository", "", _untracked_table(), "",
              "#### Package by package", ""]
     for pkg, blurb in PACKAGES:

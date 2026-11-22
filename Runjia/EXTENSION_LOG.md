@@ -1,5 +1,10 @@
 # Extension work: 3D structure and nuclease information (private-fork experiments)
 
+> **Finding numbers in this log are those of 20 November 2026 and are not rewritten, because the log is a record of what was
+> believed when.** On 22 November the report was reorganised: the old **Finding 7** (the comparison with crisprHAL 2) is the first
+> section of **Part 6**; the old **Finding 8** (shape and 3D) is **Appendix B4**; the old **Finding 9** (nuclease) was removed
+> (`REMOVED.md`); the old **Finding 10** is now **Finding 7**. Findings 1–6 are unchanged.
+
 Everything here lives in the fork, outside the frozen pipeline. New code is `Runjia/sgrna/post_freeze/`;
 results are `Runjia/results/post_freeze/`. The frozen modules are imported, never edited. The shared
 repository (smal-boi/RSI-Crispr) is untouched.
@@ -372,7 +377,7 @@ the result files and compares them with the report's text. First run: 3 mismatch
 at 600 columns -0.0018 not -0.0017; the cutting screen's within-gene rho with A 0.7035 -> 0.703 not 0.704;
 tuned k-only at k = 500 0.804 not 0.805). Corrected; second run 98 / 98.
 
-*Current state of the audit (20 Nov):* it has grown with each section and now stands at **941 checks, 0 mismatches**,
+*Current state of the audit (20 Nov):* it has grown with each section and now stands at **817 checks, 0 mismatches**,
 covering sections 7-22. Run it with `./run_audit.sh` from `Runjia/` -- it sets the three environment variables the
 modules need and exits non-zero if any quoted number no longer matches its file. Since 22.4 it also checks three things
 about itself: that every module in the package imports and that importing one writes nothing; that four claims which
@@ -1545,8 +1550,8 @@ import. Their bodies now live in `main()` behind a `__main__` guard; the audit s
 
 **The guard against it coming back** is `import_check.py`, which asserts two things and is run by the audit:
 
-* every module under `sgrna/` imports without raising -- 150 modules when this was written (157 after the 22 Nov
-  reorganisation, which removed three modules, added eight package markers, a reference checker and a map generator), 2 excluded by name with the reason recorded
+* every module under `sgrna/` imports without raising -- 150 modules when this was written (146 after the 22 Nov
+  reorganisations, which removed modules, added package markers, a reference checker and a map generator, and merged `screens` into `compare`), 2 excluded by name with the reason recorded
   (`vs_crisprhal_wt_hal` reads `sys.argv[1]` at the top level and needs the TensorFlow venv; the second was `controls/numcheck`, a
   document-coverage script pinned to the shared repo's absolute paths, removed on 22 Nov -- see REMOVED.md). This is also the only check in the project that
   the code *loads*, as distinct from the audit's check that the numbers match their files;
