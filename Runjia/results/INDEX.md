@@ -19,7 +19,7 @@ Within a group the order is alphabetical.
 * All files are distinct: no two have identical bytes. (Files that teammates added to the shared repository, `folds_h6_*`, `folds_hstrand_*` and
   `folds_hdisc_*`, are not this project's and are not indexed.)
 
-**432 files** in 22 groups.
+**434 files** in 22 groups.
 
 ### Finding 1 — The published representation is a re-encoding of the guide, and holds about twenty variables
 
@@ -182,7 +182,7 @@ Within a group the order is alphabetical.
 
 | file | KB | role | written by | columns |
 |---|---:|---|---|---|
-| `ablation_curated.csv` | 0.9 | cited | `notebook`, `run_ablation`, `curated_ablation`, `curated_joint`, `txn_interactions`, `rederive`, `window_robustness`, `cost_boostmec_shipped`, `paper_numbers_A`, `paper_numbers_B`, `paper_numbers_C`, `report_checks_R1`, `report_checks_R2`, `report_checks_R4`, `report_checks_R5`, `report_checks_R6`, `report_checks_R7`, `report_checks_R8` | family, n_cols, spearman, spearman_sd, d_spearman |
+| `ablation_curated.csv` | 0.9 | cited | `notebook`, `run_ablation`, `curated_ablation`, `curated_joint`, `txn_interactions`, `rederive`, `window_robustness`, `cost_boostmec_shipped`, `paper_numbers_A`, `paper_numbers_B`, `paper_numbers_C`, `paper_numbers_D`, `report_checks_R1`, `report_checks_R2`, `report_checks_R4`, `report_checks_R5`, `report_checks_R6`, `report_checks_R7`, `report_checks_R8` | family, n_cols, spearman, spearman_sd, d_spearman |
 | `curated_joint.csv` | 1.0 | cited | `curated_joint`, `cost_boostmec_shipped`, `paper_numbers_A`, `report_checks_R1`, `report_checks_R2`, `report_checks_R5`, `report_checks_R8` | arm, n_families, n_cols, spearman, spearman_sd, d_spearman, sum_of_singles … |
 | `portability.csv` | 0.3 | cited | `portability`, `cost_boostmec_shipped`, `paper_numbers_A`, `report_checks_R1` | arm, n_columns, spearman, spearman_sd, r2 |
 | `post_freeze/label_orientation.csv` | 0.2 | cited | `label_orientation`, `cost_boostmec_shipped`, `paper_numbers` | n_guides, n_multi_copy, n_single_copy, median_label_multi_copy, median_label_single_copy, auc_multi_higher, mannwhitney_p |
@@ -293,6 +293,8 @@ Within a group the order is alphabetical.
 | `folds_humangc_only.csv` | 0.5 | receipt | `run_ablation`, `shape_ablate`, `floors`, `human_shape`, `cost_boostmec_shipped`, `report_checks_R8` | experiment, seed, fold, r2, spearman, pearson, mse … |
 | `folds_shift_baseline.csv` | 1.8 | audited | `run_ablation`, `shape_ablate`, `floors`, `human_shape`, `cost_boostmec_shipped`, `paper_numbers_A`, `report_checks_R2`, `report_checks_R7`, `report_checks_R8` | experiment, seed, fold, r2, spearman, pearson, mse … |
 | `permutation_floors.csv` | 1.0 | cited | `floors`, `cost_boostmec_shipped`, `report_checks_R7` | family, real_folds, real_d_r2, real_d_rho, real_p, floor_folds, floor_d_r2 … |
+| `post_freeze/ablation_paper_folds.csv` | 8.6 | cited | `notebook`, `run_ablation`, `ablation_paper_folds`, `cost_boostmec_shipped` | arm, seed, fold, rho, n_cols |
+| `post_freeze/ablation_paper_folds_summary.csv` | 2.3 | cited | `notebook`, `run_ablation`, `ablation_paper_folds`, `cost_boostmec_shipped`, `paper_numbers_D` | family, n_folds, seeds, rho, gain_same_selection, gain_same_selection_sd, folds_positive_same_selection … |
 | `post_freeze/vs_crisprhal_wt.csv` | 0.8 | cited | `vs_crisprhal`, `cost_boostmec_shipped`, `paper_numbers_A`, `paper_numbers_B`, `paper_numbers_C`, `paper_numbers_D`, `report_checks_R6`, `report_checks_R7` | condition, arm, n_test, n_train, rho, crisprhal, diff … |
 
 ### Appendix B — The methods and controls behind the findings
@@ -350,7 +352,7 @@ Within a group the order is alphabetical.
 | `post_freeze/e2e_slicer.csv` | 0.7 | audited | `cost_boostmec_shipped`, `e2e_bench`, `paper_numbers_C` | model, batch, ms_per_call, ms_per_guide |
 | `post_freeze/e2e_slicer_locus.csv` | 0.7 | audited | `cost_boostmec_shipped`, `e2e_bench`, `paper_numbers_C`, `report_checks_R6` | model, width_nt, n_guides, ms_per_call, ms_per_guide |
 | `post_freeze/figure_manifest_paper.csv` | 0.0 | receipt | `cost_boostmec_shipped`, `figures_paper` | figure, width_in, height_in |
-| `post_freeze/flank_scale.csv` | 9.6 | cited | `flank_scale`, `cost_boostmec_shipped`, `figures_paper`, `paper_numbers_D` | part, arm, seed, fold, rho |
+| `post_freeze/flank_scale.csv` | 9.6 | cited | `ablation_paper_folds`, `flank_scale`, `cost_boostmec_shipped`, `figures_paper`, `paper_numbers_D` | part, arm, seed, fold, rho |
 | `post_freeze/flank_scale_summary.csv` | 3.2 | cited | `flank_scale`, `cost_boostmec_shipped`, `figures_paper`, `paper_numbers_D` | part, arm, base_rho, n_folds, rho, gain, gain_sd_over_folds … |
 | `post_freeze/flank_window_tune.csv` | 11.5 | cited | `flank_window_tune`, `cost_boostmec_shipped`, `figures_paper`, `paper_numbers_D` | part, arm, up, down, seed, fold, rho |
 | `post_freeze/flank_window_tune_summary.csv` | 4.5 | cited | `flank_window_tune`, `cost_boostmec_shipped`, `paper_numbers_D` | arm, part, up, down, n_folds_41, gain_41, gain_sd_41 … |
@@ -480,7 +482,7 @@ Within a group the order is alphabetical.
 | file | KB | role | written by | columns |
 |---|---:|---|---|---|
 | `README.md` | 2.0 | document | — |  |
-| `RESULTS.md` | 36.7 | document | — |  |
+| `RESULTS.md` | 37.5 | document | — |  |
 | `RESULTS_archive_2026-10-10.md` | 110.9 | document | — |  |
 
 ### figures
