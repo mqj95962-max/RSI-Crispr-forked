@@ -36,7 +36,7 @@ import pandas as pd
 HERE = Path(__file__).resolve()
 RUNJIA = HERE.parents[2]
 ROOT = HERE.parents[3]
-RESULTS = RUNJIA / "results" / "post_freeze"
+RESULTS = RUNJIA / "results"
 INF = RESULTS / "cost_repeats_inference.csv"
 FIT = RESULTS / "cost_repeats_fit.csv"
 REPS = {1: 300, 100: 60, 10_000: 15}
@@ -195,12 +195,12 @@ def fit():
     sys.path.insert(0, str(RUNJIA))
     import resource
 
-    from sgrna.cohorts.curated_ablation import _base, _block
+    from sgrna.harness.curated import load_base, load_block
     from sgrna.compare.vs_crisprhal import member_specs, train_predict
     from sklearn.model_selection import KFold
 
-    X, y, names, protos = _base()
-    A, _ = _block("a_flank", protos)
+    X, y, names, protos = load_base()
+    A, _ = load_block("a_flank", protos)
     X = np.hstack([X, A]).astype(np.float32)
     tr, va = next(iter(KFold(5, shuffle=True, random_state=41).split(np.arange(len(y)))))
     machine()

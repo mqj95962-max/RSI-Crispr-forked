@@ -372,7 +372,7 @@ def _ceiling(chk, RES):
 
 def run(chk):
     """Run every check of review R3 through `chk(label, got, claimed, dec)`."""
-    RES = OUT.parent                 # the fork's results/
+    RES = OUT                 # the fork's results/
     MAIN = config.RESULTS            # the main project's results/, which holds attribution_summary_shap.csv and faithfulness_shap_share.csv
     _importance(chk, RES, MAIN)
     _interp_extra(chk, RES)
@@ -383,19 +383,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as paper_numbers_C: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:110s} computed {got:+.5f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

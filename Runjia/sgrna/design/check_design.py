@@ -2,7 +2,7 @@
 
 For 600 random curated guides, on either strand, the tool is given only the genome and the guide's coordinates. It must give back the protospacer, PAM and both 1,000 nt
 flanks of the curated guide index, the stored base and flank columns, and the same prediction from them; and asking for the cut site of each guide must list that guide at
-distance 0. Written to `results/post_freeze/design_check.csv`.
+distance 0. Written to `results/design_check.csv`.
 
     python -m sgrna.design.check_design
 """
@@ -19,11 +19,11 @@ from . import design_guide as D
 
 def main() -> int:
     from ..build.build_features import load_curated_index
-    from ..cohorts.curated_ablation import _base, _block
+    from ..harness.curated import load_base, load_block
 
     _, g = D.read_fasta(config.GENOME_FASTA)
-    X, y, names, protos = _base()
-    A, an = _block("a_flank", protos)
+    X, y, names, protos = load_base()
+    A, an = load_block("a_flank", protos)
     idx = load_curated_index(verbose=False).set_index(config.ID_COL).reindex(protos)
     pick = np.sort(np.random.default_rng(0).choice(len(protos), 600, replace=False))
     sub = idx.iloc[pick]

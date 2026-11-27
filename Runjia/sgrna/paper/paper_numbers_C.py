@@ -38,7 +38,7 @@ P = "paper C: "
 
 def run(chk):
     """Run every check of group C through `chk(label, got, claimed, dec)`."""
-    RES = OUT.parent                                   # the fork's results/ (the same files sit in the main project's results/)
+    RES = OUT                                   # the fork's results/ (the same files sit in the main project's results/)
     MAIN = config.RESULTS                              # the main project's results/, for files the fork does not track
     hal_dir = config.EXTERNAL / "crisprHAL" / "data"
     ci = lambda lo, hi: 1.0 if lo < 0 < hi else 0.0    # 1 when an interval contains zero
@@ -307,19 +307,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:100s} computed {got:+.5f}  paper {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, paper {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "paper")

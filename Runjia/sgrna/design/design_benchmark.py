@@ -3,7 +3,7 @@
 Every curated guide gets an out-of-fold prediction (the paper's five whole-gene folds, seed 41: the model never saw the guide's gene). The circular genome is cut into disjoint
 windows of 250, 500 and 1,000 bp; in each window that holds at least four curated guides, the guide with the highest prediction is the model's pick. Its quality is the
 measured score's percentile within the window (1 = the best guide of the window, 0 = the worst; a random pick averages 0.5), and whether it is the best one. Intervals
-resample 100 kb blocks of the genome. Written to `results/post_freeze/design_benchmark.csv`.
+resample 100 kb blocks of the genome. Written to `results/design_benchmark.csv`.
 
 The curated library holds about one guide per 138 bp, a subset of the NGG sites, so windows narrower than 250 bp rarely hold several guides to choose between.
 
@@ -31,14 +31,14 @@ def out_of_fold(threads: int = 8) -> dict[str, np.ndarray]:
         return {k: z[k] for k in z.files}
     import xgboost as xgb
 
-    from ..cohorts.curated_ablation import _base, _block
+    from ..harness.curated import load_base, load_block
     from ..controls.sealed_holdout_gene import _fold_ids
     from ..harness.run_ablation import _impute, make_selector
     from ..interpret.interp_extra import paper_groups
     from ..tuning import tune_ecoli as T
 
-    X, y, names, protos = _base()
-    A, an = _block("a_flank", protos)
+    X, y, names, protos = load_base()
+    A, an = load_block("a_flank", protos)
     XA = np.hstack([X, A])
     fold = _fold_ids(paper_groups(protos), 5, SEED)
     cfgs = json.loads((OUT / "tune_configs.json").read_text())
@@ -63,10 +63,10 @@ def out_of_fold(threads: int = 8) -> dict[str, np.ndarray]:
 
 def main() -> int:
     from ..build.build_features import load_curated_index
-    from ..cohorts.curated_ablation import _base
+    from ..harness.curated import load_base
     from .design_guide import cut_after
 
-    X, y, names, protos = _base()
+    X, y, names, protos = load_base()
     preds = out_of_fold()
     idx = load_curated_index(verbose=False).set_index(config.ID_COL).reindex(protos)
     cut = np.array([cut_after(int(l) - 1, s) for l, s in zip(idx["left"], idx["strand"])], dtype=np.int64)

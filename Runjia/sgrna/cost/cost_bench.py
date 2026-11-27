@@ -84,9 +84,9 @@ def featurise_side(n=300):
     """Warm, one-thread cost of the 6,517 columns per guide (tables preloaded, 5 guides first to warm caches)."""
     from sgrna import config
     from sgrna.build import featurise, qct
-    from sgrna.cohorts.curated_ablation import _base
+    from sgrna.harness.curated import load_base
     from sgrna.features import a_flank
-    _, _, _, protos = _base()
+    _, _, _, protos = load_base()
     idx = pd.read_csv(config.INTERIM / "curated_guide_index.csv").set_index("sgRNAID")
     tables, vm = qct.load_tables(), featurise.load_v_mapping()
     P = list(protos[:n]); sub = idx.reindex(P).reset_index().rename(columns={"index": "sgRNAID"}); sub["located"] = True
@@ -121,7 +121,7 @@ if __name__ == "__main__":
             ms = _time(lambda: model.predict(X, batch_size=min(b, 256), verbose=0), reps)
             rows.append(dict(model="crisprHAL 2 (shipped WT-SPCAS9, TensorFlow, one thread)", batch=b, latency_ms=ms, per_guide_ms=ms / b,
                              n_members=1, total_trees=0)); print(rows[-1], flush=True)
-        pd.DataFrame(rows).to_csv(os.path.join(root, "RSI-Crispr-fork", "Runjia", "results", "post_freeze", "cost_crisprhal.csv"), index=False)
+        pd.DataFrame(rows).to_csv(os.path.join(root, "RSI-Crispr-fork", "Runjia", "results", "cost_crisprhal.csv"), index=False)
     else:
         from ..common import OUT
         if a.members:

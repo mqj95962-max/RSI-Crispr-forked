@@ -1,4 +1,4 @@
-"""Audit of PROGRESS_REPORT.md lines 121-307 (Finding 2 on the flank effect, Finding 3 on transfer and confound controls, Finding 4 on
+"""Audit of Findings 2 to 4 of PROGRESS_REPORT.md (Finding 2 on the flank effect, Finding 3 on transfer and confound controls, Finding 4 on
 the model being out of material): the headline numbers that `verify_numbers` did not recompute, each from the stored file that holds it.
 
     ./run_ext.sh sgrna.paper.report_checks_R2
@@ -32,7 +32,7 @@ P = "report R2: "
 
 def _main_file(name):
     """A results file of the fork's own results/, else the main project's untracked copy."""
-    f = OUT.parent / name
+    f = OUT / name
     return f if f.exists() else config.RESULTS / name
 
 
@@ -107,7 +107,7 @@ HEAVY = bool(os.environ.get("RSI_AUDIT_HEAVY"))
 
 def run(chk):
     """Run every check of this module through `chk(label, got, claimed, dec)`."""
-    R = OUT.parent                                      # the fork's results/
+    R = OUT                                      # the fork's results/
     MAIN = config.RESULTS                               # the main project's results/
 
     # ------------------------------------------------------------------ Finding 2: what family A is made of
@@ -242,9 +242,9 @@ def run(chk):
     loc = ct[(ct.dataset == "eSpCas9") & (ct.arm == "base+a_flank") & (ct.cv == "random")]
     chk(P + "eSpCas9 'local' denominator: random-row 5-fold, seed 41", float(loc.spearman.mean()), 0.784, 3)
     chk(P + "eSpCas9 'local' folds (one seed)", float(len(loc)), 5, 0)
-    # The refit (about a minute) is stored in results/post_freeze/transfer_esp_unseen_guides.csv; RSI_AUDIT_HEAVY=1 redoes it and
+    # The refit (about a minute) is stored in results/transfer_esp_unseen_guides.csv; RSI_AUDIT_HEAVY=1 redoes it and
     # overwrites the file, and every run checks the stored values.
-    store = R / "post_freeze" / "transfer_esp_unseen_guides.csv"
+    store = R / "transfer_esp_unseen_guides.csv"
     if HEAVY:
         es = _esp_unseen_guides()
         pd.DataFrame([{"arm": a_, "scope": s_, "spearman": es[a_][s_]} for a_ in ("base", "base+a_flank") for s_ in ("all", "seen", "unseen")]
@@ -320,19 +320,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:110s} computed {got:+.5f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

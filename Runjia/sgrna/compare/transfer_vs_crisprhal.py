@@ -29,7 +29,7 @@ HERE = Path(__file__).resolve()
 RUNJIA = HERE.parents[2]
 ROOT = HERE.parents[3]
 WORK = ROOT / "data" / "interim" / "post_freeze" / "transfer_vs_crisprhal"
-RESULTS = RUNJIA / "results" / "post_freeze"
+RESULTS = RUNJIA / "results"
 HAL = ROOT / "external_data" / "crisprHAL"
 UP, DOWN = 189, 166
 
@@ -39,7 +39,7 @@ def prepare() -> None:
 
     from .. import config
     from ..build.base_fast import matrix_fast
-    from ..cohorts.curated_ablation import _base
+    from ..harness.curated import load_base
     from . import eukaryote_rules as ER
     from .transfer import build, load_dataset
     from .vs_crisprhal import member_specs, train_predict

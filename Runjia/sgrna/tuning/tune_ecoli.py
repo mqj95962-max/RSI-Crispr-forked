@@ -55,10 +55,11 @@ import xgboost as xgb
 from scipy.stats import norm, rankdata, spearmanr
 
 from sgrna import config
-from sgrna.cohorts.curated_ablation import _base, _block, _groups
+from sgrna.harness.curated import load_base, load_block, load_groups
 from sgrna.harness.run_ablation import _impute, champion_params, grouped_folds, make_selector
 
 from ..common import INTERIM, OUT
+from ..harness.metrics import zscore as _z
 
 DIR = INTERIM / "tune"
 DIR.mkdir(parents=True, exist_ok=True)
@@ -75,7 +76,7 @@ ANCHORS = ("champion", "depth6")
 class Plan:
     """One run of the search: which genes are held out, where the results and caches go, how large the search is, and how its rows are labelled."""
     split_seed: int            # seeds the 70/30 division of genes
-    configs: str               # result files, in `results/post_freeze/`: the configurations drawn, ...
+    configs: str               # result files, in `results/`: the configurations drawn, ...
     stage1: str                # ... the stage-1 scores, ...
     stage2: str                # ... the stage-2 scores, ...
     confirm: str               # ... and the held-out confirmation (named in full so that a search for a file finds the code that writes it)
@@ -110,9 +111,9 @@ class Cohort:
     def __init__(self, plan: Plan | None = None):
         self.plan = plan or PLANS[1]
         self.plan.cache.mkdir(parents=True, exist_ok=True)
-        X, y, _, protos = _base()
-        A, _ = _block("a_flank", protos)
-        g, ok = _groups("gene", protos)
+        X, y, _, protos = load_base()
+        A, _ = load_block("a_flank", protos)
+        g, ok = load_groups("gene", protos)
         self.X = np.hstack([X, A])[ok]
         self.y = y[ok]
         self.g = np.asarray(g[ok], dtype=object)
@@ -253,10 +254,6 @@ def selected(plan: Plan | None = None):
     s2 = pd.read_csv(OUT / (plan or PLANS[1]).stage2)
     m = s2.groupby(["draw", "k"]).rho.mean().reset_index().sort_values("rho", ascending=False).drop_duplicates("draw")
     return m.set_index("draw")
-
-
-def _z(p):
-    return (p - p.mean()) / (p.std() + 1e-12)
 
 
 def _boot_rho(y, genes, preds, B=2000, seed=0):
