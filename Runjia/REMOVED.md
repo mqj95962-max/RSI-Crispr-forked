@@ -171,3 +171,29 @@ What was *not* deleted, against the review of the same day, after reading the re
 * `cohorts/curated_ablation._base`, `_block` and `_groups`, which 53 modules and the audit imported by their underscore-private names, are `harness/curated.load_base`, `load_block` and `load_groups` (bodies unchanged); five copies of the
   z-score are `harness/metrics.zscore`.
 * The fifteen copies of the audit's standalone `__main__` driver are `paper/standalone.run_alone`.
+
+## 27 November 2026 (night): five strand modules merged into `compare/strand.py`
+
+`strand_families.py`, `strand_strata.py`, `strand_within_gene.py`, `cut_within_gene.py` and `strand_recoverable.py` asked one question in pieces (is family A's gain on the dCas9 screens the strand rule arriving through a lossy copy of
+"which strand the guide targets?") and shared the loading of Cui's essential-gene frame (seven copies) and the between/within-genes split (two). They are now `compare/strand.py --parts build|families|families-within|recoverable|rousset|flip|within-cui|within-joint|within-rousset|cutting`,
+with the frame loaded once and the split defined once. Every result file keeps its name; all are now written under `results/` (the old modules wrote most of them to the main project's `results/` and the tracked copies were made by hand).
+Restore the old modules with `git checkout pre-merge-2026-11-27 -- Runjia/sgrna/compare/strand_families.py` (and the other four).
+
+How it was checked: `families`, `families-within`, `recoverable` and `flip` reproduce their stored tables from the fold checkpoints (to 3e-14, 3e-14, exactly and exactly; `./run_audit.sh --reproduce`, four new cases that run against a scratch copy of the project
+root so the checkpoints cannot be touched); the within-gene routine gave identical files in the old and the new code on a real refit (Rousset coding strand, two seeds, 100 bootstrap draws), and the decomposition is identical on random data. The remaining
+parts (`rousset`, `within-*`, `cutting`) cannot be reproduced from checkpoints, see below, so they rest on that A/B test and on the unchanged logic.
+
+A hazard found and closed: `cross_validate(return_oof=True)` fills the out-of-fold predictions only for folds it computes in that call, so resuming from complete checkpoints gives NaN predictions, and the old modules then **overwrote their good result files with NaN rows**
+(a rerun of `strand_within_gene --cui` from the stored checkpoints did exactly that in a scratch copy). `strand.py` raises instead, naming the checkpoints to delete if a refit is wanted.
+
+## 27 November 2026 (night): three cost benchmarks merged into `cost/latency.py`
+
+`cost_bench.py` (the model alone), `e2e_bench.py` (end to end, and over a stretch of chromosome) and `inference_cost.py` (the first benchmark: one fit, then latency, throughput and cold start) were three generations of one measurement, SLICER's scoring
+latency against crisprHAL 2's on one thread, and each carried its own `_time`, its own fitted-on-random-data model builder and its own crisprHAL 2 side. They are now `cost/latency.py --parts model|featurise|e2e|locus|inference|hal-model|hal-e2e`; every result file keeps its name
+(`cost_slicer.csv`, `cost_featurise.csv`, `e2e_slicer.csv`, `e2e_slicer_locus.csv`, `inference_cost.csv`, `cost_crisprhal.csv`, `e2e_crisprhal.csv`) and is written under `results/`. Restore the old modules with `git checkout pre-merge-2026-11-27 -- Runjia/sgrna/cost/cost_bench.py`
+(and the other two).
+
+Three behaviours were kept on purpose. The BLAS thread variables are set to 1 before numpy loads, for every part except `inference` (whose single fit is a different measurement, at default threads) and whenever another module imports `_make_models` (`cost_repeats` has always run
+that way, through `e2e_bench`'s import); the two `hal-*` parts run as a script under the TensorFlow interpreter and import only numpy, pandas and TensorFlow (`.venv-crisprhal/bin/python sgrna/cost/latency.py --parts hal-model hal-e2e --hal <project root>`); `cost_repeats` imports
+`_make_models` from the new module. Timings cannot be reproduced to the byte, so no `reproduce` case covers this module: a new `--quick` switch (one repeat, batches 1 and 100, narrower loci) runs each part's code path into a scratch folder, and the columns and row labels of each
+output were compared with the stored file. The TensorFlow parts were not run (they need the other interpreter); their code is the old code, moved.

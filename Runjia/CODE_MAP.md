@@ -54,7 +54,7 @@ Every experiment module has the same four parts, so any of them can be read the 
 
 <!-- generated:begin -->
 
-**180 modules, 38,817 lines** of Python in 12 folders (not counting the `__init__.py` markers).
+**174 modules, 38,619 lines** of Python in 12 folders (not counting the `__init__.py` markers).
 
 #### By the report section each module supports
 
@@ -70,17 +70,17 @@ Every experiment module has the same four parts, so any of them can be read the 
 | Part 2 | Contributions | 6 | 724 | 7 | cohorts, compare, controls, interpret |
 | Part 3 | Where this stops | 1 | 179 | 2 | compare |
 | Part 4 | The freeze, and what remains | 5 | 791 | 5 | compare, controls |
-| Part 5 | Where this sits in the field | 37 | 6,313 | 106 | build, cohorts, compare, controls, cost, interpret, paper, tuning |
+| Part 5 | Where this sits in the field | 35 | 6,237 | 106 | build, cohorts, compare, controls, cost, interpret, paper, tuning |
 | Appendix A | Controls and nulls | 6 | 1,678 | 66 | controls, harness, paper |
 | Appendix B | The methods and controls behind the findings | 15 | 4,847 | 77 | cohorts, compare, controls, harness, interpret, paper, tuning |
 | Appendix B2 | Why the imported families failed, and why that is not a screen | 2 | 416 | 4 | controls, interpret |
 | Appendix B2a | Curation: what it is, and why family A doubled between cohorts | 2 | 265 | 2 | cohorts, controls |
 | Appendix B3 | The family ablations on the curated cohort, and what they measure | 14 | 2,596 | 8 | cohorts, features, interpret, paper |
 | Appendix B4 | The flank's shape and 3D structure add nothing that its composition does not already hold | 9 | 1,355 | 22 | build, cohorts, compare, features, interpret |
-| Appendix B5 | A boundary experiment, demoted: the dCas9 / CRISPRi screens | 8 | 2,002 | 65 | compare, paper |
+| Appendix B5 | A boundary experiment, demoted: the dCas9 / CRISPRi screens | 4 | 1,833 | 65 | compare, paper |
 | Appendix C0 | Reproducibility: versions, seeds and protocol | 1 | 199 | 0 | (top) |
 | Appendix E | The paper's Results, Discussion and appendices, bullet by bullet | 1 | 291 | 4 | compare |
-| tooling | the audit, the figures, the guards and this map | 7 | 2,329 | 0 | paper |
+| tooling | the audit, the figures, the guards and this map | 7 | 2,376 | 0 | paper |
 | library | shared code the experiments are built on | 8 | 1,191 | 1 | (top), build |
 | — | no section of the report points at it | 20 | 2,992 | 35 | cohorts, compare, cost, design, interpret, paper |
 
@@ -244,7 +244,7 @@ What the model uses and what the signal is made of: importance, attribution, red
 | `tuned_settings` | 201 | The tuned settings show a mostly additive signal: single-split stumps reach held-out rho 0.6905 against 0.7210 for shallow trees, and deeper trees do no better. | Finding 5 | `interpret_data_scaling.csv`, `interpret_depth.csv` +4 |
 | `vs_crisprhal_interpret` | 591 | SLICER is more faithful than crisprHAL 2 (sensitivity-n +0.081 to +0.111) but ties or splits on stability, truth and compressibility, so it is not shown to be more interpretable. | Finding 5 | `guides_1500.csv`, `hal_flank_edits.csv` +14 |
 
-### `sgrna/compare/`  —  44 modules, 7,874 lines
+### `sgrna/compare/`  —  40 modules, 7,705 lines
 
 Every comparison with something else (Part 5 of the report): crisprHAL 2, the inherited baseline, other organisms and the human matrix, and other assays (the dCas9 boundary experiment of Appendix B5).
 
@@ -259,7 +259,6 @@ Every comparison with something else (Part 5 of the report): crisprHAL 2, the in
 | `crispri_screens` | 327 | Three CRISPRi screens instead of one, and what that buys beyond accuracy. | Appendix B5 | `crispri_screen_agreement.csv`, `crispri_screen_family_a.csv` +1 |
 | `cui_final_exam` | 219 | Both models, neither trained on it, scored on Cui's CRISPRi screen. | Part 5 | `cui_final_exam.csv` |
 | `cui_screen` | 594 | Family A adds nothing on Cui's dCas9 CRISPRi screen (−0.0093, whole genes held out) against +0.1563 on a cutting screen, although the screens differ in assay, library and laboratory. | Appendix B5 | `cui_essential_marginals.csv`, `cui_essential_position.csv` +4 |
-| `cut_within_gene` | 38 | The cutting-screen figure on the within-gene definition used for the dCas9 screens. | Appendix B5 | `cut_within_gene.csv` |
 | `data_efficiency` | 69 | The data-efficiency curve again, with the tuned model against the stored crisprHAL 2 curve. | Part 5 | `data_efficiency.csv`, `sample_complexity.csv` +1 |
 | `eukaryote_rules` | 309 | Eukaryotes share guide rules (corrected correlation +0.59 between human tables) that are unrelated to E. coli's: G at position 20 helps in every eukaryotic table and hurts in E. coli. | Finding 7 | `eukaryote_contrast_g_minus_t.csv`, `eukaryote_flank_step.csv` +4 |
 | `family_a_by_organism` | 70 | Family A raises held-out rho in every organism it was built for: +0.161 in E. coli, +0.104 for eSpCas9, +0.059 in C. rodentium and +0.023 in human, positive in every fold. | Finding 3 | `ablation_paper_folds_summary.csv`, `family_a_by_organism.csv` +3 |
@@ -282,10 +281,7 @@ Every comparison with something else (Part 5 of the report): crisprHAL 2, the in
 | `portability` | 167 | A model using only the 412 columns that can be computed from any 20-mer plus the genome matches the full published matrix to within 0.00003 in ρ. | Part 2 | `portability.csv`, `portability_audit.csv` |
 | `sample_complexity` | 220 | crisprHAL 2 needs 1.7 to 2.5 times as many labelled guides as SLICER to reach the same accuracy, at every accuracy level that both models reach. | Part 5 | `sample_complexity.csv` |
 | `sealed_organism` | 94 | On C. rodentium, which no choice in this project ever saw, the tuned model beats the default model by +0.0172, within the range seen inside E. coli. | Part 4 | `sealed_organism.csv` |
-| `strand_families` | 241 | With the strand call given to all families, flank family A adds only +0.007 on the dCas9 screen and only transcription context (+0.028) gains clearly in both groupings. | Appendix B5 | `strand_families.csv`, `strand_families_proxies.csv` +1 |
-| `strand_recoverable` | 47 | After dropping the columns most correlated with strand, a classifier still reads the strand call at AUC 0.79 from flank family A and 0.9997 from transcription context. | Appendix B5 | `strand_families_recoverable.csv` |
-| `strand_strata` | 142 | Two controls on the strand result. | Appendix B5 | `strand_flip.csv`, `strand_strata_rousset.csv` |
-| `strand_within_gene` | 181 | Among coding-strand guides, family A's gain is not only gene ranking: it adds +0.102 inside genes on Cui's screen and still +0.096 on top of transcription context. | Appendix B5 | `strand_within_gene_cui.csv`, `strand_within_gene_cui_joint.csv` +1 |
+| `strand` | 480 | With the strand call given to every family, flank family A adds only +0.007 on the dCas9 screen, but inside the coding strand its gain is not only gene ranking (+0.102 within genes on Cui's screen). | Appendix B5 | `cut_within_gene.csv`, `strand_families.csv` +8 |
 | `topend` | 93 | No objective aimed at the top of the ranking beat plain squared error on top-decile precision (0.291 for squared error, at most 0.289 for the others), and the rank objectives lose Spearman. | Part 5 | `topend_confirm.csv`, `tune_configs.json` |
 | `topk_panel` | 99 | Smoother top-end metrics against crisprHAL 2 on its own splits, and seed stability of the lead. | Part 5 | `seed_stability.csv`, `topk_panel.csv` |
 | `transfer` | 588 | A model trained on SpCas9 keeps 88% of its own accuracy on eSpCas9, a different nuclease in the same genome, and flank features supply +0.098 of its ρ. | Finding 3 | `hybrid.csv`, `transfer.csv` +6 |
@@ -295,7 +291,7 @@ Every comparison with something else (Part 5 of the report): crisprHAL 2, the in
 | `vs_crisprhal` | 185 | The tuned / mixed E. coli model against crisprHAL 2 again, under the three conditions of the original comparison. | Part 5 | `mix_finalists.csv`, `tune_configs.json` +3 |
 | `vs_crisprhal_wt_hal` | 37 | crisprHAL 2's shipped WT-SpCas9 weights on their own WT test file, saved for a paired comparison (TensorFlow environment). | Part 5 | — |
 
-### `sgrna/cost/`  —  10 modules, 2,060 lines
+### `sgrna/cost/`  —  8 modules, 1,984 lines
 
 What each model costs to train and to run, measured rather than estimated.
 
@@ -303,12 +299,10 @@ What each model costs to train and to run, measured rather than estimated.
 |---|---:|---|---|---|
 | `bench` | 319 | Peak memory and training cost, measured rather than estimated. | — | `memory_comparison.csv`, `memory_comparison_runs.csv` +1 |
 | `cost` | 372 | Measures CPU-seconds and floating-point operations to fit SLICER, a cut-down SLICER and crisprHAL 2; superseded by cost_repeats, as its crisprHAL 2 CPU-seconds were a hand-entered estimate. | Part 5 | `cost_cpu_seconds.csv`, `cost_flops.csv` +1 |
-| `cost_bench` | 131 | Times the model alone on one thread: 0.002 ms per guide for SLICER's default model against 1.32 ms for crisprHAL 2 at a batch of 100; its featurisation timing is superseded by cost_repeats. | Part 5 | `cost_crisprhal.csv`, `cost_featurise.csv` +3 |
 | `cost_boostmec` | 188 | BoostMEC scores a guide in 3.07 ms at a batch of 100 on one thread, 42.3 times SLICER's default model, using its released model and the same protocol as SLICER and crisprHAL 2. | Part 5 | `boostmec_oracle.csv`, `model_size.csv` |
 | `cost_boostmec_shipped` | 240 | BoostMEC as shipped: the authors' own pipeline, run unmodified in their Docker image, timed and compared with the Python version of `cost_boostmec.py`. | — | `boostmec_shipped_check.csv`, `boostmec_shipped_cohort.csv` +3 |
 | `cost_repeats` | 295 | Cost with its spread: every timing repeated, every repeat kept, so a ratio comes with a distribution and not a bare range. | — | `cost_repeats_featurisers.csv`, `cost_repeats_fit.csv` +2 |
-| `e2e_bench` | 177 | End-to-end scoring cost per guide, one thread: featurisation + column selection + imputation + model, against crisprHAL 2 with its input encoding. | Part 5 | `e2e_crisprhal.csv`, `e2e_slicer.csv` +3 |
-| `inference_cost` | 141 | Training cost is the wrong clock for a guide-design tool. | Part 5 | `inference_cost.csv` |
+| `latency` | 373 | Scoring latency of SLICER against crisprHAL 2, on one thread, in the three forms it has been measured: the model alone (0.002 ms per guide for SLICER's default model against 1.32 ms for crisprHAL 2 at a batch of 100) … | Part 5 | `cost_crisprhal.csv`, `cost_featurise.csv` +7 |
 | `model_size` | 91 | SLICER's default model stores 6,338 leaf values against 790,533 parameters for crisprHAL 2, but the tuned SLICER model is larger on disk than crisprHAL 2's file. | Part 5 | `model_size.csv` |
 | `rds_read` | 106 | Minimal read-only parser for R's XDR serialisation (.rds), enough for plain data (lists, vectors, attributes). | — | — |
 
@@ -325,7 +319,7 @@ The tool the project is for: give it a genome and a cut site and it returns the 
 | `family_a_table` | 260 | Family A for any genome: a FASTA file in, the 348 flank columns of every NGG guide out. | — | — |
 | `train_model` | 72 | Fit the shipped SLICER models (tuned and default) on all 33,567 curated guides and save them with everything needed to score a new guide. | — | `tune_configs.json` |
 
-### `sgrna/paper/`  —  24 modules, 7,474 lines
+### `sgrna/paper/`  —  24 modules, 7,521 lines
 
 The tooling the paper rests on: the audit, the figures, the import and reference guards, and the code map.
 
@@ -352,14 +346,14 @@ The tooling the paper rests on: the audit, the figures, the import and reference
 | `report_checks_R7` | 510 | Report checks R7: numbers of Appendix A and the first part of Appendix B of PROGRESS_REPORT.md (Controls and nulls; the methods and controls behind Findings 1-7, up to 'Why rho, and why R2') that had no line in the audit … | Appendix B | `ablation_curated.csv`, `ablation_curated_gene.csv` +57 |
 | `report_checks_R8` | 432 | Audit of the rest of the appendices of PROGRESS_REPORT.md (Appendix B2 why the imported families failed, B2a curation, B3 the family ablations on the curated cohort, B4 shape and 3D structure … | Appendix B5 | `ablation_curated.csv`, `ablation_curated_gene.csv` +52 |
 | `report_numbers` | 30 | Audit of the numbers added to the report by the line-by-line review of 23 Nov 2026 (modules R1 to R8 and CIT). | — | — |
-| `reproduce` | 110 | Do the modules still write the files the audit reads? | tooling | — |
+| `reproduce` | 157 | Do the modules still write the files the audit reads? | tooling | — |
 | `standalone` | 31 | Run one audit module on its own, with the same pass rule as the whole audit. | Appendix B3 | — |
 | `verify_numbers` | 1006 | Audit: recompute every headline number of Appendix B4 and the Finding 3 addendum from the result files and compare with the value typed into the report. | tooling | — |
 
 #### Old paths, for documents written before the reorganisations
 
 <!-- docrefs:ignore:begin -->
-<details><summary>139 modules have moved; documents that cite the left-hand paths (for example `Jacky/EXPERIMENT_CATALOG.md`) can be updated from this table</summary>
+<details><summary>128 modules have moved; documents that cite the left-hand paths (for example `Jacky/EXPERIMENT_CATALOG.md`) can be updated from this table</summary>
 
 | was | is now |
 |---|---|
@@ -394,11 +388,8 @@ The tooling the paper rests on: the audit, the figures, the import and reference
 | `sgrna/ext/blend_with_hal.py` | `sgrna/compare/blend_with_hal.py` |
 | `sgrna/ext/clean_vs_hal.py` | `sgrna/compare/clean_vs_hal.py` |
 | `sgrna/ext/common.py` | `sgrna/common.py` |
-| `sgrna/ext/cost_bench.py` | `sgrna/cost/cost_bench.py` |
-| `sgrna/ext/cut_within_gene.py` | `sgrna/compare/cut_within_gene.py` |
 | `sgrna/ext/data_efficiency.py` | `sgrna/compare/data_efficiency.py` |
 | `sgrna/ext/dnashape.py` | `sgrna/features/dnashape.py` |
-| `sgrna/ext/e2e_bench.py` | `sgrna/cost/e2e_bench.py` |
 | `sgrna/ext/equiv_check.py` | `sgrna/controls/equiv_check.py` |
 | `sgrna/ext/esp_replicate.py` | `sgrna/cohorts/esp_replicate.py` |
 | `sgrna/ext/geom.py` | `sgrna/features/geom.py` |
@@ -432,7 +423,6 @@ The tooling the paper rests on: the audit, the figures, the import and reference
 | `sgrna/human_baseline.py` | `sgrna/compare/human_baseline.py` |
 | `sgrna/importance.py` | `sgrna/interpret/importance.py` |
 | `sgrna/importance_models.py` | `sgrna/interpret/importance_models.py` |
-| `sgrna/inference_cost.py` | `sgrna/cost/inference_cost.py` |
 | `sgrna/interp_extra.py` | `sgrna/interpret/interp_extra.py` |
 | `sgrna/j_periodicity.py` | `sgrna/features/j_periodicity.py` |
 | `sgrna/kingdom_transfer.py` | `sgrna/compare/kingdom_transfer.py` |
@@ -448,11 +438,8 @@ The tooling the paper rests on: the audit, the figures, the import and reference
 | `sgrna/post_freeze/ceiling_table.py` | `sgrna/cohorts/ceiling_table.py` |
 | `sgrna/post_freeze/clean_vs_hal.py` | `sgrna/compare/clean_vs_hal.py` |
 | `sgrna/post_freeze/common.py` | `sgrna/common.py` |
-| `sgrna/post_freeze/cost_bench.py` | `sgrna/cost/cost_bench.py` |
-| `sgrna/post_freeze/cut_within_gene.py` | `sgrna/compare/cut_within_gene.py` |
 | `sgrna/post_freeze/data_efficiency.py` | `sgrna/compare/data_efficiency.py` |
 | `sgrna/post_freeze/dnashape.py` | `sgrna/features/dnashape.py` |
-| `sgrna/post_freeze/e2e_bench.py` | `sgrna/cost/e2e_bench.py` |
 | `sgrna/post_freeze/equiv_check.py` | `sgrna/controls/equiv_check.py` |
 | `sgrna/post_freeze/esp_replicate.py` | `sgrna/cohorts/esp_replicate.py` |
 | `sgrna/post_freeze/figures.py` | `sgrna/paper/figures.py` |
@@ -492,10 +479,6 @@ The tooling the paper rests on: the audit, the figures, the import and reference
 | `sgrna/selector_audit.py` | `sgrna/controls/selector_audit.py` |
 | `sgrna/seqnet.py` | `sgrna/harness/seqnet.py` |
 | `sgrna/shiftnull.py` | `sgrna/controls/shiftnull.py` |
-| `sgrna/strand_families.py` | `sgrna/compare/strand_families.py` |
-| `sgrna/strand_recoverable.py` | `sgrna/compare/strand_recoverable.py` |
-| `sgrna/strand_strata.py` | `sgrna/compare/strand_strata.py` |
-| `sgrna/strand_within_gene.py` | `sgrna/compare/strand_within_gene.py` |
 | `sgrna/transfer.py` | `sgrna/compare/transfer.py` |
 | `sgrna/tune.py` | `sgrna/tuning/tune.py` |
 | `sgrna/txn_interactions.py` | `sgrna/cohorts/txn_interactions.py` |
