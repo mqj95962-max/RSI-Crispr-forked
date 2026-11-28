@@ -1,4 +1,4 @@
-"""Do objectives aimed at the top of the ranking improve top-end metrics, where crisprHAL 2 still leads on pick percentile?
+"""No objective aimed at the top of the ranking beat plain squared error on top-decile precision (0.291 for squared error, at most 0.289 for the others), and the rank objectives lose Spearman.
 
 The tuned model is trained with squared error, which spends most of its effort on the middle of the label distribution. A design
 tool uses the top: the guides it would pick. Arms (all with the tuned configuration d099x, 4,000 trees, 450 columns):
@@ -14,6 +14,8 @@ Metrics on the held-out genes: Spearman, top-decile precision, top-1% precision,
 10 / 50 / 100 highest-scoring guides -- the last three smooth the 10-guide pick percentile, which is very noisy.
 
     python -m sgrna.compare.topend
+
+Report section: Part 5.
 """
 from __future__ import annotations
 
@@ -41,11 +43,6 @@ def topmetrics(y, p):
     for k in (10, 50, 100):
         out[f"pick{k}_pctile"] = float(pct[order[:k]].mean())
     return out
-
-
-def _qid(n, size=256, seed=0):
-    rng = np.random.default_rng(seed)
-    return np.sort(rng.integers(0, max(n // size, 1), n)), rng
 
 
 def fit_predict(arm, cfg, Xa, ya, Xb, seed):

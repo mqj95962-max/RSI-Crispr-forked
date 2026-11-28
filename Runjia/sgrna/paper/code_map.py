@@ -8,6 +8,8 @@ between the markers and are never touched.
 
     ./run_ext.sh sgrna.paper.code_map            # rewrite the generated tables in CODE_MAP.md
     ./run_ext.sh sgrna.paper.code_map --check    # exit 1 if a module is missing from the map (the audit runs this)
+
+Report section: Part 4.
 """
 from __future__ import annotations
 
@@ -19,13 +21,13 @@ from pathlib import Path
 
 from .. import common
 
-RUNJIA = Path(common.OUT).parent.parent
+RUNJIA = Path(common.OUT).parent
 PKG = RUNJIA / "sgrna"
 MAP = RUNJIA / "CODE_MAP.md"
 BEGIN, END = "<!-- generated:begin -->", "<!-- generated:end -->"
 
 PACKAGES = [
-    ("", "Paths and constants every module shares (`config.py`), the conventions for reading the base matrix and writing feature blocks (`io_utils.py`), and the resolver for the main project's untracked results (`common.py`)."),
+    ("", "Three single files at the root of the package, not folders: `config.py` (project paths and shared constants), `io_utils.py` (reading the base matrix and writing feature blocks) and `common.py` (output folders and the resolver for results this repository does not track). Nearly every other module imports them."),
     ("build", "Decode the published matrix, locate every guide on the genome, rebuild features for guides outside it, and the array featurisers that score a guide in tens of microseconds."),
     ("features", "The eleven feature families A-J (family A, the flanking-DNA composition, is the one that matters) and the shape / 3D descriptors that Appendix B4 tested against it."),
     ("harness", "The leakage-safe cross-validation harness every experiment runs through, plus the notebook front end."),
@@ -35,31 +37,26 @@ PACKAGES = [
     ("interpret", "What the model uses and what the signal is made of: importance, attribution, redundancy, the mechanism work of Finding 7, and what the tuned settings say."),
     ("compare", "Every comparison with something else (Part 5 of the report): crisprHAL 2, the inherited baseline, other organisms and the human matrix, and other assays (the dCas9 boundary experiment of Appendix B5)."),
     ("cost", "What each model costs to train and to run, measured rather than estimated."),
+    ("design", "The tool the project is for: give it a genome and a cut site and it returns the SpCas9 guide SLICER predicts will cut best there, with the shipped models, the check that it reads the same DNA and builds the same columns as the training matrices, and a benchmark of picking by score. It also holds the generator of the family A table for any genome (FASTA in, the 348 flank columns of every NGG guide out) and its check against the released table."),
     ("paper", None),
 ]
 
 
-# Modules whose conclusion the report states without naming the module or its files. Applied only when the automatic lookup
-# finds nothing, so a name in the report always wins. Each was checked by searching the report for the conclusion itself.
-STATED_UNNAMED = {
-    "blend_with_hal": "Part 5", "clean_vs_hal": "Part 5", "e2e_bench": "Part 5", "topend": "Part 5",
-    "topk_panel": "Part 5", "data_efficiency": "Part 5", "equiv_check": "Part 5", "cost_bench": "Part 5",
-    "esp_replicate": "Appendix B4", "ridge_check": "Appendix B4", "shape_analyze": "Appendix B4", "geom_importance": "Appendix B4",
-    "local_sequence_bound": "Appendix B4", "redundancy": "Appendix B4", "shape_build": "Appendix B4", "shape_ablate": "Appendix B4",
-    "ceiling_table": "Finding 6", "fold_distance": "Part 5", "lit_followups": "Part 5",
-    "human_shape": "Part 2", "human_twin_check": "Part 2", "human_additivity_twin": "Part 2", "human_flank": "Part 2",
-    "tune_split2": "Part 5", "tune_analyze": "Part 5", "family_a_at_tuned": "Finding 4", "tuned_settings": "Finding 5",
-    "mix_ecoli": "Part 5", "mlp_worker": "Part 5", "flank_locus": "Part 5", "a_flank_fast": "Part 5", "base_fast": "Part 5",
-    "cut_within_gene": "Appendix B5", "novel_followups": "Finding 7",
-    "import_check": "Part 4", "doc_refs": "Part 4", "code_map": "Part 4", "verify_numbers": "Part 4",
-    "why_inflation": "Appendix B2a", "floors": "Appendix A", "diagnose": "Finding 4", "headtohead": "Part 5", "panel_vs_hal": "Part 5",
-    "vs_crisprhal": "Part 5", "vs_crisprhal_wt_hal": "Part 5", "dnashape": "Appendix B4", "importance_models": "Finding 5",
-    "panel": "Part 5", "attribution": "Finding 5", "faithfulness": "Finding 5", "importance": "Finding 5",
-}
+# A module whose conclusion the report states without naming the module or its files carries its section in its own docstring, on a line of its own:
+#
+#     Report section: Part 5.
+#
+# so the tag moves with the file when it is renamed, merged or moved. It is read only when the automatic lookup finds nothing, so a name in the report always wins.
+_TAG = re.compile(r"^Report section: (.+?)\.?\s*$", re.M)
+
+
+def _tag(tree: ast.Module) -> str | None:
+    m = _TAG.search(ast.get_docstring(tree) or "")
+    return m.group(1) if m else None
 
 
 # Modules that read result files rather than write them, or that are not experiments at all.
-TOOLING = {"verify_numbers", "figures", "import_check", "doc_refs", "code_map"}
+TOOLING = {"verify_numbers", "figures", "import_check", "doc_refs", "code_map", "hooks", "reproduce"}
 LIBRARY_PACKAGES = {"", "build", "features", "harness"}      # used by the experiments; not claims in themselves
 
 
@@ -109,8 +106,11 @@ def _results(tree: ast.Module, existing: set[str]) -> list[str]:
             base = s.split("/")[-1]
             if len(base) < 5 or base in (".csv", ".json"):
                 continue
+            pre = base.split("{")[0]
             for f in existing:
-                if f == base or (len(base) >= 6 and (base.endswith("_") or "{" in s) and f.startswith(base.split("{")[0])):
+                # a literal with a `{` in it is a template (`f"transfer_{name}.csv"`): its text before the brace must be long enough to name something, or a Docker
+                # `--format '{{.Id}}'` literal (empty prefix) would match every result file
+                if f == base or (len(base) >= 6 and (base.endswith("_") or "{" in s) and len(pre) >= 4 and f.startswith(pre)):
                     out.add(f)
     return sorted(out)
 
@@ -202,7 +202,7 @@ def rows() -> dict[str, list[dict]]:
             if f.stem in TOOLING:
                 where, res = "tooling", []
             elif where == "—":
-                where = STATED_UNNAMED.get(f.stem) or ("library" if pkg in LIBRARY_PACKAGES else "—")
+                where = _tag(tree) or ("library" if pkg in LIBRARY_PACKAGES else "—")
             items.append(dict(module=f.stem, lines=f.read_text().count("\n") + 1, doc=_doc(tree), results=res, where=where))
         out[pkg] = items
     return out
@@ -266,11 +266,13 @@ def render(data: dict[str, list[dict]]) -> str:
             init = (PKG / pkg / "__init__.py").read_text().strip().strip('"')
             blurb = init
         n, total = len(items), sum(i["lines"] for i in items)
-        lines += [f"### `sgrna/{pkg + '/' if pkg else ''}`  —  {n} modules, {total:,} lines", "", blurb, "",
+        head = f"### `sgrna/{pkg}/`  —  {n} modules, {total:,} lines" if pkg else f"### `sgrna/` (the package root: {n} files, {total:,} lines)"
+        lines += [head, "", blurb, "",
                   "| module | lines | what it does | reported in | writes |", "|---|---:|---|---|---|"]
         for i in items:
             res = ", ".join(f"`{r}`" for r in i["results"][:2]) + (f" +{len(i['results']) - 2}" if len(i["results"]) > 2 else "")
-            lines.append(f"| `{i['module']}` | {i['lines']} | {i['doc']} | {i['where']} | {res or '—'} |")
+            name = i["module"] + (".py" if not pkg else "")
+            lines.append(f"| `{name}` | {i['lines']} | {i['doc']} | {i['where']} | {res or '—'} |")
         lines.append("")
     return "\n".join(lines)
 
@@ -284,16 +286,15 @@ INDEX_HEAD = """# Results, by what they are evidence for
 **Generated** by `./run_ext.sh sgrna.paper.code_map` from the code and the report; do not edit. The audit fails if a tracked file in
 `results/` is missing from this page.
 
-The folders are named for *when* a file was made, not what it shows, so this page is the conceptual view. Files are grouped by the
+Files are grouped by the
 section of `PROGRESS_REPORT.md` that cites them most (or, for a file the report does not name, that cites the module that writes it).
 Within a group the order is alphabetical.
 
-* **`results/`** holds the files made before the 11 October 2026 freeze, **`results/post_freeze/`** those made after it (including
-  the seven figures in `figures/`), and **`results/rederived/`** the re-derivations of seven result files whose producing code had
-  been lost, kept as evidence that they can be rebuilt (`sgrna/controls/rederive.py`). A file is named after the module that writes it.
-* Why the folders are not simply reorganised by concept: the code reads and writes these paths by name (about 500 references in 98 modules),
-  and the same names also exist in the untracked main project's `results/`, so a move here would have to be mirrored there. This index is
-  the cheaper fix, and it is checked.
+* **`results/`** holds every tracked result file in one folder, a file named after the module that writes it, plus `figures/` (the seven
+  publication figures), `interp_hal_cache/` (the interpretability caches made in the TensorFlow environment) and `rederived/` (the
+  re-derivations of seven result files whose producing code had been lost, kept as evidence that they can be rebuilt,
+  `sgrna/controls/rederive.py`). Until 27 November 2026 the files made after the 11 October 2026 freeze lived in a `post_freeze/` subfolder;
+  no file name occurred in both, and the move was made by a script and checked by the audit and `./run_audit.sh --reproduce`.
 * **Role.** *audited*: a number from the file is recomputed by `./run_audit.sh`. *cited*: a document names the file. *receipt*: the
   file is written by a module whose conclusion the report states, without naming the file; it is the evidence for that sentence and
   can be regenerated by re-running the module. *figure* and *document* are what they say.
@@ -394,7 +395,7 @@ def main(argv=None) -> int:
     all_mods = {i["module"] for items in data.values() for i in items}
     on_disk = {f.stem for f in PKG.rglob("*.py") if f.name != "__init__.py"}
     text = MAP.read_text() if MAP.exists() else ""
-    missing = sorted(m for m in on_disk if f"| `{m}` |" not in text)
+    missing = sorted(m for m in on_disk if f"| `{m}` |" not in text and f"| `{m}.py` |" not in text)
     if a.check:
         print(f"{len(on_disk)} modules on disk; {len(missing)} missing from CODE_MAP.md" + (f": {missing}" if missing else ""))
         return 1 if missing else 0

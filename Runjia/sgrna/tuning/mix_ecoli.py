@@ -1,4 +1,4 @@
-"""Mixing model families for the E. coli model: does an ensemble that is not all XGBoost beat the tuned XGBoost ensemble?
+"""Mixing model families barely helps: no blend beats the tuned XGBoost ensemble by more than +0.0017 rho on held-out genes, and adding weaker families at equal weight lowers it.
 
 The tuned XGBoost models of `tune_ecoli.py` are close to one another (depth 4-5, slow learning, many trees), so averaging
 five of them adds only +0.003 over the best one. Averaging helps in proportion to how differently the members err, so this
@@ -19,6 +19,8 @@ predictions only; the CONFIRM genes are used once, at the end.
     python -m sgrna.tuning.mix_ecoli --search lgb --draws 40
     python -m sgrna.tuning.mix_ecoli --finalize
     python -m sgrna.tuning.mix_ecoli --blend
+
+Report section: Part 5.
 """
 from __future__ import annotations
 
@@ -35,6 +37,7 @@ from sgrna.harness.run_ablation import _impute
 
 from . import tune_ecoli as T
 from ..common import OUT
+from ..harness.metrics import zscore as _z
 
 THREADS = 6
 KG = {"lgb": (200, 400, 800, 1200, 1600, 2000, 3000), "cat": (200, 400, 800, 1200, 1600, 2000)}
@@ -203,10 +206,6 @@ def finalize(co, oof_seed=42, conf_seeds=(41, 42, 43)):
         print(f"  finalized {kind} {name} k={k}", flush=True)
         rows.append(dict(kind=kind, name=name, k=k, stage1_rho=s1))
     pd.DataFrame(rows).to_csv(OUT / "mix_finalists.csv", index=False)
-
-
-def _z(p):
-    return (p - p.mean()) / (p.std() + 1e-12)
 
 
 def blend(co, conf_seeds=(41, 42, 43), oof_seed=42, B=1000):

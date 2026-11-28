@@ -1,4 +1,4 @@
-"""Is the flank effect read depth or mappability? Family A's gain inside strata of genome uniqueness.
+"""Family A's flank gain does not come from read depth or mappability: it is +0.157 among guides in uniquely mappable sequence and +0.160 with control read depth given to the model.
 
 The objection: a guide in a repeat, an IS element or an rRNA operon has counts that can be wrong in a way that tracks local DNA, so a flank
 composition feature could be predicting read misassignment and not cutting. The label comes from counts of the guide's own spacer (an
@@ -16,7 +16,7 @@ Three uniqueness measures per guide, all computed from the genome (NC_000913.2) 
                 (The Cas9-selected counts are not used: the label is the log-ratio of them to these, and as a feature they give rho 0.998 with it.)
 
 Out-of-fold predictions of base and base + family A come from gene-grouped five-fold CV (guides outside any gene grouped by 100 kb block,
-three seeds, models as in `sealed_holdout_gene.py`: base without column selection, base + family A through the 300-column selector). The
+three seeds, models as in `sealed.py --parts gene`: base without column selection, base + family A through the 300-column selector). The
 gain is then read inside each stratum on those predictions (the training set is the same for every stratum, so a smaller stratum is not a
 smaller training set), with an interval from resampling genes. A third arm adds the uniqueness measures to the base as columns: if the gain were
 carried by uniqueness, family A would add little on top of them.
@@ -70,10 +70,10 @@ def features(force: bool = False) -> pd.DataFrame:
     if FEATURES.exists() and not force:
         return pd.read_csv(FEATURES)
     from ..build import genome
-    from ..build.build_curated_features import load_index
+    from ..build.build_features import load_curated_index
 
     t0 = time.time()
-    idx = load_index(verbose=False)
+    idx = load_curated_index(verbose=False)
     track = _uniqueness_track()
     cs = np.concatenate([[0.0], np.cumsum(track)])
     n = len(track)
@@ -109,9 +109,9 @@ ARMS = ("base", "base+U", "base+A", "base+U+A")
 
 
 def _groups(protos):
-    from ..build.build_curated_features import load_index
+    from ..build.build_features import load_curated_index
 
-    idx = load_index(verbose=False).set_index(config.ID_COL)
+    idx = load_curated_index(verbose=False).set_index(config.ID_COL)
     gene = idx["gene_name"].reindex(protos)
     left = idx["left"].reindex(protos).to_numpy(float)
     return np.array([g if isinstance(g, str) and g else f"ig{int(l // 100_000)}" for g, l in zip(gene, left)], dtype=object)
@@ -119,14 +119,14 @@ def _groups(protos):
 
 def oof(seeds=(41, 42, 43), threads: int = 6, verbose: bool = True) -> pd.DataFrame:
     """Out-of-fold predictions of the four arms, averaged over seeds (gene-grouped five-fold CV over all 33,567 guides)."""
-    from ..cohorts.curated_ablation import _base, _block
-    from . import sealed_holdout_gene as sg
+    from ..harness.curated import load_base, load_block
+    from ..harness import folds as sg
 
     sg.N_JOBS = threads
     cache = config.INTERIM / "post_freeze" / "mappability"
     cache.mkdir(parents=True, exist_ok=True)
-    X, y, names, protos = _base()
-    A, _ = _block("a_flank", protos)
+    X, y, names, protos = load_base()
+    A, _ = load_block("a_flank", protos)
     f = features().set_index(config.ID_COL).reindex(protos)
     U = f[["u250", "u1000", "seed_dup", "copies"]].to_numpy(np.float32)
     groups = _groups(protos)
@@ -138,14 +138,14 @@ def oof(seeds=(41, 42, 43), threads: int = 6, verbose: bool = True) -> pd.DataFr
         if path.exists():
             per_seed.append(dict(np.load(path)))
             continue
-        fold = sg._fold_ids(groups, 5, sd)
+        fold = sg.fold_ids(groups, 5, sd)
         pred = {a: np.empty(len(y)) for a in ARMS}
         for k in range(5):
             va = fold == k
             for a in ARMS:
                 M, nf = mats[a]
                 t0 = time.time()
-                pred[a][va] = sg._fit_predict(M[~va], y[~va], M[va], None, nf, sd)
+                pred[a][va] = sg.fit_predict(M[~va], y[~va], M[va], None, nf, sd)
                 if verbose:
                     print(f"  seed {sd} fold {k + 1} {a:9s} {time.time() - t0:5.1f}s", flush=True)
         np.savez(path, **pred)
@@ -160,13 +160,13 @@ def oof(seeds=(41, 42, 43), threads: int = 6, verbose: bool = True) -> pd.DataFr
 
 def oof_depth(seeds=(41, 42, 43), threads: int = 6, verbose: bool = True) -> pd.DataFrame:
     """Two more arms: base + the control depth, and base + control depth + family A (same folds and seeds as `oof`)."""
-    from ..cohorts.curated_ablation import _base, _block
-    from . import sealed_holdout_gene as sg
+    from ..harness.curated import load_base, load_block
+    from ..harness import folds as sg
 
     sg.N_JOBS = threads
     cache = config.INTERIM / "post_freeze" / "mappability"
-    X, y, names, protos = _base()
-    A, _ = _block("a_flank", protos)
+    X, y, names, protos = load_base()
+    A, _ = load_block("a_flank", protos)
     f = features().set_index(config.ID_COL).reindex(protos)
     D = f[["ctl_depth"]].to_numpy(np.float32)
     groups = _groups(protos)
@@ -177,13 +177,13 @@ def oof_depth(seeds=(41, 42, 43), threads: int = 6, verbose: bool = True) -> pd.
         if path.exists():
             per_seed.append(dict(np.load(path)))
             continue
-        fold = sg._fold_ids(groups, 5, sd)
+        fold = sg.fold_ids(groups, 5, sd)
         pred = {a: np.empty(len(y)) for a in mats}
         for k in range(5):
             va = fold == k
             for a, (M, nf) in mats.items():
                 t0 = time.time()
-                pred[a][va] = sg._fit_predict(M[~va], y[~va], M[va], None, nf, sd)
+                pred[a][va] = sg.fit_predict(M[~va], y[~va], M[va], None, nf, sd)
                 if verbose:
                     print(f"  seed {sd} fold {k + 1} {a:9s} {time.time() - t0:5.1f}s", flush=True)
         np.savez(path, **pred)

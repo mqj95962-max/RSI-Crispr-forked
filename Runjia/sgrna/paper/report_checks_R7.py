@@ -1,5 +1,4 @@
-"""Report checks R7: numbers of PROGRESS_REPORT.md lines 1095-1341 (Appendix A, Controls and nulls; Appendix B, the methods and controls behind
-Findings 1-7, up to 'Why rho, and why R2') that had no line in the audit, or whose audit line matched a different quantity, recomputed from a
+"""Report checks R7: numbers of Appendix A and the first part of Appendix B of PROGRESS_REPORT.md (Controls and nulls; the methods and controls behind Findings 1-7, up to 'Why rho, and why R2') that had no line in the audit, or whose audit line matched a different quantity, recomputed from a
 stored file or from the repository's own code. Same idiom as `paper_numbers_C`: `chk(label, got, claimed, dec)` passes when
 |got - claimed| <= 0.5 * 10**(-dec); `got` is always computed, `claimed` is the value as the corrected report prints it. Every label starts
 with 'report R7: ' and names the cohort and protocol of the number.
@@ -35,9 +34,9 @@ def _boot_ci(v, n=20000, seed=0):
 
 def run(chk):
     """Run every check of this module through `chk(label, got, claimed, dec)`."""
-    RES = OUT.parent                                  # the fork's results/
+    RES = OUT                                  # the fork's results/
     MAIN = config.RESULTS                             # the main project's results/
-    PF = OUT                                          # results/post_freeze
+    PF = OUT                                          # results
     JACKY = config.ROOT / "RSI-Crispr" / "Jacky" / "orientation-controls" / "results"
 
     # ------------------------------------------------------------------------------------------------ nulls
@@ -59,10 +58,10 @@ def run(chk):
                                                                             for e in pd.read_csv(RES / f"{f}.csv").get("experiment", pd.Series([], dtype=str)))), 1, 0)
 
     print("report R7: Appendix A, texture-preserving null, aligned-column correlation of eng.flank.comp.dn500.gc (published matrix)")
-    from ..build.build_matrix import CACHE_META, CACHE_X
+    from .hooks import CACHE_META, CACHE_X
     if CACHE_X.exists() and CACHE_META.exists():
-        from ..build.build_matrix import load_dataset
-        from ..controls.shiftnull import _shifted_block
+        from .hooks import load_dataset
+        from .hooks import _shifted_block
         from ..io_utils import load_block, load_guide_index
         _, _, _, ids, _ = load_dataset([], verbose=False)
         idx = load_guide_index()
@@ -107,7 +106,7 @@ def run(chk):
     chk(P + "between-gene share of label variance, curated, %", 100 * (1 - float(cg[("curated", "gene")])), 29, 0)
     chk(P + "within-gene share, published (their own annotation)", float(cg[("published", "gene (their annotation)")]), 0.844, 3)
     try:
-        from ..build.build_curated_features import _b_numbers
+        from .hooks import _b_numbers
         pub = pd.read_csv(config.GUIDE_INDEX, low_memory=False)
         g = _b_numbers(pub)["gene_name"]
         chk(P + "published rows where the coordinate-based gene equals Noshay's annotation, %", 100 * float((g.fillna("X") == pub["gene_name"].fillna("X")).mean()), 97.7, 1)
@@ -132,10 +131,10 @@ def run(chk):
     sn_ = pd.read_csv(RES / "interp_sensitivity_n.csv")
     perm = sn_[sn_.attribution == "SHAP, columns permuted"].pearson
     real = sn_[sn_.attribution == "SHAP"].pearson
-    chk(P + "sensitivity-n: permuted-column SHAP, lowest correlation", float(perm.min()), -0.045, 3)
-    chk(P + "sensitivity-n: permuted-column SHAP, highest correlation", float(perm.max()), 0.038, 3)
-    chk(P + "sensitivity-n: SHAP on real columns, lowest", float(real.min()), 0.93, 2)
-    chk(P + "sensitivity-n: SHAP on real columns, highest", float(real.max()), 0.97, 2)
+    chk(P + "sensitivity-n: permuted-column SHAP, lowest correlation", float(perm.min()), -0.023, 3)
+    chk(P + "sensitivity-n: permuted-column SHAP, highest correlation", float(perm.max()), 0.047, 3)
+    chk(P + "sensitivity-n: SHAP on real columns, lowest", float(real.min()), 0.92, 2)
+    chk(P + "sensitivity-n: SHAP on real columns, highest", float(real.max()), 0.98, 2)
 
     print("report R7: Appendix A, orientation controls (Jacky's tables, 2,000 block resamples over 47 blocks)")
     jc, jd = JACKY / "intergenic_orientation_controls_delta_ci.csv", JACKY / "intergenic_orientation_delta_ci.csv"
@@ -426,10 +425,10 @@ def run(chk):
     chk(P + "family split: c_folding whole family (a different run)", float(fs[("c_folding", "whole family")]), 0.0147, 4)
     chk(P + "family split: d_mechanics not-cheap 10 columns", float(fs[("d_mechanics", "outside")]), 0.0970, 4)
     try:
-        from ..cohorts.curated_ablation import _base, _block
-        X, y, names, protos = _base()
-        b, bn = _block("b_energy", protos)
-        c, cn = _block("c_folding", protos)
+        from .hooks import load_base, load_block
+        X, y, names, protos = load_base()
+        b, bn = load_block("b_energy", protos)
+        c, cn = load_block("c_folding", protos)
         u = b[:, bn.index("eng.dg.guide_selffold")].astype(float)
         v2 = c[:, cn.index("eng.fold.spacer_mfe")].astype(float)
         m = np.isfinite(u) & np.isfinite(v2)
@@ -489,10 +488,10 @@ def run(chk):
     # ------------------------------------------------------------------------------------------------ split 2
     print("report R7: Appendix B, the second gene split")
     try:
-        from ..cohorts.curated_ablation import _base, _groups
-        from ..tuning import tune_ecoli as T
-        X, y, _, protos = _base()
-        g, ok = _groups("gene", protos)
+        from .hooks import load_base, load_groups
+        from .hooks import tune_ecoli as T
+        X, y, _, protos = load_base()
+        g, ok = load_groups("gene", protos)
         g = np.asarray(g[ok], dtype=object)
         genes = np.array(sorted(set(g)))
         c2 = set(np.random.default_rng(7).choice(genes, size=int(round(0.3 * len(genes))), replace=False))
@@ -506,19 +505,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:120s} computed {got:+.6f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.6f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

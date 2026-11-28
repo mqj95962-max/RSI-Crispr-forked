@@ -25,7 +25,7 @@ result files, only the entries below failed every test. The code base is not pad
 it is roughly a hundred one-question scripts, each of which is the provenance of a claim the report makes,
 and the problem was navigability rather than bulk. That is why the rest of the consolidation is a
 reorganisation (see `CODE_MAP.md`) rather than a deletion. One further check confirmed it: across the whole
-package only one 8-line function is duplicated, so there is no copy-paste to merge away.
+package only one 8-line function is duplicated, so there is no copy-paste to merge away. (Corrected on 25 November: thirteen helpers are copied and 26 clusters of modules differ only by an arm table, a fold scheme or a split; see the last section of this file and `EXTENSION_LOG.md` section 33.)
 
 If you want the repository smaller than this, the lever is not more deletion of orphans: it is deciding
 which *claims* leave the report, because each claim carries its code and results with it. See "What
@@ -97,3 +97,171 @@ Two citations pointed at nothing and were corrected: `human_ladder.csv` in `resu
 saved — the figures it summarised (human base 0.382, with family A 0.434, +0.052) are the means of
 `folds_human_base_cv.csv` and `folds_human_base_a_cv.csv`, which are now cited and audited; and `final_eval.csv` in the report
 was `final_eval_espcas9.csv`.
+
+## 24 November 2026: four Colab benchmarks folded into one
+
+`colab/inference_bench_t4.py`, `colab/inference_bench_onecore.py`, `colab/slicer_cpu_check.py` and `colab/crisprhal_inference_bench.py` timed
+crisprHAL 2 and SLICER-shaped trees on a Colab T4 (and, in the last two, a CPU), each a slightly different version of the same measurement
+(medians of a few calls, one with a hard-coded laptop path). They are replaced by one paste-into-one-cell file, `colab/cost_gpu.py`, which keeps every repeat,
+adds the fits and the tuned tree shape, and needs no upload. Their stored medians stay in `results/inference_colab.csv`, `inference_t4.csv`,
+`inference_onecore.csv` and `inference_onecore_local.csv` (their `source` columns name the scripts that wrote them); restore a script with
+`git checkout b6fc21a -- Runjia/colab/<file>`.
+
+## 25 November 2026: `flank_window_tune` folded into `flank_scale`
+
+`sgrna/interpret/flank_window_tune.py` (the upstream and downstream windows chosen separately) ran the same engine as `flank_scale.py` (same folds, same model, its symmetric
+arms read from `flank_scale.csv`) and differed by the table of window pairs it scored. It is now the part `asymmetric` of `flank_scale.py`
+(`python -m sgrna.interpret.flank_scale --parts asymmetric`), and the merged module reproduces its stored summary byte for byte
+(`results/post_freeze/flank_window_tune_summary.csv` is unchanged). Restore the old module with `git checkout pre-merge-2026-11-25 -- Runjia/sgrna/interpret/flank_window_tune.py`.
+
+`sgrna/cohorts/ablation_paper_folds.py` (the family ablation on the paper's own folds, written on 24 November) is likewise folded into `curated_ablation.py` as `--paper-folds`; its two result files are unchanged
+(`results/post_freeze/ablation_paper_folds.csv`, `ablation_paper_folds_summary.csv`) and the merged design resumes from them and reproduces the summary byte for byte. Restore with
+`git checkout pre-merge-2026-11-25 -- Runjia/sgrna/cohorts/ablation_paper_folds.py` (the tag was set before the first merge, so use `git log --diff-filter=D -- Runjia/sgrna/cohorts/ablation_paper_folds.py` to find the commit that holds it).
+
+
+## 26 November 2026: `build_curated_features` merged into `build_features`, `expand` renamed `curated_matrix` and trimmed
+
+`sgrna/build/build_curated_features.py` and `sgrna/build/build_features.py` were the same loop over the same families, differing in the index (curated or published), the
+output suffix (`_curated`) and one guard (a block with no populated column is a failure). They are now one module, `build_features.py`, with `--cohort published|curated`; the guard
+applies to both, `load_curated_index` and `augment` moved with it, and family A is built by `a_flank_fast` (equal to the original after the float32 cast on all 33,567 curated and
+all 13,880 published guides; the float64 difference is 1.4e-14, so a regenerated CSV differs from the stored one in the fourteenth digit). Restore the old module with
+`git checkout 1c61887 -- Runjia/sgrna/build/build_curated_features.py`.
+
+`sgrna/build/expand.py` is renamed `curated_matrix.py`, because the name said nothing about what the module does: it featurises the 33,567 guides of the Guo et al. screen as
+crisprHAL 2 curated them and caches the matrix every experiment loads. Its columns now come from `base_fast.matrix_fast` (identical to the cache on all 33,567 guides, maximum
+absolute difference 0.0). Its learning curve (`--curve`, `results/learning_curve.csv`: the default recipe at 4,000 to 26,000 training guides, three seeds) is removed: no
+paper table, report claim or audit check reads it, and the data-efficiency comparison is `compare/sample_complexity.py`. Restore with `git checkout 1c61887 -- Runjia/sgrna/build/expand.py Runjia/results/learning_curve.csv`.
+
+## 27 November 2026: `tune_split2`, `tune_analyze`, `family_a_at_tuned` and `local_sequence_bound` merged
+
+Four modules ran an existing pipeline with one thing changed, and are now flags or a table row of a module that stays. Safety tag `pre-merge-2026-11-27`; restore any of them with
+`git checkout pre-merge-2026-11-27 -- Runjia/sgrna/tuning/tune_split2.py` (and likewise the other three paths below).
+
+* `sgrna/tuning/tune_split2.py` (the tuning replication on a second gene split) is `tune_ecoli.py --split 2`. A `Plan` object in `tune_ecoli.py` holds what differed: the gene-split seed (7 instead of 2026),
+  the result files (`tune_split2_*`), a cache folder of its own, 40 fresh draws from another stream of the search space, one stage-2 partition, the top-3 average and the flagged split-1 row. It had
+  re-implemented six functions of `tune_ecoli` (`Cohort`, `rankings`, `score_dev`, `stage1`, `stage2`, `confirm`) and imported twelve names from it.
+* `sgrna/tuning/tune_analyze.py` (what the 200 stage-1 draws say about each knob) is `tune_ecoli.py --analyze`; the audit imports `stage1_table` from `tune_ecoli` instead of `table` from `tune_analyze`.
+* `sgrna/tuning/family_a_at_tuned.py` and `sgrna/cohorts/local_sequence_bound.py` were the same loop (a gene-grouped 5 x 3 ablation of a block of columns at the tuned configurations, with a paired bootstrap over
+  folds) on two blocks of columns. They are `cohorts/tuned_ablation.py --design family_a` and `--design local_sequence`; the first moved out of `tuning/`, which it never belonged in (it tunes nothing).
+
+How each was checked: every stored output is reproduced byte for byte by re-running the merged command from the stored rows and caches (`git status` shows no change under `results/`): `tune_stage1_effects.txt`, `tune_confirm.csv`,
+`tune_split2_confirm.csv`, `family_a_at_tuned_summary.csv`, `local_sequence_bound_summary.csv`; and fresh fits written to a scratch folder equal the stored rows exactly (largest difference 0.0 in rho and in every count):
+both ablation designs (seed 41, fold 0: 8 and 6 rows), stage 1 on split 1 (champion, depth6 and two draws: 140 rows), stage 1 on split 2 (the same: 125 rows) and stage 2 on split 2 (champion, depth6 and the best finalist: 95 rows).
+Not merged, with reasons: `tune.py` (the original LightGBM search: another model and protocol), `mix_ecoli.py` (other model families and blending) and `mlp_worker.py` (PyTorch, XGBoost and LightGBM each load an OpenMP
+runtime, and loading them in one process stalled at 0% CPU on macOS, so the neural net must run in its own process); `xgb_knobs.py` (one knob at a time under the older random-fold design) is a candidate for a later pass.
+
+## 27 November 2026 (later): `sync_to_shared.sh` and nine unreferenced functions removed; the mirror procedure is now a tool
+
+* `sync_to_shared.sh` is removed. Its premise (the shared repository nested inside the working folder, so every document had to exist twice) ended when the fork became a separate checkout; it never deleted what the
+  fork deleted and wrote stale mirrors, and it was not used. The procedure that is used, a check of every file against the fork's last mirrored version before it is changed, is now `mirror_to_shared.py` (a dry run unless
+  `--apply`; it reads the last mirrored commit from the shared repository's own history and stages without committing). Restore the old script with `git checkout pre-merge-2026-11-27 -- Runjia/sync_to_shared.sh`.
+* Nine functions that no file anywhere mentions beyond their own definition are removed (109 lines): `genome.signed_circular_offset`, `genome.find_all`, `genome.iter_kmers`, `io_utils.base_matrix_columns`, `io_utils.one_hot`,
+  `make_diagnostic_blocks.build_abundance_split`, `e_nucleoid._bin_of`, `diagnose.cross_redundancy` (58 lines), `topend._qid`, and the two imports they left unused. The search covered both repositories, the teammates'
+  folders and the two notebooks of the working copy. It also showed that five functions the 25 November analysis had listed as unreferenced are used outside `Runjia/` and stay: `evaluate.bootstrap_interval_grouped`,
+  `within_gene_spearman` and `expected_pick_percentile_within_gene` and `make_diagnostic_blocks.build_mapgc` (called by `Jacky/agent-notes/scripts/workplan.py`), and `notebook.feature_block` (called by `notebooks/RSI09_pipeline.ipynb`).
+
+What was *not* deleted, against the review of the same day, after reading the reasons recorded above: `baseline_ecoli_sgRNA_model_swappable.py` (the report names it as where `N_FEATURES = 300` and the champion settings were inherited from),
+`results/RESULTS_archive_2026-10-10.md` (the report cites it, and the audit's i_shape +0.0356 is recorded only there) and `harness/notebook.py` (the front end of the working copy's `RSI09_pipeline.ipynb` and `RSI09_quickstart.ipynb`).
+
+## 27 November 2026 (evening): `results/post_freeze/` flattened into `results/`; the loaders and the audit's standalone driver have one home
+
+* `results/post_freeze/` no longer exists: its 179 entries (177 files and the subfolders `figures/` and `interp_hal_cache/`) moved to `results/` with `git mv`; no file name occurred in both folders. Paths in this file's earlier entries and in the
+  restore commands (`git checkout pre-cleanup-2026-11-22 -- Runjia/results/post_freeze/...`) name the old layout on purpose, because they restore from tags made before the move. `data/interim/post_freeze/` (caches in the project's data folder)
+  is untouched.
+* `cohorts/curated_ablation._base`, `_block` and `_groups`, which 53 modules and the audit imported by their underscore-private names, are `harness/curated.load_base`, `load_block` and `load_groups` (bodies unchanged); five copies of the
+  z-score are `harness/metrics.zscore`.
+* The fifteen copies of the audit's standalone `__main__` driver are `paper/standalone.run_alone`.
+
+## 27 November 2026 (night): five strand modules merged into `compare/strand.py`
+
+`strand_families.py`, `strand_strata.py`, `strand_within_gene.py`, `cut_within_gene.py` and `strand_recoverable.py` asked one question in pieces (is family A's gain on the dCas9 screens the strand rule arriving through a lossy copy of
+"which strand the guide targets?") and shared the loading of Cui's essential-gene frame (seven copies) and the between/within-genes split (two). They are now `compare/strand.py --parts build|families|families-within|recoverable|rousset|flip|within-cui|within-joint|within-rousset|cutting`,
+with the frame loaded once and the split defined once. Every result file keeps its name; all are now written under `results/` (the old modules wrote most of them to the main project's `results/` and the tracked copies were made by hand).
+Restore the old modules with `git checkout pre-merge-2026-11-27 -- Runjia/sgrna/compare/strand_families.py` (and the other four).
+
+How it was checked: `families`, `families-within`, `recoverable` and `flip` reproduce their stored tables from the fold checkpoints (to 3e-14, 3e-14, exactly and exactly; `./run_audit.sh --reproduce`, four new cases that run against a scratch copy of the project
+root so the checkpoints cannot be touched); the within-gene routine gave identical files in the old and the new code on a real refit (Rousset coding strand, two seeds, 100 bootstrap draws), and the decomposition is identical on random data. The remaining
+parts (`rousset`, `within-*`, `cutting`) cannot be reproduced from checkpoints, see below, so they rest on that A/B test and on the unchanged logic.
+
+A hazard found and closed: `cross_validate(return_oof=True)` fills the out-of-fold predictions only for folds it computes in that call, so resuming from complete checkpoints gives NaN predictions, and the old modules then **overwrote their good result files with NaN rows**
+(a rerun of `strand_within_gene --cui` from the stored checkpoints did exactly that in a scratch copy). `strand.py` raises instead, naming the checkpoints to delete if a refit is wanted.
+
+## 27 November 2026 (night): three cost benchmarks merged into `cost/latency.py`
+
+`cost_bench.py` (the model alone), `e2e_bench.py` (end to end, and over a stretch of chromosome) and `inference_cost.py` (the first benchmark: one fit, then latency, throughput and cold start) were three generations of one measurement, SLICER's scoring
+latency against crisprHAL 2's on one thread, and each carried its own `_time`, its own fitted-on-random-data model builder and its own crisprHAL 2 side. They are now `cost/latency.py --parts model|featurise|e2e|locus|inference|hal-model|hal-e2e`; every result file keeps its name
+(`cost_slicer.csv`, `cost_featurise.csv`, `e2e_slicer.csv`, `e2e_slicer_locus.csv`, `inference_cost.csv`, `cost_crisprhal.csv`, `e2e_crisprhal.csv`) and is written under `results/`. Restore the old modules with `git checkout pre-merge-2026-11-27 -- Runjia/sgrna/cost/cost_bench.py`
+(and the other two).
+
+Three behaviours were kept on purpose. The BLAS thread variables are set to 1 before numpy loads, for every part except `inference` (whose single fit is a different measurement, at default threads) and whenever another module imports `_make_models` (`cost_repeats` has always run
+that way, through `e2e_bench`'s import); the two `hal-*` parts run as a script under the TensorFlow interpreter and import only numpy, pandas and TensorFlow (`.venv-crisprhal/bin/python sgrna/cost/latency.py --parts hal-model hal-e2e --hal <project root>`); `cost_repeats` imports
+`_make_models` from the new module. Timings cannot be reproduced to the byte, so no `reproduce` case covers this module: a new `--quick` switch (one repeat, batches 1 and 100, narrower loci) runs each part's code path into a scratch folder, and the columns and row labels of each
+output were compared with the stored file. The TensorFlow parts were not run (they need the other interpreter); their code is the old code, moved.
+
+## 27 November 2026 (night, later): the sealed-holdout trio and the shape trio merged
+
+* `sgrna/controls/sealed_holdout.py`, `sgrna/controls/sealed_holdout_gene.py` and `sgrna/controls/sealed_crossscreen.py` are `controls/sealed.py --parts holdout|gene|crossscreen`: one question (how much of family A's cross-validated gain is the pipeline inflating its own
+  estimates, and does the gain survive genes and a screen no step saw) in the three steps in which it was asked. What nine other modules imported from `sealed_holdout_gene` as `sg` (`_fold_ids`, `_fit_predict`, and a module-level `N_JOBS` that five of them set) is now
+  `harness/folds.py` (`fold_ids`, `fit_predict`, `N_JOBS`), and the two near-identical copies of `_fit_predict` (they differed only in the thread count) are one. All three result files are written under `results/`; `sealed_holdout.csv`, which the old module wrote to the main project's `results/`
+  and the other two read from there, is now read from and written to the tracked folder.
+* `sgrna/cohorts/shape_analyze.py` and `sgrna/cohorts/ridge_check.py` are `cohorts/shape_ablate.py --paired` and `--ridge`: the summary of the ablation's folds, and the same arms with a ridge model.
+Restore any of them with `git checkout pre-merge-2026-11-27 -- <path>`.
+
+How it was checked: one stored sealing draw (20261016) was recomputed with the new code and compared with the historical rows in the repository, and all three parts reproduce them to ten digits (`holdout` base-only pool CV 0.5425550797 and sealed 0.5416284870; `gene` base-only gene-grouped CV 0.5390625549; `crossscreen`
+rho 0.5569566066 for base and 0.6724095205 with family A); the helpers give identical folds and identical predictions to both old copies on random data; `--paired` reproduces `shape_ablation_paired.csv` byte for byte (a `reproduce` case); the ridge part could not be re-run (the shape geometry cache it needs no longer exists), so it was checked only by comparing its code with the old
+`ridge_check.run` at AST level (identical apart from two imports moved inside the function and the new `--ridge-arms` filter; `EXTENSION_LOG.md` section 44). The full runs (15 sealings at about 7 minutes each; the twelve ridge arms) were not repeated.
+
+## 28 November 2026: the human, panel, ceiling, curated, curation, eukaryote and family A control modules merged (21 modules into 9)
+
+The user's request ("perform all merges necessary ... cut down so that it's easier to fully comprehend, and also easier to explain"). Every merge keeps each part's code and result file; what changed is that one question is read in one place.
+
+* `sgrna/compare/human_twin_check.py` and `sgrna/compare/human_additivity_twin.py` are `compare/human_baseline.py --parts twin` and `--parts twin-additivity`, beside the module's own `arms`, `knobs` (the old `--decompose`) and `additivity`. The five loops that each re-implemented "impute, rank columns, fit the champion with some
+  change, score" are one `_fold` (columns ranked once per fold, each arm takes its own top n); `harness/folds.py` gained `rank_columns` and `boost`, and `fit_predict` is now the two composed.
+* `sgrna/compare/panel_vs_hal.py`, `topk_panel.py`, `metrics_panel.py` and `blend_with_hal.py` are parts of `compare/panel.py` (`raw`, `topk` and `seeds`, `splits`, `blend`), together with the old `panel.py` (now part `folds`). The three metric sets differ on purpose and are kept apart (`metrics_folds`, `metrics_splits`, `metrics_raw`); the
+  four copies of "load crisprHAL 2's two test splits" (`panel_vs_hal.collect`, `topk_panel.seeds`, `metrics_panel._split`, `vs_crisprhal.espcas9`/`wt`) are `vs_crisprhal.hal_split`.
+* `sgrna/compare/data_efficiency.py` is `compare/sample_complexity.py --model tuned`; `sgrna/compare/transfer_diagonal.py` and `transfer_to_ecoli.py` are `compare/eukaryote_rules.py --parts diagonal to-ecoli`; `sgrna/compare/sealed_organism.py` is `controls/sealed.py --parts organism`.
+* `sgrna/cohorts/curated_ceiling.py` and `ceiling_table.py` are `cohorts/ceiling.py --parts measured table`; `curated_joint.py`, `curated_ladder.py` and `curated_models.py` are `cohorts/curated_ablation.py --joint`, `--ladder` and `--model-classes`; `curation_check.py` and `curation_variance.py` are
+  `cohorts/curation.py --parts check variance`.
+* `sgrna/controls/why_inflation.py`, `window_robustness.py`, `shiftnull.py` and `chi_sites.py` are `controls/family_a_controls.py --parts rows windows shift chi` (the four objections to family A's +0.164: row count, window choice, a spatially preserving null, Chi sites). `paper/hooks.py`'s `_shifted_block` points at it.
+Restore any of them with `git checkout pre-merge-2026-11-27 -- <path>`.
+
+How it was checked: every part was run from nothing (its result file deleted, or the rows to refit dropped) in a scratch copy of the project, old code first where there was a doubt, and compared with the tracked file. Byte-identical: `human_baseline.csv`, `human_additivity.csv`, `human_twin_check.csv`, `transfer_diagonal.csv`,
+`transfer_to_ecoli.csv`, `sealed_organism.csv`, `curated_ceiling.json`, `ceiling_parametric.csv`, `curation_check.csv`, `curation_variance.csv`, `curated_joint.csv`, `curated_ladder.csv`, `topk_panel.csv`, `blend_with_hal.csv`, `panel_espcas9.csv`, `panel_wt.csv`,
+`metrics_panel.csv` (both splits, SLICER retrained), `seed_stability.csv`, `metric_panel.csv`, `why_inflation.csv`, `window_robustness.csv`, `chi_sites.csv`. Equal to rounding (the files differ from the stored bytes only in a timing column or in the last printed digit; the old code gave the same):
+`human_baseline_knobs.csv`, `vs_crisprhal_wt.csv` and `vs_crisprhal_espcas9.csv` (relative difference 0), `curated_models.csv` (0), `shift_null.csv` (6e-16). For `human_additivity_twin.csv` two folds were refitted and the summary and claim files were byte-identical to the stored ones; for `data_efficiency.csv` the six rows of fold 1 at 4,000 and 8,000
+guides were refitted and equal the stored rows (the full curve takes hours and was not repeated). Seven new `reproduce` cases cover them (`eukaryote-diagonal`, `ceiling`, `curation`, `curated-joint`, `curated-ladder`, `panel-saved-predictions`, `family-a-controls`), and `human-additivity-twin` now calls the merged module. Not repeated: the full
+`human_additivity_twin.csv` (210 rows) and `sample_complexity --model tuned` beyond the six rows. The two TensorFlow modules (`crisprhal_*`, `cui_final_exam`) and `mappability_stratum` (six other modules import its helpers) were deliberately not merged.
+
+## 28 November 2026 (later): the three other comparisons with crisprHAL 2 merged into `vs_crisprhal.py`
+
+* `sgrna/compare/heldout_compare.py`, `sgrna/compare/clean_vs_hal.py` and `sgrna/compare/gene_grouped_vs_crisprhal.py` are `compare/vs_crisprhal.py --condition paired | confirm | gene-folds | gene-assemble`, next to the module's own `espcas9`, `wt` and `folds`. All seven conditions of Part 5's comparison with crisprHAL 2 are now in one module with one table at its head
+  (the old `gene_grouped_vs_crisprhal.py folds` is `gene-folds`, since `folds` was already a condition of its own). The commands in `colab/crisprhal_gene_grouped.py`, `colab/crisprhal_tune_matched.py` and `results/RESULTS.md` were updated.
+Restore any of them with `git checkout pre-merge-2026-11-27 -- <path>`.
+
+How it was checked: each condition was run from nothing (its result file deleted) in a scratch copy of the project and compared with the tracked file; `heldout_compare.csv`, `clean_vs_hal.csv`, `gene_grouped_vs_crisprhal.csv` and `gene_grouped_slicer.csv` (both default and tuned models refitted on five whole-gene folds) are byte-identical. `gene-folds` also rewrites the Colab input file
+`data/interim/crisprhal_widewindow_input_genefolds.csv.gz` (its content is identical to the stored one; the gzip header's timestamp is new). Three new `reproduce` cases (`vs-crisprhal-paired`, `vs-crisprhal-confirm`, `vs-crisprhal-gene-assemble`).
+
+## 28 November 2026 (night): sixteen more modules merged, `interpret/` from 24 modules to 12
+
+* `sgrna/interpret/gate_test.py`, `sgrna/interpret/signal_profile.py`, `sgrna/interpret/gcstrata.py` and `sgrna/interpret/asymmetry.py` are `interpret/flank_signal.py --parts profile gate gc-corr gc-ablation asym-audit asym-run`: four alternatives to "the flank effect is local DNA composition" (the guide's own score, target GC, transcription) read from the same signal.
+* `sgrna/interpret/hypotheses.py` and `sgrna/interpret/novel_followups.py` are `interpret/mechanism.py --test h1 h2 h3 followups audit` and `resolution relative`, beside the five tests it already had: what the flank effect physically is, in one module. `paper_numbers_A` reads the prediction record from `mechanism.py`'s docstring.
+* `sgrna/interpret/importance_models.py`, `sgrna/interpret/attribution.py` and `sgrna/interpret/faithfulness.py` are `interpret/importance.py --parts agreement models attribution faithfulness` (Finding 5 in the order it was argued). `compact_model.py` imports its helpers from there, and the `reduced_columns` hook points there.
+* `sgrna/interpret/base_enrichment.py`, `sgrna/compare/portability.py` and `sgrna/compare/handnamed_split.py` are `interpret/representation.py --base-enrichment [--published]`, `--portability [--audit] [--run]` and `--handnamed`: the reduced-representation ladder and its follow-ups. `report_checks_R1` reads the `portability` function from there.
+* `sgrna/interpret/redundancy.py` and `sgrna/interpret/geom_importance.py` are `cohorts/shape_ablate.py --redundancy` and `--geom-importance` (they were built on that module's `Cohort`).
+* `sgrna/interpret/label_orientation.py` is `cohorts/curation.py --parts label`; `sgrna/interpret/complexity.py` is `cost/model_size.py complexity` (the same leaf counts, measured on a model fitted on the whole cohort); `sgrna/compare/kingdom_transfer.py` is `compare/human_baseline.py --parts kingdom kingdom-bootstrap`, which it was a follow-up of.
+Restore any of them with `git checkout pre-merge-2026-11-27 -- <path>`.
+
+(The same night, later:) `sgrna/cohorts/txn_interactions.py` is `cohorts/curated_ablation.py --interactions` and `sgrna/cohorts/esp_replicate.py` is `cohorts/shape_ablate.py --esp-replicate`.
+(And last:) `sgrna/compare/human_flank.py`, the builder of the human guides with their genomic flanks, is `compare/human_shape.py --locate` (`decode` and `locate` are now imported from there by `human_baseline.py`, `controls/fold_distance.py` and `interpret/mechanism.py`); the old `human_shape` twin stage reproduces its stored file to 3e-14 from the merged module, the same as before.
+
+## 28 November 2026 (evening): the last small `controls/` modules, BoostMEC, the TensorFlow-side modules and the retraining modules merged; one part dropped
+
+* `sgrna/controls/floors.py` and `sgrna/controls/no_information.py` are `controls/diagnose.py --what floors` and `--what no-information`, next to `redundancy`, `headroom` and `ceiling` (the five questions asked of every feature family). `diagnose` now writes into the tracked `results/` (as every other module does) and its default family list holds `i_shape` and `j_periodicity`, which the stored `redundancy.csv` already had.
+* `sgrna/compare/boostmec_replica.py`, `sgrna/cost/cost_boostmec.py`, `sgrna/cost/cost_boostmec_shipped.py` and `sgrna/cost/rds_read.py` are `compare/boostmec.py <part>` (`oracle size inference fit` for the released model in Python, `inspect check time stages rnafold cohort` for the authors' pipeline in their Docker image, `released search compare report` for the retraining; `rds_read` is the parser of R's serialisation inside it). `cost_chain.sh` and the commands in `results/RESULTS.md` follow.
+* `sgrna/compare/final_eval.py` and `sgrna/compare/vs_crisprhal_wt_hal.py` are `compare/vs_crisprhal.py --condition final-slicer | hal-espcas9 | final-compare | hal-wt`; `sgrna/compare/transfer_vs_crisprhal.py` is `--condition transfer-prepare | transfer-tf | transfer-report` of the same module (it imports from it). The tuning modules are imported lazily there, so the TensorFlow environment, which has no xgboost, can run the `hal-*` and `transfer-tf` conditions. The audit reads the bootstrap code of `paired_boot` and `final_compare` from it (`paper_numbers_A`).
+* `sgrna/compare/cui_final_exam.py` is `compare/cui_screen.py --final-exam slicer | crisprhal | compare` (the same screen, the same cache).
+* `sgrna/compare/crisprhal_rerun.py`, `sgrna/compare/crisprhal_tune.py` and `sgrna/compare/crisprhal_wide_window_folds.py` are `compare/crisprhal_runs.py --run rerun | tune | width` (every crisprHAL 2 we train ourselves, with their own model class). Their paths came from the old `src/sgrna/` layout and pointed at folders that do not exist in this one; they point at `config` now, and the results go to the tracked `results/`.
+* **Dropped, not merged:** the `asymmetry` test of `interpret/mechanism.py` (upstream-only against downstream-only composition as fitted arms). It never wrote a file (`results/mechanism_asymmetry.csv` is in no commit), no document cites it, and the report's claim that the effect is side-symmetric rests on `mechanism_distance_profile.csv` (the `distance` test), which stays.
+Restore any of them with `git checkout pre-merge-2026-11-27 -- <path>`.
+
+**Bugs found by running the code, all introduced by earlier consolidations (27 and 28 Nov), none visible to the audit or to the `reproduce` cases because the paths that failed were never run:** (1) `boostmec_replica.released` and `curated_ablation.run_paper_folds` called `load_groups(protos)`, a function that takes two arguments, where they had called `mappability_stratum._groups(protos)` (one regex of the loader consolidation, a928a42, renamed both); `released` and `--paper-folds` raised an error. (2) `vs_crisprhal.py` had two functions called `paired` (the bootstrap helper and the `paired` condition, merged on 28 Nov); the second hid the first, so the `espcas9`, `wt` and `folds` conditions would have failed at the end of their fits. The helper is `paired_boot` now. All three are repaired and their outputs equal the stored files (EXTENSION_LOG section 48). Two small stdlib scripts that would have found all three are in the session scratchpad (undefined names by scope; calls that do not fit the callee's signature).

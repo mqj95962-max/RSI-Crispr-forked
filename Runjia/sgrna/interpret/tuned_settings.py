@@ -1,4 +1,4 @@
-"""What the tuned hyperparameters say about the signal: four tests, each answering a question the choice of settings raises.
+"""The tuned settings show a mostly additive signal: single-split stumps reach held-out rho 0.6905 against 0.7210 for shallow trees, and deeper trees do no better.
 
 The search preferred shallow trees (depth 4-5), slow learning with many trees, 450-900 columns and ignored every
 regularisation knob. Read as statements about the data rather than about the learner:
@@ -11,6 +11,8 @@ regularisation knob. Read as statements about the data rather than about the lea
 All on the DEV / CONFIRM gene split of `tune_ecoli.py`; nothing here is tuned on CONFIRM.
 
     python -m sgrna.interpret.tuned_settings --test depth
+
+Report section: Finding 5.
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
-from sgrna.cohorts.curated_ablation import _base, _block
+from sgrna.harness.curated import load_base, load_block
 from sgrna.interpret.importance import block_of
 from sgrna.harness.run_ablation import _impute, make_selector
 
@@ -56,7 +58,7 @@ def depth_curve(co):
 def gain_groups(co):
     """Share of split gain by kind of column: the selector, the original model and the tuned model, all fitted on DEV."""
     import xgboost as xgb
-    X0, _, names, protos = _base(); _, an = _block("a_flank", protos)
+    X0, _, names, protos = load_base(); _, an = load_block("a_flank", protos)
     allnames = list(names) + list(an)
     groups = np.array([block_of(n) for n in allnames])
     sel_gain = None
@@ -88,7 +90,7 @@ def position_profile(co):
     import re
     import xgboost as xgb
     from sgrna.interpret.importance import _v_positions
-    _, _, names, protos = _base(); _, an = _block("a_flank", protos)
+    _, _, names, protos = load_base(); _, an = load_block("a_flank", protos)
     allnames = list(names) + list(an)
     vpos = _v_positions()
 

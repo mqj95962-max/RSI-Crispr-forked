@@ -1,4 +1,4 @@
-"""Audit of PROGRESS_REPORT.md lines 1342-1554 (Appendix B2 why the imported families failed, B2a curation, B3 the family ablations on the
+"""Audit of the rest of the appendices of PROGRESS_REPORT.md (Appendix B2 why the imported families failed, B2a curation, B3 the family ablations on the
 curated cohort, B4 shape and 3D structure, B5 the dCas9 / CRISPRi boundary experiment, C0 reproducibility, Appendix C feature sets): the
 headline numbers that `verify_numbers` did not recompute, each from the stored file (or data file) that holds it.
 
@@ -53,7 +53,7 @@ def _meta_genes(path):
 
 def run(chk):
     """Run every check through `chk(label, got, claimed, dec)`."""
-    R = OUT.parent                       # the fork's results/
+    R = OUT                       # the fork's results/
     MAIN = config.RESULTS                # the main project's results/, for files the fork does not track
     INT = config.INTERIM
 
@@ -141,8 +141,8 @@ def run(chk):
     chk(P + "B2a beta, inside-panel over shared", float(ins.slope_beta / sh_.slope_beta), 1.6, 1)
     chk(P + "B2a beta, outside over inside-panel", float(out_.slope_beta / ins.slope_beta), 2.0, 1)
     # the predictor is the GC fraction of the 500 nt UPSTREAM of the protospacer (eng.flank.comp.up500.gc); +0.069 is Noshay's label
-    from ..cohorts.curated_ablation import _base
-    _, y, _, protos = _base()
+    from .hooks import load_base
+    _, y, _, protos = load_base()
     a = pd.read_csv(config.FEATURE_DIR / "a_flank_curated.csv", usecols=[config.ID_COL, "eng.flank.comp.up500.gc"]).set_index(config.ID_COL)
     a.index = a.index.astype(str)
     x = a.reindex(pd.Index([str(p) for p in protos]))["eng.flank.comp.up500.gc"].to_numpy(float)
@@ -223,7 +223,7 @@ def run(chk):
     chk(P + "B3/C control as a share of the ChIP track (percent)", 100 * float(ds.loc["z_control_only", "d_spearman"] / ds.loc["z_signal_only", "d_spearman"]), 78, 0)
 
     # ------------------------------------------------------------------ B4: shape and 3D structure, beyond verify_numbers
-    print("report R8: Appendix B4 (post_freeze/shape_ablation.csv, esp_replicate.csv, ridge_check.csv, human_shape_ablation*.csv)")
+    print("report R8: Appendix B4 (shape_ablation.csv, esp_replicate.csv, ridge_check.csv, human_shape_ablation*.csv)")
     sh = pd.read_csv(OUT / "shape_ablation.csv")
     F = lambda arm: _folds(sh, arm)
     chk(P + "B4 shape_ablation.csv folds per arm", float(len(F("base"))), 15, 0)
@@ -260,7 +260,7 @@ def run(chk):
     chk(P + "B4 ridge: block-shuffled vec control over A", float((Fr("base+A+mc_blockshuf_vec") - Fr("base+A")).mean()), -0.0004, 4)
     chk(P + "B4 ridge: window means (mc) over A", float((Fr("base+A+mc_mean") - Fr("base+A")).mean()), 0.0054, 4)
     chk(P + "B4 ridge: block-shuffled mean control over A", float((Fr("base+A+mc_blockshuf_mean") - Fr("base+A")).mean()), 0.0018, 4)
-    from ..features import dnashape
+    from .hooks import dnashape
     t = dnashape.load()
     for src, m_, s_ in (("mc", 34.3, 1.5), ("xrc", 33.1, 3.8), ("md", 32.5, 4.1)):
         chk(P + f"B4 mean helical twist of the {src} pentamer table (degrees)", float(t[f"{src}.HelT1"].mean()), m_, 1)
@@ -421,25 +421,11 @@ def run(chk):
     chk(P + "C rows of Noshay et al.'s Supplementary Table 2 (the 'published' matrix)", float(raw.iloc[:, 0].notna().sum()), 13880, 0)
     import glob
     chk(P + "C CRISPOR benchmark tables on disk (*.scores.tab)", float(len(glob.glob(str(config.ROOT / "external_data" / "crispor_effdata" / "*.scores.tab")))), 24, 0)
-    from ..compare import eukaryote_rules
+    from .hooks import eukaryote_rules
     chk(P + "C CRISPOR benchmark tables in the eukaryote_rules catalogue", float(len(eukaryote_rules.CATALOGUE)), 24, 0)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:120s} computed {got:+.5f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

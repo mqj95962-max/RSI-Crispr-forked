@@ -1,4 +1,4 @@
-"""Does the flank effect transfer to another nuclease? (Part 10, item 2.)
+"""A model trained on SpCas9 keeps 88% of its own accuracy on eSpCas9, a different nuclease in the same genome, and flank features supply +0.098 of its ρ. (Part 10, item 2.)
 
 Family A is this project's one large effect, established on *E. coli*
 WT-SpCas9. The obvious question is whether it is a property of the DNA or a
@@ -79,7 +79,7 @@ def load_dataset(name: str, genome_fasta=None, verbose: bool = True) -> pd.DataF
     # NGG occupies off+20 .. off+22, so the two Gs are at off+21 and off+22.
     # Checking off+20..off+21 instead silently shifts every guide by one base
     # and still scores 1.000, so this is written out explicitly: the criterion
-    # must return 189 for WT-SpCas9, which `crisprhal_rerun` independently
+    # must return 189 for WT-SpCas9, which `crisprhal_runs --run rerun` independently
     # hard-codes.
     best_off, best_frac = None, -1.0
     for off in range(0, length - PROTO_LEN - PAM_LEN):
@@ -217,7 +217,7 @@ def build(name: str, genome_fasta=None, verbose: bool = True) -> tuple[np.ndarra
         return X, np.asarray(meta["y"], float), list(meta["names"]),
     if verbose:
         print("  regenerating the published representation from protospacers")
-    # `matrix` returns (X, names) -- unpack it, like expand.py does.
+    # `matrix` returns (X, names) -- unpack it, like curated_matrix.py does.
     base, base_names = featurise.matrix(idx["protospacer"].tolist(), verbose=verbose)
     base_names = list(base_names)
 

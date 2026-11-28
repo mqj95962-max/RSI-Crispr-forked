@@ -3,6 +3,8 @@ files and compare with the value typed into the report. A mismatch is a transcri
 result. Tolerance is half a unit in the last quoted digit.
 
     python -m sgrna.paper.verify_numbers
+
+Report section: Part 4.
 """
 from __future__ import annotations
 
@@ -16,15 +18,17 @@ import pandas as pd
 from ..common import INTERIM, OUT
 from sgrna import config
 
-RUNJIA = pathlib.Path(OUT).parent.parent      # the fork's Runjia/, which holds the documents these checks read
+RUNJIA = pathlib.Path(OUT).parent      # the fork's Runjia/, which holds the documents these checks read
 
 bad, n = [], 0
+RAW = []          # (label, computed, claimed, decimals) in full precision, written to $AUDIT_RAW when that is set (the printed lines keep only five decimals)
 
 
 def chk(label, got, claimed, dec):
     global n
     n += 1
     ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
+    RAW.append((label, float(got), float(claimed), int(dec)))
     if not ok:
         bad.append((label, got, claimed))
     print(f"  {'ok ' if ok else 'BAD'} {label:58s} computed {got:+.5f}  report {claimed:+.{max(dec, 0)}f}")
@@ -115,7 +119,7 @@ def main():
                       ("twin base", ht["h_base"], 0.3063), ("twin baseline harness", hc["harness_default"], 0.3356),
                       ("twin baseline library-defaults", hc["jacky_400_1000"], 0.2515)):
         chk(lab, float(v), c, 4)
-    hb = pd.read_csv(OUT.parent / "human_baseline.csv").set_index("arm").spearman
+    hb = pd.read_csv(OUT / "human_baseline.csv").set_index("arm").spearman
     chk("random baseline harness", float(hb["harness_default"]), 0.4036, 4)
     chk("random baseline library-defaults", float(hb["jacky_400_1000"]), 0.5076, 4)
     dec = pd.read_csv(INTERIM / "human" / "decoded.csv", dtype={"sgRNAID": str})
@@ -143,7 +147,7 @@ def main():
     chk("selector columns with nonzero gain", float(tb.n_nonzero_gain.dropna().iloc[0]), 878, 0)
     for nf, v in ((450, 0.7208), (900, 0.7205), (1500, 0.7202), (2500, 0.7199)):
         chk(f"budget {nf}: best-tree rho", float(tb[tb.nf == nf].rho.max()), v, 4)
-    from ..tuning.tune_analyze import table as _tt
+    from .hooks import stage1_table as _tt
     tt = _tt(); dr = tt.drop(index=["champion", "depth6"])
     chk("stage-1 champion rho", float(tt.loc["champion", "rho"]), 0.7107, 4)
     for dep, v in ((3, 0.712), (4, 0.714), (5, 0.713), (6, 0.707), (7, 0.706), (8, 0.704), (9, 0.700), (10, 0.698)):
@@ -282,7 +286,7 @@ def main():
         x = ss[ss.split == sp].lead
         chk(f"seed lead {sp} min", float(x.min()), mn, 4); chk(f"seed lead {sp} max", float(x.max()), mx, 4); chk(f"seed lead {sp} mean", float(x.mean()), mean, 4)
     de = pd.read_csv(OUT / "data_efficiency.csv")
-    hal_sc = pd.read_csv(OUT.parents[3] / "results" / "sample_complexity.csv"); hal_sc = hal_sc[(hal_sc.model == "crisprHAL 2") & (hal_sc.seed == 41)]
+    hal_sc = pd.read_csv(OUT.parents[2] / "results" / "sample_complexity.csv"); hal_sc = hal_sc[(hal_sc.model == "crisprHAL 2") & (hal_sc.seed == 41)]
     dm = de.pivot_table(index="n_train", columns="arm", values="rho")
     for nn, ch_, tu_, hh_ in ((4000, 0.6524, 0.6576, 0.5235), (8000, 0.6814, 0.6915, 0.6323), (13880, 0.6988, 0.7106, 0.6733), (20000, 0.7053, 0.7198, 0.6879), (26853, 0.7076, 0.7251, 0.6950)):
         chk(f"n={nn} champion", float(dm.loc[nn, "champion"]), ch_, 4); chk(f"n={nn} tuned", float(dm.loc[nn, "tuned d099x"]), tu_, 4)
@@ -654,15 +658,20 @@ def main():
         float(lb.loc[("d099x", "base+A+loc50"), "hi"]), 0.0008, 4)
 
     print("22.4 the package imports, and importing it writes nothing")
-    ic = json.loads((OUT / "import_check.json").read_text())
-    chk("22.4 modules swept", float(ic["n_modules"]), 179, 0)
-    chk("22.4 modules excluded by name", float(ic["n_skipped"]), 2, 0)
+    from . import import_check
+    ic = import_check.run(verbose=False, write=False)       # the sweep runs now: the stored import_check.json is a receipt of an older run, not evidence about this code
+    _sgp = RUNJIA / "sgrna"
+    _on_disk = sum(1 for f in _sgp.rglob("*.py") if f.name != "__init__.py") + sum(1 for f in _sgp.rglob("__init__.py")) - 1     # modules plus sub-packages (not `sgrna` itself)
+    chk("22.4 modules on disk that the sweep did not reach (found by the sweep minus on disk)", float(ic["n_modules"] - _on_disk), 0, 0)
+    chk("22.4 modules excluded by name that are not in import_check.EXCLUDE", float(len(set(ic["excluded"]) ^ set(import_check.EXCLUDE))), 0, 0)
     chk("22.4 modules that fail to import", float(len(ic["fails"])), 0, 0)
-    chk("22.4 files under results/", float(ic["files_in_results"]), 675, 0)
     chk("22.4 files changed by importing the package", float(ic["files_changed_by_import"]), 0, 0)
+    chk("22.4 names read in a function or module that are bound nowhere (static scan)", float(len(ic["static"]["undefined"])), 0, 0)
+    chk("22.4 calls of a function of the package whose arguments do not fit its signature (static scan)", float(len(ic["static"]["bad_calls"])), 0, 0)
+    chk("22.4 functions or classes defined twice in one module (static scan)", float(len(ic["static"]["duplicates"])), 0, 0)
 
     print("4. headroom: does the model leave information on the table? (representation_headroom.csv, restored 22 Nov)")
-    rh = pd.read_csv(OUT.parent / "representation_headroom.csv"); rh["a"] = rh.rho_with_residual.abs()
+    rh = pd.read_csv(OUT / "representation_headroom.csv"); rh["a"] = rh.rho_with_residual.abs()
     def _top(arm, grp):
         g = rh[(rh.arm == arm) & (rh.group == grp)].sort_values("a", ascending=False)
         return float(g.a.iloc[0]), g.column.iloc[0]
@@ -675,17 +684,17 @@ def main():
             chk(f"4. {arm}: the held-back column is family A (the positive control)", 1.0 if col.startswith("eng.flank.") else 0.0, 1, 0)
     chk("4. with family A given, nothing held back exceeds 0.10", float(_top("subset_427+a_flank", "dropped from the matrix")[0] < 0.10), 1, 0)
 
-    # The files below are read from the repository's own results/ (OUT.parent), not config.RESULTS: config.RESULTS is the
+    # The files below are read from the repository's own results/ (OUT), not config.RESULTS: config.RESULTS is the
     # main project's untracked folder, and a check that read that copy would pass without testing what a clone contains.
     print("the human ladder (folds_human_base_cv.csv, folds_human_base_a_cv.csv; cited by RESULTS.md as `human_ladder`)")
-    hb = pd.read_csv(OUT.parent / "folds_human_base_cv.csv").spearman.mean()
-    ha = pd.read_csv(OUT.parent / "folds_human_base_a_cv.csv").spearman.mean()
+    hb = pd.read_csv(OUT / "folds_human_base_cv.csv").spearman.mean()
+    ha = pd.read_csv(OUT / "folds_human_base_a_cv.csv").spearman.mean()
     chk("human ladder: base, random folds", float(hb), 0.382, 3)
     chk("human ladder: base + family A", float(ha), 0.434, 3)
     chk("human ladder: family A increment", float(ha - hb), 0.052, 3)
 
     print("5. importance across seven model families (importance_model_pairs.csv, restored 22 Nov)")
-    ip = pd.read_csv(OUT.parent / "importance_model_pairs.csv")
+    ip = pd.read_csv(OUT / "importance_model_pairs.csv")
     trees = {"catboost", "extra_trees", "lightgbm", "random_forest", "xgboost"}
     it = ip[ip.model_a.isin(trees) & ip.model_b.isin(trees)]
     chk("5. model pairs (all families)", float(len(ip[ip.method == "native"]) / ip.fold.nunique()), 21, 0)
@@ -703,7 +712,7 @@ def main():
 
     print("4. k-mer order without selection (kmer_order_paired.csv, restored 22 Nov)")
     from scipy import stats as _st
-    ko = pd.read_csv(OUT.parent / "kmer_order_paired.csv").pivot_table(index=["seed", "fold"], columns="arm", values="spearman")
+    ko = pd.read_csv(OUT / "kmer_order_paired.csv").pivot_table(index=["seed", "fold"], columns="arm", values="spearman")
     for lab, (x, y), mean_, up, pv in (("+ trimers", ("mono+di", "mono+di+tri"), 0.0035, 12, 0.025),
                                        ("+ tetramers on top", ("mono+di+tri", "mono+di+tri+tetra"), -0.0028, 4, 0.013),
                                        ("net", ("mono+di", "mono+di+tri+tetra"), 0.0007, 8, 0.62)):
@@ -713,7 +722,7 @@ def main():
         chk(f"4. {lab}: paired t p-value", float(_st.ttest_1samp(dd, 0).pvalue), pv, 3 if pv < 0.1 else 2)
 
     print("7. crisprHAL 2 re-run at seed 41 (crisprhal_rerun.csv, restored 22 Nov)")
-    cr_ = pd.read_csv(OUT.parent / "crisprhal_rerun.csv")
+    cr_ = pd.read_csv(OUT / "crisprhal_rerun.csv")
     of = cr_[cr_.arm == "our_folds"].sort_values("fold")
     for k_, v_ in enumerate((0.6855, 0.6988, 0.6978, 0.7022, 0.7012), start=1):
         chk(f"7. crisprHAL 2 published config, fold {k_}", float(of[of.fold == k_].spearman.iloc[0]), v_, 4)
@@ -724,18 +733,19 @@ def main():
     chk("documents and docstrings: references to modules, paths or Colab scripts that do not exist", float(len(stale_refs)), 0, 0)
     for rel, ln, kind, ref in stale_refs[:5]:
         print(f"      stale: {rel}:{ln} {kind} {ref}")
-    _sg = pathlib.Path(OUT).parent.parent / "sgrna"
+    _sg = pathlib.Path(OUT).parent / "sgrna"
     loose = sorted(f.name for f in _sg.glob("*.py") if f.name not in ("__init__.py", "config.py", "io_utils.py", "common.py"))
     chk("sgrna: modules sitting outside a package (besides config, io_utils, common)", float(len(loose)), 0, 0)
     from . import code_map
     _on_disk = {f.stem for f in _sg.rglob("*.py") if f.name != "__init__.py"}
     _text = (_sg.parent / "CODE_MAP.md").read_text()
-    chk("CODE_MAP.md: modules on disk that the map does not list", float(len([m for m in _on_disk if f"| `{m}` |" not in _text])), 0, 0)
-    chk("sgrna: packages, by function", float(sum(1 for d in _sg.iterdir() if d.is_dir() and (d / "__init__.py").exists())), 10, 0)
+    chk("CODE_MAP.md: modules on disk that the map does not list", float(len([m for m in _on_disk if f"| `{m}` |" not in _text and f"| `{m}.py` |" not in _text])), 0, 0)
+    chk("sgrna: package folders that code_map.PACKAGES does not list, or lists and are missing",
+        float(len({d.name for d in _sg.iterdir() if d.is_dir() and (d / "__init__.py").exists()} ^ {p_ for p_, _ in code_map.PACKAGES if p_})), 0, 0)
     chk("sgrna: folders left over from the old layouts (post_freeze, strand, screens, ext)",
         float(sum((_sg / n_).exists() for n_ in ("post_freeze", "strand", "screens", "ext"))), 0, 0)
 
-    print("Finding 7, the response curve and the hypotheses (hypotheses.py)")
+    print("Finding 7, the response curve and the hypotheses (mechanism.py)")
     h1s = pd.read_csv(OUT / "hypotheses_h1_strata.csv").set_index(["position", "base"])
     for (pos_, b_), (rho_, ols_) in {(20, "A"): (0.219, 21.2), (20, "T"): (0.184, 19.6), (20, "C"): (0.169, 16.4), (20, "G"): (0.118, 12.5),
                                     (18, "A"): (0.214, 20.3), (18, "T"): (0.202, 19.8), (18, "C"): (0.137, 14.7), (18, "G"): (0.115, 13.1)}.items():
@@ -780,7 +790,7 @@ def main():
     chk("H3 null mean", float(h3.null_mean), 0.005, 3); chk("H3 null sd", float(h3.null_sd), 0.040, 3); chk("H3 null 97.5th percentile", float(h3.null_p97_5), 0.060, 3)
     chk("H3 GC given PAM density", float(h3.gc_given_pam), 0.092, 3); chk("H3 GC marginal", float(h3.marginal_gc), 0.158, 3); chk("H3 correlation of the two densities", float(h3.corr_pam_gc), 0.733, 3)
 
-    print("the sealed organism (sealed_organism.py)")
+    print("the sealed organism (sealed.py, part organism)")
     so = pd.read_csv(OUT / "sealed_organism.csv").set_index("arm")
     chk("sealed organism: champion rho, mean of seeds", float(so.loc["champion", "rho_seed_mean"]), 0.6986, 4)
     chk("sealed organism: champion rho, sd of seeds", float(so.loc["champion", "rho_seed_sd"]), 0.0038, 4)
@@ -978,13 +988,16 @@ def main():
                           ("We have not tried it, and on a screen whose label is survival", "PROGRESS_REPORT.md"),
                           ("Not done:* corrected ceilings for the specific datasets", "PROGRESS_REPORT.md")):
         chk(f"stale claim absent: {phrase[:44]}", 0.0 if phrase in _docs[where] else 1.0, 1, 0)
-    _quoted = [("PROGRESS_REPORT.md", r"\((\d+) checks as of"), ("results/README.md", r"\((\d+) checks as of"),
-               ("EXTENSION_LOG.md", r"\*\*(\d+) checks, 0 mismatches\*\*"), ("PAPER_FLOW.md", r"`run_audit\.sh`, (\d+) checks")]
-    _total = n + len(_quoted)      # this loop's own checks included, so the quoted number is the one finally printed
-    for fname, pat in _quoted:
-        m_ = re.search(pat, _docs[pathlib.Path(fname).name])
-        chk(f"{fname} quotes the audit's own check count", float(m_.group(1)) if m_ else -1.0, _total, 0)
+    # the audit's only imports of experiment code are the table in hooks.py; every entry must still resolve
+    from . import hooks
+    _unresolved = hooks.check()
+    for _u in _unresolved:
+        print("  unresolved hook:", _u)
+    chk("audit hooks (sgrna/paper/hooks.py) that no longer resolve", float(len(_unresolved)), 0, 0)
 
+    import os
+    if os.environ.get("AUDIT_RAW"):
+        json.dump(RAW, open(os.environ["AUDIT_RAW"], "w"))
     print(f"\n{n} checks, {len(bad)} mismatches")
     for b in bad:
         print("  MISMATCH", b)

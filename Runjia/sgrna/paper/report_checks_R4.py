@@ -46,7 +46,7 @@ def _contrast_pos20(name, rng, boot=300):
 
 def run(chk):
     """Run every check through `chk(label, got, claimed, dec)`."""
-    RES = OUT.parent
+    RES = OUT
 
     # ------------------------------------------------------------------ (d) the guide's own base preferences
     print("report R4 (d): per-base effects, the E. coli - human comparison, gain by position")
@@ -165,7 +165,7 @@ def run(chk):
     chk(P + "(g) ... of which the nine named ones", float(len(named & set(tg.index))), 9, 0)
 
     # the lowest decile of flank GC set aside, within each target-GC stratum (curated 33,567 guides, 500-nt flank GC)
-    from ..interpret.gcstrata import _frame_curated, _strata
+    from .hooks import _frame_curated, _strata
     df = _frame_curated()
     s, xg, y = _strata(df).to_numpy(), df.flank_gc.to_numpy(float), df.y.to_numpy(float)
     keep = xg > np.quantile(xg, 0.10)
@@ -205,19 +205,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:112s} computed {got:+.5f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

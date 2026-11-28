@@ -1,4 +1,4 @@
-"""Do the guide's own design rules, and the flank effect, carry between eukaryotes, and how do they differ from E. coli's?
+"""Eukaryotes share guide rules (corrected correlation +0.59 between human tables) that are unrelated to E. coli's: G at position 20 helps in every eukaryotic table and hurts in E. coli.
 
 Finding 7 found that the guide's own position x base rules are unrelated between E. coli and one human matrix (rank correlation
 -0.052, with G at position 20 disfavoured in E. coli and favoured in human). That is one comparison against one cohort, so it cannot say
@@ -32,8 +32,16 @@ Predictions, written before the run:
       tail under 0.15), probability about 0.7; E. coli at the same scale has gap -0.76 SD and rho 0.435 inside the tail. A step in
       mammals would mean the cause is generic accessibility and not a bacterial protein.
 
-    python -m sgrna.compare.eukaryote_rules            # maps, reliability, contrast, flank step, about a minute
-    python -m sgrna.compare.eukaryote_rules --transfer # adds the transfer matrix (a few minutes)
+Parts (`--parts`, default `maps`):
+
+    maps       maps, reliability, contrast, flank step, about a minute
+    transfer   the transfer matrix over the eukaryotic tables and E. coli as a source (a few minutes)              eukaryote_transfer.csv
+    diagonal   why the matrix's diagonal is low: each table's own 20-mer cross-validation against the median and best of the six published predictors
+               that the orientation rule already reads from the CRISPOR files (some were trained on these very tables), with the table sizes  transfer_diagonal.csv
+    to-ecoli   the E. coli column the matrix lacks: the same pipeline (default settings, seed 41) trained on each eukaryotic table and scored zero-shot on
+               the 33,567 curated E. coli guides, beside E. coli's own five-fold CV on the 20-mer alone; its own file, so the audited matrix is unchanged  transfer_to_ecoli.csv
+
+    python -m sgrna.compare.eukaryote_rules --parts maps transfer diagonal to-ecoli
 """
 from __future__ import annotations
 
@@ -43,6 +51,7 @@ import itertools
 import numpy as np
 import pandas as pd
 from scipy.stats import rankdata, spearmanr
+from sklearn.model_selection import KFold
 
 from sgrna import config
 
@@ -90,10 +99,10 @@ def load_all():
 
 
 def ecoli():
-    from sgrna.cohorts.curated_ablation import _base
-    from sgrna.build.build_curated_features import load_index
-    X, y, names, protos = _base()
-    idx = load_index(verbose=False).set_index(config.ID_COL).reindex(protos)
+    from sgrna.harness.curated import load_base
+    from sgrna.build.build_features import load_curated_index
+    X, y, names, protos = load_base()
+    idx = load_curated_index(verbose=False).set_index(config.ID_COL).reindex(protos)
     ctx = (idx["upstream"].str[-30:] + "N" * 23 + idx["downstream"].str[:47]).to_numpy()       # same geometry as the other tables
     return dict(species="E. coli", library="curated", n=len(y), y=(y - y.mean()) / y.std(), protos=np.asarray(protos, dtype=object), ctx=ctx, X=X,
                 sign=1.0, votes=[], anchor=np.nan, tools_agree=0, names=list(names))
@@ -232,7 +241,6 @@ def _onehot_dinuc(codes):
 def transfer(D, ec, rng):
     """Zero-shot rank correlation of a model trained on one dataset and scored on another, with within-dataset 5-fold CV on the diagonal."""
     from sklearn.linear_model import RidgeCV
-    from sklearn.model_selection import KFold
     from ..build.base_fast import matrix_fast
     from .vs_crisprhal import member_specs, train_predict
     big = [k for k, v in D.items() if v["n"] >= MIN_BIG]
@@ -272,10 +280,65 @@ def transfer(D, ec, rng):
     return out
 
 
+def diagonal() -> pd.DataFrame:
+    """The diagonal of `eukaryote_transfer.csv` (SLICER's 20-mer pipeline, five-fold CV on each table, 0.18 to 0.55) set beside the six published predictors: is it a weak model or hard data?
+    The 20-mer pipeline beats the median predictor on all 11 tables and the best on 3."""
+    D = load_all()
+    t = pd.read_csv(OUT / "eukaryote_transfer.csv")
+    t = t[t.model.str.startswith("pipeline") & t.within].set_index("scored_on").rho
+    rows = []
+    for k, v in D.items():
+        if v["n"] < MIN_BIG:
+            continue
+        r = np.abs(np.asarray(v["votes"], float))
+        rows.append(dict(dataset=k, species=v["species"], n=v["n"], own_cv_rho=float(t[k]), published_median=float(np.nanmedian(r)), published_best=float(np.nanmax(r)),
+                         published_tools=int(np.isfinite(r).sum())))
+    d = pd.DataFrame(rows)
+    d.to_csv(OUT / "transfer_diagonal.csv", index=False)
+    print(d.round(3).to_string(index=False))
+    print(f"20-mer CV above the median published predictor on {int((d.own_cv_rho > d.published_median).sum())} of {len(d)} tables, above the best on {int((d.own_cv_rho > d.published_best).sum())}")
+    return d
+
+
+def to_ecoli() -> pd.DataFrame:
+    """Every eukaryotic table as a source, E. coli as the target (cutting score, higher = more cutting; the eukaryotic labels oriented by the same rule as in the matrix). The E. coli diagonal is the
+    five-fold CV of the same model on the 20-mer alone with random folds, as for the other diagonals, which have no gene information to hold out."""
+    from ..build.base_fast import matrix_fast
+    from .vs_crisprhal import member_specs, train_predict
+    D = load_all()
+    ec = ecoli()
+    big = [k for k, v in D.items() if v["n"] >= MIN_BIG]
+    specs = member_specs(["champion"])
+    Xe = np.asarray(ec["X"], np.float32)
+    rows = []
+    for k in big:
+        Xk = np.asarray(matrix_fast(list(D[k]["protos"]))[0], np.float32)
+        p = train_predict(specs, Xk, D[k]["y"], Xe, seed=41)[0]["champion"]
+        rows.append(dict(trained_on=k, scored_on="E. coli", rho=float(spearmanr(ec["y"], p).statistic), within=False, species_trained=D[k]["species"]))
+        print(f"  trained on {k:26s} scored on E. coli: rho {rows[-1]['rho']:+.3f}", flush=True)
+    pred = np.zeros(len(ec["y"]))
+    for tr, te in KFold(5, shuffle=True, random_state=41).split(np.arange(len(pred))):
+        pred[te] = train_predict(specs, Xe[tr], ec["y"][tr], Xe[te], seed=41)[0]["champion"]
+    rows.append(dict(trained_on="E. coli", scored_on="E. coli", rho=float(spearmanr(ec["y"], pred).statistic), within=True, species_trained="E. coli"))
+    print(f"  E. coli five-fold CV (random folds, 20-mer alone): rho {rows[-1]['rho']:.3f}", flush=True)
+    out = pd.DataFrame(rows)
+    out.to_csv(OUT / "transfer_to_ecoli.csv", index=False)
+    return out
+
+
+PARTS = ("maps", "transfer", "diagonal", "to-ecoli")
+
+
 def main(argv=None):
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--transfer", action="store_true")
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--parts", nargs="+", choices=PARTS, default=["maps"])
     a = ap.parse_args(argv)
+    if "diagonal" in a.parts:
+        diagonal()
+    if "to-ecoli" in a.parts:
+        to_ecoli()
+    if not {"maps", "transfer"} & set(a.parts):
+        return 0
     rng = np.random.default_rng(41)
     D = load_all()
     print(pd.DataFrame([dict(dataset=k, species=v["species"], n=v["n"], sign=v["sign"], median_tool_rho=round(v["anchor"], 3),
@@ -299,7 +362,7 @@ def main(argv=None):
     print("\nG minus T at position 20 (and 18), SD units:"); print(c.round(3).to_string(index=False))
     f = flank_step(D, rng)
     print("\nAT-rich step in the 77-nt context:"); print(f.round(3).to_string(index=False))
-    if a.transfer:
+    if "transfer" in a.parts:
         t = transfer({k: v for k, v in D.items() if k != "E. coli"}, ec, rng)
         print(t.round(3).to_string(index=False))
 

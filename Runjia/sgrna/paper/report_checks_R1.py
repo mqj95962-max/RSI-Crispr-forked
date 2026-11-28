@@ -1,4 +1,4 @@
-"""Report checks R1: numbers of PROGRESS_REPORT.md lines 1-120 (the Summary, 'How to read', 'What earns a place', Finding 1) that had
+"""Report checks R1: numbers of PROGRESS_REPORT.md in the Summary, 'How to read', 'What earns a place' and Finding 1 that had
 no line in the audit, recomputed from a stored file or from the repository's own code. Same idiom as `paper_numbers_C`:
 `chk(label, got, claimed, dec)` passes when |got - claimed| <= 0.5 * 10**(-dec); `got` is always computed, `claimed` is the value as
 the corrected report prints it. Every label starts with 'report R1: ' and names the cohort and protocol of the number.
@@ -42,14 +42,14 @@ def _paired_seed_interval(RES, arm_file, full_file):
 
 def run(chk):
     """Run every check of this module through `chk(label, got, claimed, dec)`."""
-    RES = OUT.parent                              # the fork's results/
+    RES = OUT                              # the fork's results/
     MAIN = config.RESULTS                         # the main project's results/ (files the fork does not track)
     ROOT = pathlib.Path(config.__file__).parent   # sgrna/
 
     # ------------------------------------------------------------------------------------------------------ regeneration
     print("report R1: Finding 1, regeneration of the published matrix from the 20-mer")
-    from ..build import featurise
-    from ..build.build_matrix import CACHE_META, CACHE_X
+    from .hooks import featurise
+    from .hooks import CACHE_META, CACHE_X
     from ..io_utils import load_guide_index
     if CACHE_X.exists() and CACHE_META.exists():                # never build the cache from here: this audit writes nothing
         X = np.load(CACHE_X, mmap_mode="r")
@@ -146,9 +146,11 @@ def run(chk):
     chk(P + "Finding 1: all 6,232 columns, published matrix (300-column budget, 5 x 5), rho", float(pf.loc["published_full", "spearman"]), 0.5272, 4)
     chk(P + "Finding 1: ... share recovered by the 74, %", 100 * float(p364["mono_74"] / pf.loc["published_full", "spearman"]), 96.4, 1)
     run_src = (ROOT / "harness" / "run_ablation.py").read_text()
-    port_src = (ROOT / "compare" / "portability.py").read_text()
+    import ast
+    rep_src = (ROOT / "interpret" / "representation.py").read_text()
+    port_src = ast.get_source_segment(rep_src, next(n for n in ast.parse(rep_src).body if isinstance(n, ast.FunctionDef) and n.name == "portability"))
     chk(P + "Finding 1: cross_validate resolves n_features=None to the 300-column budget", float("n_features = n_features or config.N_FEATURES" in run_src), 1, 0)
-    chk(P + "Finding 1: ... and portability.py passes n_features=None (so its arms select 300 columns)", float("n_features=None" in port_src), 1, 0)
+    chk(P + "Finding 1: ... and representation.py --portability passes n_features=None (so its arms select 300 columns)", float("n_features=None" in port_src), 1, 0)
     chk(P + "Finding 1: config.N_FEATURES", float(config.N_FEATURES), 300, 0)
     k = pd.read_csv(RES / "kmer_order_paired.csv").pivot_table(index=["seed", "fold"], columns="arm", values="spearman")
     chk(P + "Finding 1: published matrix, trimers over dinucleotides (kmer_order_paired.csv, 15 folds)",
@@ -286,19 +288,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:120s} computed {got:+.6f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.6f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

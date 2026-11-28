@@ -26,7 +26,7 @@ P = "report CIT: "
 
 def run(chk):
     """Run every CIT check through `chk(label, got, claimed, dec)`."""
-    RES = OUT.parent
+    RES = OUT
     hal = config.EXTERNAL / "crisprHAL"
 
     # ------------------------------------------------ the published matrix (Noshay et al. 2023 supplementary tables)
@@ -71,19 +71,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n_ = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n_
-        n_ += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:100s} computed {got:+.5f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n_} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

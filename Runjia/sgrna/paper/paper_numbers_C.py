@@ -38,7 +38,7 @@ P = "paper C: "
 
 def run(chk):
     """Run every check of group C through `chk(label, got, claimed, dec)`."""
-    RES = OUT.parent                                   # the fork's results/ (the same files sit in the main project's results/)
+    RES = OUT                                   # the fork's results/ (the same files sit in the main project's results/)
     MAIN = config.RESULTS                              # the main project's results/, for files the fork does not track
     hal_dir = config.EXTERNAL / "crisprHAL" / "data"
     ci = lambda lo, hi: 1.0 if lo < 0 < hi else 0.0    # 1 when an interval contains zero
@@ -203,6 +203,8 @@ def run(chk):
         chk(P + f"[51]   {arm} lower", float(r.lo), lo_, 4); chk(P + f"[51]   {arm} upper", float(r.hi), hi_, 4)
         chk(P + f"[51]   {arm}: folds with a positive increment", float(r.folds_positive), 15, 0)
         chk(P + f"[51]   {arm}: folds measured", float(r.n_folds), 15, 0)
+        if arm == "champion":
+            chk(P + "[51]   the 20-mer alone under the same 300-column selection, 30,203 genic guides (0.559; on the paper's folds selection leaves the 20-mer at 0.546, see [D25])", float(r.base), 0.559, 3)
     fr = pd.read_csv(OUT / "family_a_at_tuned.csv")
     chk(P + "[51] genic guides in that protocol (test rows over the five folds of one seed)",
         float(fr[(fr.matrix == "base+A") & (fr.arm == "champion") & (fr.seed == 41)].n_test.sum()), 30203, 0)
@@ -305,19 +307,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:100s} computed {got:+.5f}  paper {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, paper {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "paper")

@@ -9,6 +9,86 @@ around the target, and fits a small gradient-boosted model to them. This folder 
 top-level [`README.md`](../README.md) of the repository and in [`PROGRESS_REPORT.md`](PROGRESS_REPORT.md) (Summary and Part 5).
 Where this guide and either of them differ, this guide is stale.
 
+## Design a guide
+
+The point of the project: give it a genome and a cut site, get the SpCas9 guide SLICER predicts will cut best there.
+
+```bash
+python -m sgrna.design.design_guide --genome genome.fasta --cut-site 1234567            # exactly at the site; widens if no NGG guide cuts there
+python -m sgrna.design.design_guide --genome genome.fasta --cut-site 1234567 --window 15 --top 5 --out guides.csv
+```
+
+From a fresh clone, with no project data (checked on a clean export of the tracked files; tested with xgboost 3.4, scikit-learn 1.9, numpy 2.5, pandas 3.0, scipy 1.18, the versions the models were saved with):
+
+```bash
+git clone https://github.com/ieathamburgerandfries-stack/RSI-Crispr && cd RSI-Crispr/Runjia
+pip install -r requirements-design.txt
+PYTHONPATH=. python -m sgrna.design.design_guide --genome genome.fasta --cut-site 1234567
+```
+
+You supply the genome FASTA; everything else (the models and the lookup tables) is in `models/`. The family A release (`family_A_v1.zip`) is data only and is not needed to design a guide. The cut site is the 1-based coordinate of the base before the cut on the plus strand.
+It lists every NGG guide on either strand that cuts within `--window` bp of the site, reads the 1,000 nt on each side of each (the model's input), scores them with the shipped model
+(`models/slicer_tuned.ubj`, 10 MB; `--model default` uses the 0.7 MB default one; `python -m sgrna.design.train_model` refits both) and prints the best 20-nt spacer with its PAM,
+coordinates, predicted score and the number of NGG sites its 20-mer has in the genome (guides with more than one are set aside, or flagged when none is left).
+`--linear` treats the sequence as linear, `--contig` picks a record of a multi-record FASTA, `.gz` is read directly.
+
+What it has been checked for (`python -m sgrna.design.check_design`, `results/design_check.csv`): given only the genome and the coordinates of 600 curated guides (294 on the minus strand),
+it reads the same protospacer, PAM and both flanks as the curated index in 600 of 600, builds the same 6,517 columns (largest difference 0.0) and the same predictions, and asking for each guide's cut site lists that guide at distance 0.
+What picking by score buys (`python -m sgrna.design.design_benchmark`, `design_benchmark.csv`; out-of-fold predictions on the paper's whole-gene folds, the genome cut into disjoint windows):
+in the 3,044 windows of 250 bp that hold at least four curated guides (5.07 on average) the tuned model's pick sits at the 0.771 percentile of the measured scores [0.760, 0.782] (a random pick: 0.5) and is the best guide of its window in 48.7% of them (chance 20.9%);
+in 1,000 bp windows, 0.784 and 35.5% (chance 13.0%); the default model is 0.764 and 0.780.
+
+Third-party terms for the files in `models/` (the lookup tables are Noshay et al.'s, MIT; the models were trained on CC BY-NC data) are in [`models/NOTICE.md`](models/NOTICE.md).
+
+Limits: the score is SLICER's prediction of the *E. coli* screen's depletion score, a ranking aid (held-out rho about 0.73 in the paper) and not a probability of cutting; validated for SpCas9 in *E. coli* and one other bacterium, not for eukaryotes;
+there is no off-target model (`seed_sites` is a coarse count of NGG sites sharing the 12 PAM-proximal nt); the benchmark compares guides of the curated library only.
+
+## The family A table for any genome
+
+The release (`family_A_v1.zip`) is the 348 flank columns (family A) of the 33,567 curated *E. coli* guides. `sgrna/design/family_a_table.py` makes the same table for any genome:
+a FASTA in, one row per NGG guide (both strands, every record of at least 2,023 nt) out, with the release's 348 columns in the release's order after seven identifying ones
+(`contig`, `left`, `right`, `strand`, `protospacer`, `pam`, `n_genome_copies`; `left` is the 1-based plus-strand start of the 20-mer and `protospacer` is the release's `sgRNAID`).
+It needs only numpy and pandas and no project data (checked on a clean export of the tracked files; the lookup tables are `models/resources/qct_lookup_tables.json`, the file the release also holds):
+
+```bash
+git clone https://github.com/ieathamburgerandfries-stack/RSI-Crispr && cd RSI-Crispr/Runjia
+pip install numpy pandas
+PYTHONPATH=. python -m sgrna.design.family_a_table --genome genome.fasta --out family_A_genome.csv.gz
+```
+
+`--contig NAME [NAME ...]` keeps some records, `--start N --end M` one stretch of one record (a locus takes a fraction of a second), `--guides guides.csv` featurises only the guides listed
+(columns `left`, `strand` and, for a multi-record FASTA, `contig`), `--linear` treats records as linear (default: circular, as a bacterial chromosome), `--tables` points at other lookup tables.
+Flanks wrap around the origin when circular; when linear, the 223 guides of the *E. coli* genome within about 1 kb of an end use the DNA that exists (their windows are cut to it) and are computed one at a time.
+`n_genome_copies` counts the NGG sites in the records read (the whole FASTA unless `--contig` is given, both strands) with the same 20-mer. Any character other than A, C, G, T (N, ambiguity codes; lower case is upper-cased) is read as N: not GC, not a purine, not a pyrimidine, and the columns that read it are left empty.
+The columns describe the DNA around a target, they are not a score: to score a guide, use the design tool above.
+
+For a mammalian genome run one chromosome at a time, linear, and write a stretch of it (a whole chromosome has millions of sites): `--genome hg38.fa.gz --contig chr21 --linear --start 20000000 --end 20050000`. The other records are skipped as the file is read, so a chromosome of hundreds of Mb needs a few GB of memory; the default is circular, so without `--linear` a long record's two ends would be joined (the tool says so for records over 20 Mb).
+
+Checks (`python -m sgrna.design.check_family_a_table`, `results/family_a_table_check.csv`):
+* Given only the coordinates of the 33,567 curated guides, it rebuilds the stored table: protospacer, PAM and genome copy count equal in 33,567 of 33,567, the same missing-value pattern, and 3 of 11,681,316 cells differ, each by one float32 step (at most 1.2e-7; the two programs add the same numbers in a different order).
+* The *E. coli* genome has 541,810 NGG sites (270,137 on the plus strand, 271,673 on the minus, one per 8.6 nt), and every curated guide is among them; 3.2% share their 20-mer with another site. The whole table takes 59 s (0.11 ms per guide, featurising and writing) and is 246 MB as `.csv.gz`, 1.25 GB as plain CSV.
+* A second genome, *Citrobacter rodentium* (5,346,659 bp, 707,896 sites, 78 s): 400 sites (the first 40 and last 40, which cross the origin, and 320 at random) are featurised again one at a time from their flanking sequence by `a_flank_fast`, the code the release was made with, and agree in all 348 columns (0 cells differ); the copy counts equal the design tool's.
+* Two mammalian chromosomes, linear, with assembly gaps: human chr21 (hg38, soft-masked; 46,709,983 bp, 6,621,364 of them N, 4,106,000 sites) and domestic cat chromosome E3 (RefSeq F.catus_Fca126_mat1.0, 41,437,797 bp, 100 N, 5,969,487 sites; sequence downloaded once from NCBI). In each, 399 and 400 sites (the first 40, the last 40, up to 120 within a kb of an assembly gap, 200 at random; 200 and 120 of them have N within reach of a flank) agree with the per-guide code in all 348 columns (0 cells differ) and have the design tool's copy counts.
+* A stress genome, which a bacterium cannot supply: *E. coli* with 410 planted tracts (poly-A, poly-T, (AC)n, N gaps, ambiguity codes), 40 stray N or Y, and a third of the sequence soft-masked. 400 sites within 200 nt of a tract agree; 21 cells differ, by at most 9.3e-10 (the reference's own rounding on windows whose k-mers all share one value).
+* Linear mode on *E. coli*: 541,809 sites (one wraps the origin and is dropped); guides with a full margin of DNA give the same columns as when circular (largest difference 2.6e-11, floating point); the 33 flanks checked that have 50 to 249 nt of DNA all have the same 1,000 nt and 250 nt windows, as they must.
+
+The table describes DNA, so it can be built for any genome (above: human and cat chromosomes). Whether the columns help predict a guide's activity has been tested only in the organisms below, and the project holds no cat, or other mammalian-guide, activity data; the guide rules differ between bacteria and eukaryotes (Appendix A5 of the paper), so the design tool's score is for *E. coli*.
+
+### Where family A has been tested
+
+Held-out Spearman rho of the columns that read only the 20-mer ("base") and of base plus family A (`python -m sgrna.compare.family_a_by_organism`, `results/family_a_by_organism.csv`, assembled from the stored results of the runs; nothing is re-fitted):
+
+| organism and screen | guides | folds | base | + family A | gain | folds with a positive gain |
+|---|---:|---|---:|---:|---:|---:|
+| *E. coli*, SpCas9 (whole-gene folds, XGBoost) | 33,567 | 15 | 0.546 | 0.707 | **+0.161** | 15 of 15 |
+| *E. coli*, eSpCas9 (five contiguous genome arcs, LightGBM) | 59,489 | 15 | 0.685 | 0.789 | **+0.104** | 15 of 15 |
+| *C. rodentium*, TevSpCas9 (10 kb bins, LightGBM) | 25,210 | 15 | 0.705 | 0.763 | **+0.059** | 15 of 15 |
+| human, Noshay et al. matrix located on hg38 (folds keeping identical 20-mers together, XGBoost) | 16,490 | 15 | 0.306 | 0.329 | **+0.023** | 15 of 15 |
+| *E. coli* SpCas9 to *C. rodentium* TevSpCas9, no refitting (sequence-disjoint) | 25,210 | 3 seeds | 0.626 | 0.698 | **+0.072** | 3 of 3 |
+| *C. rodentium* TevSpCas9 to *E. coli* SpCas9, no refitting | 33,567 | 3 seeds | 0.479 | 0.628 | **+0.149** | 3 of 3 |
+
+So yes, in every organism where it has been built and tested, and the sign never fails. The sizes are not comparable across rows (different enzymes, assays, models and fold designs), the human gain is small, its matrix has no gene identifier so its folds are not gene-grouped, and its family A is a teammate's hg38 build rather than this code. Not tested: mouse and zebrafish tables (a 77 nt window, no genome position to read a kb of flank from), the dCas9 screens (another measured quantity), any other bacterium, and cat.
+
 ## Which document to read for what
 
 | file | read it for |
@@ -23,6 +103,7 @@ Where this guide and either of them differ, this guide is stale.
 | [`EXTENSION_LOG.md`](EXTENSION_LOG.md) | the working record of the post-freeze experiments: what was tried, in what order, with what expectation |
 | [`PAPER_FLOW.md`](PAPER_FLOW.md) | the paper outline: what each section must establish and which result and figure goes where; a flow, not a draft |
 | `./run_audit.sh` | recomputes every post-freeze number the report quotes from the file that produced it; exits non-zero on any mismatch; also checks that every module imports and that importing writes nothing |
+| `./run_audit.sh --reproduce` | the code's counterpart of the audit: re-runs the resumable modules (12 commands, about a minute) against a scratch copy of `results/` and fails if a tracked result file changes by a byte, or a command that should rewrite a file does not (`sgrna/paper/reproduce.py`; the check that proves a merge or a rename moved no result) |
 | `./run_ext.sh <module> [args]` | runs any module of `sgrna` with the environment it needs (see "Running it") |
 
 ## Two cohorts, one anchor
@@ -43,12 +124,12 @@ Where this guide and either of them differ, this guide is stale.
 Runjia/                 the documents above, run_audit.sh, run_ext.sh
 ├── baseline_ecoli_sgRNA_model_swappable.py   five-seed baseline, MODEL_NAME switch (xgboost, lightgbm, catboost, random_forest, ridge);
 │                                             selector stays XGBoost; for a local Colab runtime, edit DATA_PATH
-├── sync_to_shared.sh   copies documents from the author's working folder into a nested shared repository; not used in this fork
+├── mirror_to_shared.py copies the committed changes of this folder from the fork into the shared repository, checking every file first (a dry run unless --apply)
 ├── sgrna/              the pipeline, organised by function (sgrna/README.md has the layout notes)
 │   ├── config.py  io_utils.py  common.py   paths, constants, shared helpers; almost every module imports them
 │   ├── build/       sequence to columns: published-matrix decoder, guide index, genome and QCT tables, feature matrix, array featurisers
 │   ├── features/    the eleven families a_flank to j_periodicity, one module each, and the shape / 3D descriptors
-│   ├── harness/     fit-and-score machinery every result goes through: run_ablation, folds, evaluate, notebook, CNN baseline
+│   ├── harness/     fit-and-score machinery every result goes through: run_ablation, folds, evaluate, curated (the cohort loaders), metrics, notebook, CNN baseline
 │   ├── tuning/      hyperparameter search, its replication on a second gene split, model mixing, untuned knobs
 │   ├── cohorts/     ablations, ceilings and label variance on the curated and published cohorts
 │   ├── controls/    nulls and audits: shifted flank, no-information, sealed holdout, selector audit, fast-featuriser equality
@@ -57,10 +138,10 @@ Runjia/                 the documents above, run_audit.sh, run_ext.sh
 │   ├── cost/        wall-clock, CPU, memory and inference benchmarks
 │   └── paper/       the audit (verify_numbers), figures, import and reference guards, the code-map generator
 ├── colab/           scripts that need a GPU or a fresh Colab instance: crisprHAL 2 re-tuning, wide window, sample complexity, inference timing
-└── results/         named for when a file was made, not what it shows (INDEX.md gives that); the code addresses files by name; .npy caches are gitignored
-    ├── *.csv        the analysis frozen on 11 October 2026 (Findings 1 to 6, Appendices A to C); not regenerated since
-    ├── post_freeze/ everything measured after the freeze; figures/ holds the seven publication figures (PDF and 600 dpi PNG)
-    └── rederived/   re-derivations of seven result files whose producing code was lost (sgrna/controls/rederive.py)
+└── results/         every tracked result file, in one flat folder, each named after the module that writes it (INDEX.md groups them by the claim they back); .npy caches are gitignored
+    ├── figures/            the seven publication figures (PDF and 600 dpi PNG)
+    ├── interp_hal_cache/   interpretability caches made in the TensorFlow environment
+    └── rederived/          re-derivations of seven result files whose producing code was lost (sgrna/controls/rederive.py)
 ```
 
 ## Running it
@@ -81,7 +162,7 @@ records where each came from), so a clone imports but does not run end to end. `
 ships with the code; `i_shape.py` reads it from `data/reference/`.
 
 **From a terminal, with `./run_ext.sh`.** Three variables must be right together, and a wrong one fails with a `FileNotFoundError` that does
-not say which: `RSI09_ROOT` (the project folder above; `config.py` guesses wrong from this fork's layout), `EXT_OUT` (`Runjia/results/post_freeze`)
+not say which: `RSI09_ROOT` (the project folder above; `config.py` guesses wrong from this fork's layout), `EXT_OUT` (`Runjia/results`)
 and `PYTHONPATH` (includes `Runjia`). `run_ext.sh` sets all three, taking the folder above the fork as the project and
 `<project>/.venv/bin/python` as interpreter unless `PY=...` is set:
 
@@ -89,7 +170,7 @@ and `PYTHONPATH` (includes `Runjia`). `run_ext.sh` sets all three, taking the fo
 ./run_ext.sh sgrna.build.build_guide_index                              # step 0
 ./run_ext.sh sgrna.build.build_features --all                           # step 1
 ./run_ext.sh sgrna.harness.run_ablation --families a_flank --permute    # step 3
-./run_ext.sh sgrna.build.expand --build                                 # featurise all 33,567 curated guides; any module, same pattern
+./run_ext.sh sgrna.build.curated_matrix --build                                 # featurise all 33,567 curated guides; any module, same pattern
 ```
 
 **Colab on a local runtime.** The pipeline reads a 198 MB matrix and several GB of external data from local disk, so it runs on a local

@@ -32,7 +32,7 @@ def _sb(r, k=2):
 
 
 def run(chk):
-    R = OUT.parent                      # the fork's own results/ (not the main project's untracked copy); OUT is results/post_freeze
+    R = OUT                      # the fork's own results/ (not the main project's untracked copy); OUT is results
 
     # ------------------------------------------------------------------------------------------------------------------------------
     # [20] transfer without retraining
@@ -213,18 +213,5 @@ def _human_target_gc():
 
 
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:100s} computed {got:+.5f}  paper {claimed:+.{dec}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for b in bad:
-        print("  MISMATCH", b)
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "paper")

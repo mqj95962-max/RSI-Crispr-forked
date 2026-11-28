@@ -4,12 +4,12 @@
 # The extension modules need three things set together, and getting one wrong fails with a FileNotFoundError that does not
 # say which: `sgrna/config.py` finds the project root by walking up from `src/sgrna/`, which guesses wrong from this fork's
 # `Runjia/sgrna/` layout, so RSI09_ROOT has to name the folder that actually holds `data/` and `external_data/`; EXT_OUT has
-# to name this fork's `results/post_freeze`, or results are written beside the wrong tree; and PYTHONPATH has to include `Runjia`.
+# to name this fork's `results`, or results are written beside the wrong tree; and PYTHONPATH has to include `Runjia`.
 # The interpreter also lives outside both repositories. Override it with PY=... if yours is elsewhere.
 #
 #   ./run_ext.sh sgrna.paper.verify_numbers
-#   ./run_ext.sh sgrna.tuning.family_a_at_tuned --seeds 41
-#   PY=/path/to/python ./run_ext.sh sgrna.tuning.tune_split2 --draws 40
+#   ./run_ext.sh sgrna.cohorts.tuned_ablation --design family_a --seeds 41
+#   PY=/path/to/python ./run_ext.sh sgrna.tuning.tune_ecoli --split 2 --stage 1 --draws 40
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"    # .../RSI-Crispr-fork/Runjia
@@ -32,6 +32,6 @@ if [ $# -eq 0 ]; then
 fi
 
 export RSI09_ROOT="$PROJECT"
-export EXT_OUT="$HERE/results/post_freeze"
+export EXT_OUT="$HERE/results"
 export PYTHONPATH="$HERE"
 exec "$PY" -m "$@"

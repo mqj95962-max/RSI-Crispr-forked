@@ -1,4 +1,4 @@
-"""Is there a representation on which SLICER can be read column by column? A 104-column model, its accuracy and its attributions.
+"""A compact model of guide base indicators and flank composition columns keeps 88% of the full model's rho and can be read column by column, with SHAP agreeing across tree families at 0.87. A 104-column model, its accuracy and its attributions.
 
 Finding 5 says per-column importance is unstable on the full matrix because 6,095 of its columns restate about twenty variables, so a
 column's credit moves to a correlated neighbour when the model is refitted. That is an explanation, and it makes a prediction the
@@ -40,10 +40,10 @@ SEEDS = (41, 42, 43)
 
 
 def _data():
-    from sgrna.cohorts.curated_ablation import _base, _block, _groups
-    X, y, names, protos = _base()
-    A, an = _block("a_flank", protos)
-    g, ok = _groups("gene", protos)
+    from sgrna.harness.curated import load_base, load_block, load_groups
+    X, y, names, protos = load_base()
+    A, an = load_block("a_flank", protos)
+    g, ok = load_groups("gene", protos)
     protos = np.asarray(protos, dtype=object)
     codes = np.frombuffer("".join(protos[ok]).encode(), np.uint8).reshape(ok.sum(), 20)
     lut = {ord(b): i for i, b in enumerate(BASES)}
@@ -112,7 +112,7 @@ def accuracy(d):
 
 
 def _models_xgb(seed):
-    from .importance_models import _models
+    from .importance import _models
     return _models(seed)["xgboost"]
 
 
@@ -131,7 +131,7 @@ def _blocks(d):
 
 def stability(d):
     from sklearn.model_selection import GroupKFold
-    from .importance_models import IS_TREE, _models, _native, _shap
+    from .importance import IS_TREE, _models, _native, _shap
     X = np.hstack([d["onehot"], d["comp"]]); y = d["y"]; names = d["onehot_names"] + d["comp_names"]
     blocks = _blocks(d); ub = list(pd.unique(blocks))
     tree = sorted(IS_TREE)

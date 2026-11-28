@@ -25,7 +25,7 @@ P = "paper: "
 
 
 def run(chk):
-    R = OUT.parent
+    R = OUT
     paper_numbers_A.run(chk)
     paper_numbers_B.run(chk)
     paper_numbers_C.run(chk)
@@ -39,7 +39,7 @@ def run(chk):
     chk(P + "guides with more than one genomic copy (label_orientation.csv)", float(lo.n_multi_copy), 118, 0)
     chk(P + "   their median label", float(lo.median_label_multi_copy), 2.11, 2)
     chk(P + "   median label of single-copy guides", float(lo.median_label_single_copy), 0.27, 2)
-    # sealed-gene drop with whole genes held out inside the pool as well (first eight sealings; sealed_holdout_gene.py)
+    # sealed-gene drop with whole genes held out inside the pool as well (first eight sealings; sealed.py (part gene))
     sg = pd.read_csv(OUT / "sealed_holdout_gene.csv")
     pv = sg.pivot(index="seal_seed", columns="arm", values=["gap_gene", "gap_random"])
     rnd = pv["gap_random"]["frozen"] - pv["gap_random"]["base_only"]
@@ -50,14 +50,14 @@ def run(chk):
     chk(P + "   the part that random-row pool folds account for", float((rnd - gen).mean()), 0.0007, 4)
     # crisprHAL 2 retrained at four input widths on all five folds (crisprhal_wide_window_folds.csv: Colab T4 for 14 arms, local CPU for the
     # 23 nt arms of folds 2-5 and the 378 nt arms of folds 2 and 3), against SLICER on the same folds (headtohead.csv)
-    ws = pd.read_csv(OUT.parent / "crisprhal_wide_window_summary.csv").set_index("arm")
-    wf = pd.read_csv(OUT.parent / "crisprhal_wide_window_folds.csv")
+    ws = pd.read_csv(OUT / "crisprhal_wide_window_summary.csv").set_index("arm")
+    wf = pd.read_csv(OUT / "crisprhal_wide_window_folds.csv")
     nf = wf.groupby("arm").fold.nunique()
     chk(P + "width: folds with the 23 nt / 378 nt / 1,023 nt / 2,023 nt arm",
         float(nf["core_23"] * 1000 + nf["native_378"] * 100 + nf["mid_1023"] * 10 + nf["wide_2023"]), 5555, 0)
     chk(P + "width: arms trained on the CPU (the 23 nt arms of folds 2-5 and the 378 nt arms of folds 2-3)",
         float(wf.note.str.startswith("local").sum()), 6, 0)
-    hh = pd.read_csv(OUT.parent / "headtohead.csv")
+    hh = pd.read_csv(OUT / "headtohead.csv")
     hh = hh[hh.seed == 41].pivot_table(index="fold", columns="arm", values="spearman")
     pv = wf.pivot_table(index="fold", columns="arm", values="spearman")
     chk(P + "width: crisprHAL 2 at 23 nt, mean over five folds", float(ws.loc["core_23", "crisprhal_mean"]), 0.5556, 4)
@@ -114,16 +114,5 @@ def run(chk):
 
 
 if __name__ == "__main__":
-    import sys
-    n, bad = 0, []
-
-    def chk(label, got, claimed, dec):
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append(label)
-        print(f"  {'ok ' if ok else 'BAD'} {label:90s} computed {got:+.5f}  paper {claimed:+.{dec}f}")
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    sys.exit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "paper")

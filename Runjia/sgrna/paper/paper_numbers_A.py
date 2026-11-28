@@ -39,12 +39,12 @@ P = "paper A: "
 
 def _main_file(name):
     """A results file of the fork's own results/, else the main project's untracked copy (a file the fork does not track)."""
-    f = OUT.parent / name
+    f = OUT / name
     return f if f.exists() else config.RESULTS / name
 
 
 def run(chk):
-    R = OUT.parent                      # the fork's own results/ (OUT is results/post_freeze)
+    R = OUT                      # the fork's own results/ (OUT is results)
     RAW = config.RAW / "ecoli_feature_matrix.csv"
 
     # ------------------------------------------------------------------------------------------------------------------------------
@@ -90,9 +90,10 @@ def run(chk):
     chk(P + "[2] SpCas9 used train + test equals the curated cohort", float(vw.n_train + vw.n_test), 33567, 0)
     chk(P + "[2] eSpCas9 training FILE, rows", float(len(es_tr)), 47591, 0)
     chk(P + "[2] eSpCas9 testing FILE, rows", float(len(es_te)), 11898, 0)
+    chk(P + "[2] eSpCas9 screen guides (training and testing files together)", float(len(es_tr) + len(es_te)), 59489, 0)
     chk(P + "[2] eSpCas9 train guides used (vs_crisprhal_espcas9.csv n_train)", float(ve.n_train), 47591, 0)
     chk(P + "[2] eSpCas9 test guides used (vs_crisprhal_espcas9.csv n_test)", float(ve.n_test), 11898, 0)
-    from ..compare.eukaryote_rules import MIN_BIG
+    from .hooks import MIN_BIG
     ori = pd.read_csv(OUT / "eukaryote_orientation.csv")
     big = ori[ori.n >= MIN_BIG]
     chk(P + "[2] inclusion threshold of the eukaryotic datasets, guides (eukaryote_rules.MIN_BIG)", float(MIN_BIG), 300, 0)
@@ -137,9 +138,9 @@ def run(chk):
     chk(P + "[4] tuned version: trees (tune_configs.json d099x n_estimators)", float(tc["d099x"]["n_estimators"]), 4000, 0)
     chk(P + "[4] tuned version: depth (tune_configs.json d099x max_depth)", float(tc["d099x"]["max_depth"]), 5, 0)
     # the 70% / 30% split of the 4,013 genes, rebuilt exactly as `tune_ecoli.Cohort` does (one fixed seed, 30% of genes confirm)
-    from ..build.build_curated_features import load_index
-    from ..tuning.tune_ecoli import SPLIT_SEED
-    g = load_index(verbose=False)["gene_name"]
+    from .hooks import load_curated_index
+    from .hooks import SPLIT_SEED
+    g = load_curated_index(verbose=False)["gene_name"]
     genes = np.array(sorted(set(g[g.notna()])))
     conf = set(np.random.default_rng(SPLIT_SEED).choice(genes, size=int(round(0.3 * len(genes))), replace=False))
     chk(P + "[4] genes holding the search: share of genes (the tuning part, DEV)", 100 * (1 - len(conf) / len(genes)), 70, 0)
@@ -156,7 +157,7 @@ def run(chk):
 
     # ------------------------------------------------------------------------------------------------------------------------------
     # [6] cross-validation
-    from ..harness.cohort_groups import BLOCK
+    from .hooks import BLOCK
     blocks = (pd.to_numeric(ci["left"], errors="coerce") // BLOCK).nunique()
     chk(P + "[6] block width, kb (harness.cohort_groups.BLOCK)", BLOCK / 1000, 100, 0)
     chk(P + "[6] 100 kb blocks the curated guides fall in (recomputed) = cohort_groups.csv", float(blocks), float(cg.loc[("curated", "100kb_block"), "n_groups"]), 0)
@@ -172,21 +173,23 @@ def run(chk):
     chk(P + "[7] share of the GUIDES sealed, % (sealed_holdout.csv n_sealed / total; whole genes are sealed)", float(share), 20, 0)
     chk(P + "[7] share of the guides left to re-derive selection and settings, %", float(100 - share), 80, 0)
     chk(P + "[7] sealings (distinct seal_seed in sealed_holdout.csv)", float(sh.seal_seed.nunique()), 15, 0)
-    from ..controls.sealed_holdout import SEAL_FRACTION
-    chk(P + "[7]   fraction of ROWS to seal (controls.sealed_holdout.SEAL_FRACTION; the code seals whole genes until it is reached)", SEAL_FRACTION * 100, 20, 0)
-    from ..controls.sealed_holdout import _seal
+    from .hooks import SEAL_FRACTION
+    chk(P + "[7]   fraction of ROWS to seal (controls.sealed.SEAL_FRACTION; the code seals whole genes until it is reached)", SEAL_FRACTION * 100, 20, 0)
+    from .hooks import _seal
     protos = ci.protospacer.to_numpy()
-    gmap = load_index(verbose=False).set_index("protospacer")["gene_name"].reindex(protos)
+    gmap = load_curated_index(verbose=False).set_index("protospacer")["gene_name"].reindex(protos)
     gshare = [gmap[_seal(protos, seed=int(sd), verbose=False)].nunique() / gmap.nunique() * 100 for sd in sorted(sh.seal_seed.unique())]
     chk(P + "[7]   share of the 4,013 genes inside the sealed guides, % mean over the 15 sealings (the paper says whole genes holding 20% of guides)", float(np.mean(gshare)), 22, 0)
 
     # ------------------------------------------------------------------------------------------------------------------------------
     # [8] head-to-head: paired 95% bootstrap over guides (read from the code that produces every interval of the comparison)
-    for mod in ("vs_crisprhal", "final_eval"):
-        src = (pathlib_root() / "compare" / f"{mod}.py").read_text()
+    import ast as _ast
+    _vs = (pathlib_root() / "compare" / "vs_crisprhal.py").read_text()
+    _fn = {n.name: _ast.get_source_segment(_vs, n) for n in _ast.parse(_vs).body if isinstance(n, _ast.FunctionDef)}
+    for mod, src in (("vs_crisprhal `paired_boot`", _fn["paired_boot"]), ("vs_crisprhal `final_compare`", _fn["final_compare"])):
         m = re.search(r"np\.percentile\(\w+, \[([\d.]+), ([\d.]+)\]\)", src)
-        chk(P + f"[8] bootstrap interval level, % ({mod}.py percentiles)", float(m.group(2)) - float(m.group(1)), 95, 0)
-        chk(P + f"[8]   {mod}.py resamples guides (rng.integers over the rows)", float("rng.integers(0, " in src), 1, 0)
+        chk(P + f"[8] bootstrap interval level, % ({mod} percentiles)", float(m.group(2)) - float(m.group(1)), 95, 0)
+        chk(P + f"[8]   {mod} resamples guides (rng.integers over the rows)", float("rng.integers(0, " in src), 1, 0)
 
     # ------------------------------------------------------------------------------------------------------------------------------
     # [9] the 80 position x base cells
@@ -276,7 +279,7 @@ def run(chk):
     chk(P + "[35] upstream and downstream GC partials differ by at most", float(max(abs(gc[("up", w)] - gc[("dn", w)]) for w in (50, 250, 500, 1000))), 0.026, 3)
 
     # ------------------------------------------------------------------------------------------------------------------------------
-    # [17], [43] the step at the AT-rich end (curated genic guides, 250 nt each side averaged; hypotheses.py)
+    # [17], [43] the step at the AT-rich end (curated genic guides, 250 nt each side averaged; mechanism.py, tests h1 to h3)
     hg = pd.read_csv(OUT / "hypotheses_followup_hinge.csv").set_index("quantile")
     cc = pd.read_csv(OUT / "hypotheses_followup_concentration.csv").iloc[0]
     sc = pd.read_csv(OUT / "hypotheses_audit_scale.csv").set_index("window_nt")
@@ -285,9 +288,9 @@ def run(chk):
     chk(P + "[17] ... in SD at 250 nt (hypotheses_audit_scale.csv)", float(-sc.loc[250, "deficit_in_sd"]), 0.95, 2)
     chk(P + "[17]   guides behind it (30,203 genic; the 33,567-guide figure is 3.29, report robustness table)", float(hg.loc[0.10, "n_below"] + hg.loc[0.10, "n_above"]), 30203, 0)
     chk(P + "[43] lowest decile lower than the rest, label units", float(-cc.deficit), 3.10, 2)
-    src = (pathlib_root() / "interpret" / "hypotheses.py").read_text()
+    src = (pathlib_root() / "interpret" / "mechanism.py").read_text()
     m = re.search(r"ROUGHLY LINEAR \(probability about ([\d.]+)\)", src)
-    chk(P + "[43] pre-registered probability of a roughly linear response (hypotheses.py docstring)", float(m.group(1)), 0.6, 1)
+    chk(P + "[43] pre-registered probability of a roughly linear response (mechanism.py docstring)", float(m.group(1)), 0.6, 1)
 
     # [18] the slope is steepest beside a favourable seed base (curated genic guides, gene bootstrap)
     h1s = pd.read_csv(OUT / "hypotheses_h1_strata.csv").set_index(["position", "base"])
@@ -321,6 +324,10 @@ def run(chk):
     chk(P + "[36] 200 columns = 2 stats x 2 sides x (1,000 / 20) bins", 4 * 1000 / float(re.search(r"\((\d+) nt bins\)", l200).group(1)), 200, 0)
     chk(P + "[36] 200 columns of 20 nt bins do no better than 16 (gain over 16 columns below one fold sd)", float(r200 - r16 < s16), 1, 0)
     chk(P + "[36]   share of the 200-column arm, % (the table prints 96.0)", (r200 - b0) / (ref - b0) * 100, 96.0, 1)
+    l32, r32, _ = bins(32)
+    l80, r80, _ = bins(80)
+    chk(P + "[36] share carried by the 32 columns of 125 nt bins, %", (r32 - b0) / (ref - b0) * 100, 97.2, 1)
+    chk(P + "[36] share carried by the 80 columns of 50 nt bins, %", (r80 - b0) / (ref - b0) * 100, 98.7, 1)
     chk(P + "[45] columns at which the curve saturates (Figure A1c)", float(res.loc[l16, "n_cols"]), 16, 0)
     chk(P + "[45] columns at which it turns over", float(res.loc[l200, "n_cols"]), 200, 0)
     chk(P + "[45] the 200-column arm scores below the 32- and 80-column arms",
@@ -408,18 +415,5 @@ def pathlib_root():
 
 
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:110s} computed {got:+.5f}  paper {claimed:+.{dec}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for b in bad:
-        print("  MISMATCH", b)
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "paper")

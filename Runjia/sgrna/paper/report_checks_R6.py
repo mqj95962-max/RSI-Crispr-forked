@@ -31,7 +31,7 @@ P = "report R6: "
 
 def run(chk):
     """Run every check through `chk(label, got, claimed, dec)`."""
-    RES = OUT.parent                                    # the fork's results/
+    RES = OUT                                    # the fork's results/
     MAIN = MAIN_RESULTS                                 # the main project's results/ (files the fork does not track)
     ext = config.EXTERNAL / "crisprHAL" / "data"
 
@@ -278,19 +278,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:100s} computed {got:+.5f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

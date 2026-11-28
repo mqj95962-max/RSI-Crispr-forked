@@ -1,4 +1,4 @@
-"""Audit of PROGRESS_REPORT.md lines 121-307 (Finding 2 on the flank effect, Finding 3 on transfer and confound controls, Finding 4 on
+"""Audit of Findings 2 to 4 of PROGRESS_REPORT.md (Finding 2 on the flank effect, Finding 3 on transfer and confound controls, Finding 4 on
 the model being out of material): the headline numbers that `verify_numbers` did not recompute, each from the stored file that holds it.
 
     ./run_ext.sh sgrna.paper.report_checks_R2
@@ -32,14 +32,14 @@ P = "report R2: "
 
 def _main_file(name):
     """A results file of the fork's own results/, else the main project's untracked copy."""
-    f = OUT.parent / name
+    f = OUT / name
     return f if f.exists() else config.RESULTS / name
 
 
 def _shift_correlations():
     """Correlation of every family A column with the same column read `shift` bp away (the texture-preserving null's input)."""
-    from ..build.build_matrix import load_dataset
-    from ..controls.shiftnull import _shifted_block
+    from .hooks import load_dataset
+    from .hooks import _shifted_block
     from ..io_utils import load_block, load_guide_index
 
     _, _, _, ids, _ = load_dataset([], verbose=False)
@@ -78,9 +78,9 @@ def _esp_unseen_guides(seed: int = 41):
     guides, base and base + family A), split by whether the eSpCas9 guide is also in the SpCas9 screen. About a minute."""
     from scipy.stats import spearmanr
 
-    from ..compare.transfer import build
-    from ..harness import evaluate as ev
-    from ..harness.run_ablation import _impute, make_selector
+    from .hooks import build
+    from .hooks import evaluate as ev
+    from .hooks import _impute, make_selector
 
     Xs, ys, _ = build("WT-SpCas9", verbose=False)
     Xt, yt, _ = build("eSpCas9", verbose=False)
@@ -107,7 +107,7 @@ HEAVY = bool(os.environ.get("RSI_AUDIT_HEAVY"))
 
 def run(chk):
     """Run every check of this module through `chk(label, got, claimed, dec)`."""
-    R = OUT.parent                                      # the fork's results/
+    R = OUT                                      # the fork's results/
     MAIN = config.RESULTS                               # the main project's results/
 
     # ------------------------------------------------------------------ Finding 2: what family A is made of
@@ -242,9 +242,9 @@ def run(chk):
     loc = ct[(ct.dataset == "eSpCas9") & (ct.arm == "base+a_flank") & (ct.cv == "random")]
     chk(P + "eSpCas9 'local' denominator: random-row 5-fold, seed 41", float(loc.spearman.mean()), 0.784, 3)
     chk(P + "eSpCas9 'local' folds (one seed)", float(len(loc)), 5, 0)
-    # The refit (about a minute) is stored in results/post_freeze/transfer_esp_unseen_guides.csv; RSI_AUDIT_HEAVY=1 redoes it and
+    # The refit (about a minute) is stored in results/transfer_esp_unseen_guides.csv; RSI_AUDIT_HEAVY=1 redoes it and
     # overwrites the file, and every run checks the stored values.
-    store = R / "post_freeze" / "transfer_esp_unseen_guides.csv"
+    store = R / "transfer_esp_unseen_guides.csv"
     if HEAVY:
         es = _esp_unseen_guides()
         pd.DataFrame([{"arm": a_, "scope": s_, "spearman": es[a_][s_]} for a_ in ("base", "base+a_flank") for s_ in ("all", "seen", "unseen")]
@@ -320,19 +320,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:110s} computed {got:+.5f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

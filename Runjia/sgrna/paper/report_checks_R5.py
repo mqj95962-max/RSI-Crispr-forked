@@ -1,4 +1,4 @@
-"""Checks R5: headline numbers of PROGRESS_REPORT.md lines 576-853 (Part 2 contributions, Part 3 limits, Part 4 freeze) that had no audit line.
+"""Checks R5: headline numbers of Parts 2 to 4 of PROGRESS_REPORT.md (Part 2 contributions, Part 3 limits, Part 4 freeze) that had no audit line.
 
 Same idiom as `paper_numbers_C.py`: `chk(label, got, claimed, dec)` passes when |got - claimed| <= 0.5 * 10**(-dec). `got` is computed from a stored
 file or from the stored cohort; `claimed` is the value as the (corrected) report writes it.
@@ -29,7 +29,7 @@ P = "report R5: "
 
 
 def run(chk):
-    RES = OUT.parent                      # the fork's results/
+    RES = OUT                      # the fork's results/
     MAIN = config.RESULTS                 # the main project's results/
 
     def f(name):                          # the fork's copy when it has one, else the main project's
@@ -85,12 +85,12 @@ def run(chk):
     chk(P + "family-A gain, pool CV (random-row)", gp, 0.1647, 4)
     chk(P + "family-A gain, sealed genes", gs, 0.1560, 4)
     chk(P + "the drop in family A's gain equals the adaptive component (algebra)", gp - gs, m, 6)
-    # share of guides and genes sealed in each draw (the same routine as sealed_holdout.py, on the stored protospacers)
-    from ..controls.sealed_holdout import _seal
-    from ..build.build_curated_features import load_index
+    # share of guides and genes sealed in each draw (the same routine as sealed.py (part holdout), on the stored protospacers)
+    from .hooks import _seal
+    from .hooks import load_curated_index
     meta = json.loads((config.INTERIM / "expanded_meta.json").read_text())
     protos = np.asarray(meta["protospacers"])
-    idx = load_index(verbose=False).set_index(config.ID_COL)
+    idx = load_curated_index(verbose=False).set_index(config.ID_COL)
     gene = idx["gene_name"].reindex(protos)
     gene = np.array([g if isinstance(g, str) and g else "" for g in gene], dtype=object)
     genes = {g for g in gene if g}
@@ -110,7 +110,7 @@ def run(chk):
     chk(P + "dev-tuned arm: sealed gain differs from frozen's by less than 0.001 in component", abs(m2 - m), 0.0005, 3)
 
     # ----------------------------------------------------------------------------------------------- sealed genes, split by the pool-CV scheme
-    print("report R5: sealed genes, whole-gene pool CV (sealed_holdout_gene.py, 8 of the 15 sealings)")
+    print("report R5: sealed genes, whole-gene pool CV (sealed.py, part gene, 8 of the 15 sealings)")
     gd = pd.read_csv(OUT / "sealed_holdout_gene.csv")
     chk(P + "gene-grouped pool CV: rows (8 sealings x 3 arms)", float(len(gd)), 24, 0)
     w = gd.pivot(index="seal_seed", columns="arm", values=["cv_gene", "cv_random", "sealed"])
@@ -301,19 +301,5 @@ def run(chk):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    bad, n = [], 0
-
-    def chk(label, got, claimed, dec):
-        """Same rule as verify_numbers: pass when |got - claimed| <= half a unit in the last quoted digit."""
-        global n
-        n += 1
-        ok = abs(got - claimed) <= 0.5 * 10 ** (-dec) + 1e-9
-        if not ok:
-            bad.append((label, got, claimed))
-        print(f"  {'ok ' if ok else 'BAD'} {label:100s} computed {got:+.5f}  report {claimed:+.{max(dec, 0)}f}")
-
-    run(chk)
-    print(f"\n{n} checks, {len(bad)} mismatches")
-    for lab, got, claimed in bad:
-        print(f"  BAD {lab}: computed {got:+.5f}, report {claimed}")
-    raise SystemExit(1 if bad else 0)
+    from .standalone import run_alone
+    run_alone(run, "report")

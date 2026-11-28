@@ -10,6 +10,8 @@ Rows that do not fit the fast path -- fewer than 1,000 nt of flank on either sid
 or no `located` flag -- are handed to the original builder, so the output is the original's for every row. `check()` compares the two.
 
     python -m sgrna.build.a_flank_fast          # equality check and timing on 300 curated guides
+
+Report section: Part 5.
 """
 from __future__ import annotations
 
@@ -173,8 +175,8 @@ def build_fast(index: pd.DataFrame, tables: dict | None = None) -> pd.DataFrame:
 
 
 def check(n=300, seed=0):
-    from sgrna.cohorts.curated_ablation import _base
-    _, _, _, protos = _base()
+    from sgrna.harness.curated import load_base
+    _, _, _, protos = load_base()
     idx = pd.read_csv(config.INTERIM / "curated_guide_index.csv").set_index(config.ID_COL)
     sub = idx.reindex(list(protos[:n])).reset_index(); sub["located"] = True
     tables = qct.load_tables()
