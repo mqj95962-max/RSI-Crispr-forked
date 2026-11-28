@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jacky paper outline — paste for Google Docs</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 1.5rem auto; padding: 0 1rem; line-height: 1.4; color: #111; }
+  h1 { font-size: 1.25rem; margin: 0 0 0.75rem; }
+  .bar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; position: sticky; top: 0; background: #fff; padding: 0.5rem 0; border-bottom: 1px solid #ddd; z-index: 1; }
+  button { font-size: 1.1rem; padding: 0.6rem 1.2rem; cursor: pointer; font-weight: 600; }
+  #status { font-size: 0.95rem; color: #066; min-height: 1.2em; }
+  pre { white-space: pre-wrap; word-wrap: break-word; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; background: #f7f7f7; border: 1px solid #ccc; padding: 1rem; margin: 0; }
+  .hint { color: #555; font-size: 0.9rem; margin: 0 0 0.75rem; }
+</style>
+</head>
+<body>
+  <h1>Jacky paper outline — paste for Google Docs</h1>
+  <p class="hint">Click <strong>Copy all</strong>, then paste into Google Docs. Or select all text in the box below (Ctrl/Cmd+A) and copy.</p>
+  <div class="bar">
+    <button type="button" id="copyBtn">Copy all</button>
+    <span id="status" aria-live="polite"></span>
+  </div>
+  <pre id="outline" contenteditable="true" spellcheck="false">Paper planning outline — Jacky (J MQ)
+
+Status: Jacky-only planning twin (same spirit as teammates’ RSI09-1 / RSI09-2 PDFs). Not merged into those docs yet.
+Browser twin: Jacky/paper-outline/index.html in the fork.
+Metric: Spearman ρ throughout.
+
+────────────────────────────────────────
+1. Title / scope
+────────────────────────────────────────
+
+- Working title (Jacky chapter): Noshay-human boundary, intergenic TSS orientation, and bacterial mechanism hygiene for RSI09.
+- In scope: human locate → Family A ladder / transfer autopsy / capacity; TSS orientation controls; Guo ceiling hygiene; uniqueness / ΔrecA / replichore / GC quadratic; bacterial transfer bootstrap CIs Jacky computed.
+- Out of scope: Runjia Family A discovery on curated E. coli (+0.164); CRISPOR 11-eukaryote A5; twin-honest runner (Runjia human_shape.py); crisprHAL parity spine.
+- Status: Jacky’s inventory is not absorbed into RSI09-1 / RSI09-2 PDFs yet.
+
+────────────────────────────────────────
+2. Methods (point-form)
+────────────────────────────────────────
+
+2.1 Datasets &amp; labels
+
+- Noshay human feature matrix ≈ 17,421 rows; cutting / indel-style score ∈ [0,1], mean ≈ 0.248; 13,138 unique spacers. Assay ≠ E. coli survival / depletion.
+- Located human cohort for Family A: unique NGG on hg38 → usable n = 16,490 (unique locate 12,222 / 13,138 wanted; multi 893; missing 23).
+- E. coli published / Guo S4–S7 used for workplan arms; Guo label provenance: no per-guide replicates in S1–S7; cut.score ↔ Guo S4 Cas9 ρ ≈ 1.0.
+- Shared five-seed baseline harness (seeds 41–45) as common comparator — Jacky copy of team recipe.
+
+2.2 Decode
+
+- Human: QCT electron → spacer decode; rebuild V/QCT maps from E. coli dialect (reuses Runjia decode path; Jacky owns human application).
+- Regenerated base on located rows: 6,169 columns; Family A a_flank: 348 flank columns (±50…±1000 nt windows).
+
+2.3 Genomic localisation
+
+- Human: unique NGG on hg38 → 16,490 usable rows (human_locate_audit.json).
+- Bacterial intergenic orientation: Guo S6 Good, n = 8,954; RegulonDB TSS / operon annotation; nearest-gene as supporting only.
+
+2.4 Feature sets
+
+- Dialect: Runjia canonical base + Family A; Jacky rebuilds human regenerated base + A and shared-column intersection (6,216 shared published cols for early transfer).
+- Transfer arms: guide-only shared cols; Family A alone; base+A aligned by name across kingdoms.
+- Controls: GC+GC² as features; K562 DNase/ATAC ±500 nt; gene-strand bit; capacity / discovery HP swap.
+
+2.5 Models &amp; hyperparameters
+
+- Primary fairness lock: bacterial champion XGBoost HPs on human CV (same exam protocol).
+- Capacity secondary: deeper / faster HPs within-human only (discovery H1; not a transfer claim).
+- Evaluation: Spearman ρ; seeds 41–45 (or 41–43 for discovery probe); leakage-safe CV; gene-grouped CV honesty where noted.
+
+2.6 Mechanism &amp; bacterial controls (Jacky block)
+
+- Ceiling path: reject two-enzyme 0.90–0.93; Guo Fig 2c tiling ceiling ≈ 0.937 (working ~0.94); curated freeze 0.946 is Runjia’s locked number — cite both carefully.
+- High-uniqueness flank stratum; replichore asymmetry null; ΔrecA relative null; spacer GC quadratic shape.
+- Intergenic orientation — lead TSS Δ from intergenic_orientation_controls_delta_ci.csv only (not summary.csv).
+
+2.7 Cross-system evaluation — split cleanly
+
+- 7a Bacterial transfer (nuclease / C. rodentium) + Jacky bootstrap CIs.
+- 7b CRISPOR / design-rule kingdom → Runjia Appendix A5 (not this chapter).
+- 7c Noshay-human boundary (Jacky): within-human ladder; shared-col E→H + GC autopsy; flanks-both-sides; strand; chromatin / discovery → appendix.
+
+────────────────────────────────────────
+3. Results (point-form, key numbers)
+────────────────────────────────────────
+
+3.1 Orientation / TSS (bacterial)
+
+Analysis | Δ (opp − same) | 95% CI | P(Δ≤0)
+TSS (RegulonDB) — lead | 0.051 | [0.020, 0.082] | 0.000
+TSS matched dist+GC | 0.025 | [−0.003, 0.053] | 0.041
+Nearest-gene (prior) | 0.026 | [−0.006, 0.058] | 0.054
+Gene matched dist+GC | 0.007 | [−0.024, 0.038] | 0.337
+
+- Quote TSS from controls Δ CI file only. Nearest-gene dies under matching — do not lead with it.
+
+3.2 Workplan hygiene — ceiling, uniqueness, transfer CIs, GC
+
+- Guo Fig 2c ceiling: tiling ≈ 0.937; working figure ~0.94. Do not lead Fig 2b + Spearman–Brown 0.968. Curated freeze 0.946 [0.944, 0.948] is Runjia.
+- High-uniqueness stratum: all Δρ ≈ +0.078 → high-uniq Q Δρ ≈ +0.051 (n = 4,949).
+- Bacterial transfer bootstrap: WT→Tev 0.701 [0.683, 0.704]; Tev→WT 0.627 [0.617, 0.636]; guide-overlap ~0.
+- Early cross-kingdom bootstrap (shared cols): E→H −0.048 [−0.062, −0.033]; H→E −0.056 [−0.073, −0.038].
+- Spacer GC shape: E. coli linear ρ −0.201; human quadratic peak GC ≈ 0.57.
+
+3.3 Human ladder (+0.052)
+
+Arm (bacterial champion HPs, n=16,490) | Spearman ρ
+Regenerated base | 0.382
+Base + Family A | 0.434 (+0.052)
+Family A alone | 0.341
+Shared published cols | 0.402
+
+- Within-human CV only — not transfer. Human flank gain real but ~⅓ of curated E. coli +0.164.
+
+3.4 Transfer autopsy (−0.049) &amp; GC null rescue
+
+- Shared-col E→H ≈ −0.049 (autopsy point −0.047; family_a base arm −0.049; early bootstrap −0.048).
+- Error ↔ spacer GC ρ ≈ −0.40 — errors track GC.
+- After residualising GC+GC²: transfer still ≈ −0.049 (null rescue). GC-range / hist-match same story.
+- GC+GC² as human features: base 0.382 → 0.381 (null).
+- Claim: GC-shape mismatch is a symptom, not a fix.
+
+3.5 Flanks both sides (weak sign flip)
+
+Features | E→H ρ | H→E ρ
+Guide base | −0.049 | −0.010
+Family A alone | +0.042 | +0.108
+Base + Family A | +0.022 | +0.017
+
+- Scientifically interesting, not product-ready. Twin-honest ~+0.023 is Runjia human_shape.py — cite that runner, not a Jacky script.
+
+3.6 Capacity (+0.09) &amp; additivity
+
+Arm (seeds 41–43 mean) | ρ | vs champion
+Base + bacterial HPs | 0.383 | —
+Base + deeper HPs | 0.474 | +0.091
+Base+A + bacterial HPs | 0.431 | —
+Base+A + deeper HPs | 0.501 | +0.118
+
+- Additivity: ridge / XGB ≈ 66–68% on human (base 0.66; base+A 0.68) vs ~96% in E. coli — human needs nonlinear capacity.
+- Capacity is within-human fit; does not close E→H transfer.
+
+3.7 Strand &amp; chromatin (if solid)
+
+- Strand audit: gene-strand vs cut ρ −0.010 (null); Family A given strand +0.048 (survives vs raw +0.052). Cutting ≠ CRISPRi strand collapse.
+- K562 chromatin: DNase/ATAC Δρ +0.001…+0.005 (null at this resolution; cell-type caveat).
+- H6 matched chromatin: best ~+0.01 on base; ~null once A present. H6 GC/coverage control never landed — do not claim “not just GC.”
+
+────────────────────────────────────────
+4. Appendix candidates
+────────────────────────────────────────
+
+Item | Key number / note | Suggested home
+ΔrecA flank ablation | Abs flank gain shrinks; relative Δ/baseline does not (Cas9 Δ/base ≈0.144 vs ΔrecA ≈0.175) | A1 / mechanism null
+Replichore asymmetry | Left/right matched asym ≈ 0.049 / 0.048 — no sign flip | A1
+High-uniqueness stratum | Δρ +0.078 → +0.051 (n=4,949) | A3 robustness
+Nearest-gene after match | Δ collapses; supporting only | A1
+H6 chromatin tables | ~+0.01 / null with A; incomplete GC control | A5b / A6 optional
+Discovery nulls H4–H5 | Shape / mechanics / folding null on A; extras don’t open transfer | Appendix modeling
+Guo provenance notes | No per-guide replicates; label join hygiene | A4
+Human tables (ladder, autopsy, strand) | If main text stays short | A5b / A6 — hard subhead vs CRISPOR
+
+────────────────────────────────────────
+5. Keep separate from A5 CRISPOR
+────────────────────────────────────────
+
+Rule: Never dump Noshay-human into Appendix A5 without a hard subhead. Same word “kingdom / human,” different experiments. Cross-link once (“consistent with a kingdom wall; different data — see A5”).
+
+Field | A5 CRISPOR (Runjia / PDF) | Jacky Noshay-human
+Data | 11 eukaryotic CRISPOR tables | Noshay human → hg38 located 16,490
+Features | Mostly 20-mer / guide(+PAM) | Regenerated base + Family A flanks
+Headline | Median E→euk ≈ −0.041; pos-20 G sign flip | Guide-only E→H ≈ −0.049; GC residualise fails; within-human A +0.052
+Paper home | Appendix A5 (already drafted) | Methods §7c + short main Results; tables A5b/A6
+
+- Pos-20 G design-rule story ≠ spacer GC quadratic autopsy.
+- Family A is invisible in A5 — dumping Jacky under A5 erases the positive flank result.
+- Ownership: A5 runners = Runjia; locate / ladder / autopsy = Jacky.
+
+────────────────────────────────────────
+6. What I will write into shared Methodology
+────────────────────────────────────────
+
+Draft these before polishing appendix tables.
+
+1. Human dataset, decode, hg38 locate, feature rebuild — ~17,421-row Noshay matrix; cutting-style label ≠ E. coli survival; electron→spacer; unique NGG → n = 16,490; regenerated base + Family A (348 cols). Unblocks every later human sentence.
+2. Within-human Family A ladder — bacterial champion HPs: base 0.382 → base+A 0.434 (+0.052); A-alone 0.341. State clearly: within-human CV, not transfer.
+3. Guide-only transfer + GC autopsy — shared-col E→H ≈ −0.049; residualise / match GC+GC² still ≈ −0.049; GC shape (E. coli linear vs human peak ~0.57) is symptom not fix.
+4. Intergenic TSS orientation control (bacterial Methods/Results) — lead RegulonDB TSS Δ 0.051 [0.020, 0.082]; nearest-gene fails matching; place under flank-mechanism controls, not under human.
+5. Ceiling hygiene + flanks-both-sides honesty — Guo Fig 2c ~0.94 vs curated freeze 0.946; then flanks-aligned transfer +0.022 / +0.042 with “scientifically interesting, not product-ready”; strand audit (+0.048 survives) as one control clause.
+
+Second pass / appendix once 1–5 are in the shared doc: ΔrecA, replichore, uniqueness, chromatin, discovery capacity.
+
+────────────────────────────────────────
+File pointers
+────────────────────────────────────────
+
+What | Path
+This markdown twin | /cursor/stores/bc-763efcf0-dde6-4d06-9020-6fd1da79a0be/docs/jacky-paper-outline.md
+Browser outline | /agent/repos/RSI-Crispr-forked/Jacky/paper-outline/index.html
+Placement inventory | docs/paper-methods-jacky-placement.md (Project store)
+Evidence | Jacky/human-boundary/results/, Jacky/orientation-controls/results/, Jacky/agent-notes/results/
+</pre>
+  <script>
+  (function () {
+    var pre = document.getElementById("outline");
+    var btn = document.getElementById("copyBtn");
+    var status = document.getElementById("status");
+    function fullText() {
+      return pre.innerText || pre.textContent || "";
+    }
+    function setStatus(msg) {
+      status.textContent = msg;
+    }
+    async function copyAll() {
+      var text = fullText();
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          var range = document.createRange();
+          range.selectNodeContents(pre);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          var ok = document.execCommand("copy");
+          if (!ok) throw new Error("execCommand copy failed");
+        }
+        setStatus("Copied " + text.length + " characters — paste into Google Docs.");
+      } catch (e) {
+        try {
+          var range2 = document.createRange();
+          range2.selectNodeContents(pre);
+          var sel2 = window.getSelection();
+          sel2.removeAllRanges();
+          sel2.addRange(range2);
+          setStatus("Clipboard blocked — text selected; press Ctrl/Cmd+C, then paste into Docs.");
+        } catch (e2) {
+          setStatus("Copy failed. Select the text below manually (Ctrl/Cmd+A) and copy.");
+        }
+      }
+    }
+    btn.addEventListener("click", copyAll);
+  })();
+  </script>
+</body>
+</html>

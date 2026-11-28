@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jacky RSI09 — Paper Planning Outline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2332;
+      --ink-soft: #3d4a5c;
+      --muted: #5c6b7a;
+      --line: #d5dce4;
+      --paper: #f7f5f0;
+      --panel: #ffffff;
+      --accent: #0f5c4c;
+      --accent-soft: #e6f0ed;
+      --warn-bg: #f4ebe3;
+      --warn-ink: #6b3f1a;
+      --num: #0b3d36;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #e8efe9 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #ebe6dc 0%, transparent 50%),
+        var(--paper);
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      line-height: 1.55;
+      font-size: 15.5px;
+    }
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    header.hero {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+    .eyebrow {
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 600;
+      margin: 0 0 0.6rem;
+    }
+    h1 {
+      font-family: "IBM Plex Serif", Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(1.65rem, 3.5vw, 2.15rem);
+      line-height: 1.2;
+      margin: 0 0 0.75rem;
+      color: var(--ink);
+    }
+    .lede {
+      color: var(--ink-soft);
+      max-width: 42rem;
+      margin: 0 0 1rem;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    .meta code {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.82rem;
+      background: var(--accent-soft);
+      color: var(--num);
+      padding: 0.12rem 0.4rem;
+      border-radius: 3px;
+    }
+    nav.toc {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 2rem;
+    }
+    nav.toc strong {
+      display: block;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    nav.toc ol {
+      margin: 0;
+      padding-left: 1.2rem;
+      columns: 2;
+      gap: 1.5rem;
+    }
+    nav.toc a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    nav.toc a:hover { text-decoration: underline; }
+    @media (max-width: 640px) {
+      nav.toc ol { columns: 1; }
+    }
+    section {
+      margin-bottom: 2.25rem;
+    }
+    h2 {
+      font-family: "IBM Plex Serif", Georgia, serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 0 0 0.75rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--accent);
+      display: inline-block;
+      min-width: 12rem;
+    }
+    h3 {
+      font-size: 1.02rem;
+      font-weight: 600;
+      margin: 1.25rem 0 0.45rem;
+      color: var(--ink);
+    }
+    ul, ol {
+      margin: 0.35rem 0 0.75rem;
+      padding-left: 1.25rem;
+    }
+    li { margin: 0.28rem 0; }
+    li strong.num, .num {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 500;
+      color: var(--num);
+      font-size: 0.92em;
+    }
+    .callout {
+      background: var(--warn-bg);
+      border-left: 3px solid var(--warn-ink);
+      padding: 0.9rem 1rem;
+      margin: 1rem 0;
+      color: var(--warn-ink);
+    }
+    .callout strong { color: var(--warn-ink); }
+    .note {
+      background: var(--accent-soft);
+      border-left: 3px solid var(--accent);
+      padding: 0.9rem 1rem;
+      margin: 1rem 0;
+      color: var(--ink-soft);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 0.6rem 0 1rem;
+      background: var(--panel);
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eef2f5;
+      font-weight: 600;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+    }
+    td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+    .mono {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.85em;
+    }
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .ordered-write ol { counter-reset: write; list-style: none; padding-left: 0; }
+    .ordered-write li {
+      counter-increment: write;
+      position: relative;
+      padding: 0.65rem 0.75rem 0.65rem 2.6rem;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      margin: 0.45rem 0;
+    }
+    .ordered-write li::before {
+      content: counter(write);
+      position: absolute;
+      left: 0.7rem;
+      top: 0.7rem;
+      width: 1.35rem;
+      height: 1.35rem;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <p class="eyebrow">RSI09 · Jacky chapter · planning draft</p>
+      <h1>Paper planning outline — Jacky (J MQ)</h1>
+      <p class="lede">
+        Point-form Methods / Results / Appendix for Jacky-owned arms only.
+        Same spirit as teammates’ RSI09-1 / RSI09-2 PDFs, but <strong>not merged</strong>
+        into those docs yet. Metric throughout: Spearman ρ.
+      </p>
+      <div class="meta">
+        <span>Scope: Jacky sole + shared hygiene Jacky wrote</span>
+        <span>Sources: <code>paper-methods-jacky-placement.md</code>, <code>EXPERIMENT_CATALOG.md</code>, human-boundary / orientation-controls / agent-notes results</span>
+      </div>
+    </header>
+
+    <nav class="toc" aria-label="Contents">
+      <strong>Contents</strong>
+      <ol>
+        <li><a href="#scope">Title &amp; scope</a></li>
+        <li><a href="#methods">Methods</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#appendix">Appendix candidates</a></li>
+        <li><a href="#a5">Keep separate from A5 CRISPOR</a></li>
+        <li><a href="#write">What to write into shared Methodology</a></li>
+      </ol>
+    </nav>
+
+    <section id="scope">
+      <h2>1. Title / scope</h2>
+      <ul>
+        <li><strong>Working title (Jacky chapter):</strong> Noshay-human boundary, intergenic TSS orientation, and bacterial mechanism hygiene for RSI09.</li>
+        <li><strong>In scope:</strong> human locate → Family A ladder / transfer autopsy / capacity; TSS orientation controls; Guo ceiling hygiene; uniqueness / ΔrecA / replichore / GC quadratic; bacterial transfer bootstrap CIs Jacky computed.</li>
+        <li><strong>Out of scope for this outline:</strong> Runjia Family A discovery on curated E. coli (+0.164), CRISPOR 11-eukaryote A5, twin-honest runner (Runjia <span class="mono">human_shape.py</span>), crisprHAL parity spine.</li>
+        <li><strong>Status:</strong> Jacky’s inventory is <em>not</em> absorbed into RSI09-1 / RSI09-2 PDFs yet. This page is Jacky’s planning twin only.</li>
+      </ul>
+    </section>
+
+    <section id="methods">
+      <h2>2. Methods (point-form)</h2>
+
+      <h3>2.1 Datasets &amp; labels</h3>
+      <ul>
+        <li>Noshay human feature matrix ≈ <span class="num">17,421</span> rows; cutting / indel-style score ∈ [0,1], mean ≈ <span class="num">0.248</span>; <span class="num">13,138</span> unique spacers. Assay ≠ E. coli survival / depletion.</li>
+        <li>Located human cohort for Family A: unique NGG on hg38 → usable <span class="num">n = 16,490</span> (unique locate 12,222 / 13,138 wanted; multi 893; missing 23).</li>
+        <li>E. coli published / Guo S4–S7 used for workplan arms; Guo label provenance: no per-guide replicates in S1–S7; <span class="mono">cut.score</span> ↔ Guo S4 Cas9 ρ ≈ 1.0.</li>
+        <li>Shared five-seed baseline harness (seeds 41–45) as common comparator — Jacky copy of team recipe.</li>
+      </ul>
+
+      <h3>2.2 Decode</h3>
+      <ul>
+        <li>Human: QCT electron → spacer decode; rebuild V/QCT maps from E. coli dialect (reuses Runjia decode path; Jacky owns human application).</li>
+        <li>Regenerated base on located rows: <span class="num">6,169</span> columns; Family A <span class="mono">a_flank</span>: <span class="num">348</span> flank columns (±50…±1000 nt windows).</li>
+      </ul>
+
+      <h3>2.3 Genomic localisation</h3>
+      <ul>
+        <li>Human: unique NGG on hg38 → <span class="num">16,490</span> usable rows (<span class="mono">human_locate_audit.json</span>).</li>
+        <li>Bacterial intergenic orientation: Guo S6 Good, n = <span class="num">8,954</span>; RegulonDB TSS / operon annotation; nearest-gene as supporting only.</li>
+      </ul>
+
+      <h3>2.4 Feature sets</h3>
+      <ul>
+        <li>Dialect: Runjia canonical base + Family A; Jacky rebuilds human regenerated base + A and shared-column intersection (<span class="num">6,216</span> shared published cols for early transfer).</li>
+        <li>Transfer arms: guide-only shared cols; Family A alone; base+A aligned by name across kingdoms.</li>
+        <li>Controls: GC+GC² as features; K562 DNase/ATAC ±500 nt; gene-strand bit; capacity / discovery HP swap.</li>
+      </ul>
+
+      <h3>2.5 Models &amp; hyperparameters</h3>
+      <ul>
+        <li>Primary fairness lock: bacterial champion XGBoost HPs on human CV (same exam protocol).</li>
+        <li>Capacity secondary: deeper / faster HPs within-human only (discovery H1; not a transfer claim).</li>
+        <li>Evaluation: Spearman ρ; seeds 41–45 (or 41–43 for discovery probe); leakage-safe CV; gene-grouped CV honesty where noted.</li>
+      </ul>
+
+      <h3>2.6 Mechanism &amp; bacterial controls (Jacky block)</h3>
+      <ul>
+        <li>Ceiling path: reject two-enzyme 0.90–0.93; Guo Fig 2c tiling ceiling ≈ <span class="num">0.937</span> (working ~0.94); curated freeze <span class="num">0.946</span> is Runjia’s locked number — cite both carefully.</li>
+        <li>High-uniqueness flank stratum; replichore asymmetry null; ΔrecA relative null; spacer GC quadratic shape.</li>
+        <li>Intergenic orientation — lead TSS Δ from <span class="mono">intergenic_orientation_controls_delta_ci.csv</span> only (not <span class="mono">summary.csv</span>).</li>
+      </ul>
+
+      <h3>2.7 Cross-system evaluation — split cleanly</h3>
+      <ul>
+        <li><strong>7a</strong> Bacterial transfer (nuclease / C. rodentium) + Jacky bootstrap CIs.</li>
+        <li><strong>7b</strong> CRISPOR / design-rule kingdom → <em>Runjia Appendix A5</em> (not this chapter).</li>
+        <li><strong>7c</strong> Noshay-human boundary (Jacky): within-human ladder; shared-col E→H + GC autopsy; flanks-both-sides; strand; chromatin / discovery → appendix.</li>
+      </ul>
+    </section>
+
+    <section id="results">
+      <h2>3. Results (point-form, key numbers)</h2>
+
+      <h3>3.1 Orientation / TSS (bacterial)</h3>
+      <table>
+        <thead>
+          <tr><th>Analysis</th><th class="r">Δ (opp − same)</th><th class="r">95% CI</th><th class="r">P(Δ≤0)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>TSS (RegulonDB) — lead</strong></td><td class="r"><span class="num">0.051</span></td><td class="r"><span class="num">[0.020, 0.082]</span></td><td class="r"><span class="num">0.000</span></td></tr>
+          <tr><td>TSS matched dist+GC</td><td class="r"><span class="num">0.025</span></td><td class="r"><span class="num">[−0.003, 0.053]</span></td><td class="r"><span class="num">0.041</span></td></tr>
+          <tr><td>Nearest-gene (prior)</td><td class="r"><span class="num">0.026</span></td><td class="r"><span class="num">[−0.006, 0.058]</span></td><td class="r"><span class="num">0.054</span></td></tr>
+          <tr><td>Gene matched dist+GC</td><td class="r"><span class="num">0.007</span></td><td class="r"><span class="num">[−0.024, 0.038]</span></td><td class="r"><span class="num">0.337</span></td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Quote TSS from controls Δ CI file only. Nearest-gene dies under matching — do not lead with it.</li>
+      </ul>
+
+      <h3>3.2 Workplan hygiene — ceiling, uniqueness, transfer CIs, GC</h3>
+      <ul>
+        <li><strong>Guo Fig 2c ceiling:</strong> tiling ≈ <span class="num">0.937</span>; working figure ~0.94. Do not lead Fig 2b + Spearman–Brown 0.968. Curated freeze <span class="num">0.946</span> [0.944, 0.948] is Runjia.</li>
+        <li><strong>High-uniqueness stratum:</strong> all Δρ ≈ <span class="num">+0.078</span> → high-uniq Q Δρ ≈ <span class="num">+0.051</span> (n = 4,949).</li>
+        <li><strong>Bacterial transfer bootstrap:</strong> WT→Tev <span class="num">0.701 [0.683, 0.704]</span>; Tev→WT <span class="num">0.627 [0.617, 0.636]</span>; guide-overlap ~0.</li>
+        <li><strong>Early cross-kingdom bootstrap (shared cols):</strong> E→H <span class="num">−0.048 [−0.062, −0.033]</span>; H→E <span class="num">−0.056 [−0.073, −0.038]</span>.</li>
+        <li><strong>Spacer GC shape:</strong> E. coli linear ρ <span class="num">−0.201</span>; human quadratic peak GC ≈ <span class="num">0.57</span>.</li>
+      </ul>
+
+      <h3>3.3 Human ladder (+0.052)</h3>
+      <table>
+        <thead>
+          <tr><th>Arm (bacterial champion HPs, n=16,490)</th><th class="r">Spearman ρ</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Regenerated base</td><td class="r"><span class="num">0.382</span></td></tr>
+          <tr><td>Base + Family A</td><td class="r"><span class="num">0.434</span> (<span class="num">+0.052</span>)</td></tr>
+          <tr><td>Family A alone</td><td class="r"><span class="num">0.341</span></td></tr>
+          <tr><td>Shared published cols</td><td class="r"><span class="num">0.402</span></td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Within-human CV only — not transfer. Human flank gain real but ~⅓ of curated E. coli +0.164.</li>
+      </ul>
+
+      <h3>3.4 Transfer autopsy (−0.049) &amp; GC null rescue</h3>
+      <ul>
+        <li>Shared-col E→H ≈ <span class="num">−0.049</span> (autopsy point −0.047; family_a base arm −0.049; early bootstrap −0.048).</li>
+        <li>Error ↔ spacer GC ρ ≈ <span class="num">−0.40</span> — errors track GC.</li>
+        <li>After residualising GC+GC²: transfer still ≈ <span class="num">−0.049</span> (null rescue). GC-range / hist-match same story.</li>
+        <li>GC+GC² as human features: base <span class="num">0.382</span> → <span class="num">0.381</span> (null).</li>
+        <li><strong>Claim:</strong> GC-shape mismatch is a symptom, not a fix.</li>
+      </ul>
+
+      <h3>3.5 Flanks both sides (weak sign flip)</h3>
+      <table>
+        <thead>
+          <tr><th>Features</th><th class="r">E→H ρ</th><th class="r">H→E ρ</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Guide base</td><td class="r"><span class="num">−0.049</span></td><td class="r"><span class="num">−0.010</span></td></tr>
+          <tr><td>Family A alone</td><td class="r"><span class="num">+0.042</span></td><td class="r"><span class="num">+0.108</span></td></tr>
+          <tr><td>Base + Family A</td><td class="r"><span class="num">+0.022</span></td><td class="r"><span class="num">+0.017</span></td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Scientifically interesting, not product-ready. Twin-honest ~+0.023 is <strong>Runjia</strong> <span class="mono">human_shape.py</span> — cite that runner, not a Jacky script.</li>
+      </ul>
+
+      <h3>3.6 Capacity (+0.09) &amp; additivity</h3>
+      <table>
+        <thead>
+          <tr><th>Arm (seeds 41–43 mean)</th><th class="r">ρ</th><th class="r">vs champion</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Base + bacterial HPs</td><td class="r"><span class="num">0.383</span></td><td class="r">—</td></tr>
+          <tr><td>Base + deeper HPs</td><td class="r"><span class="num">0.474</span></td><td class="r"><span class="num">+0.091</span></td></tr>
+          <tr><td>Base+A + bacterial HPs</td><td class="r"><span class="num">0.431</span></td><td class="r">—</td></tr>
+          <tr><td>Base+A + deeper HPs</td><td class="r"><span class="num">0.501</span></td><td class="r"><span class="num">+0.118</span></td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Additivity: ridge / XGB ≈ <span class="num">66–68%</span> on human (base 0.66; base+A 0.68) vs ~96% in E. coli — human needs nonlinear capacity.</li>
+        <li>Capacity is within-human fit; does <strong>not</strong> close E→H transfer.</li>
+      </ul>
+
+      <h3>3.7 Strand &amp; chromatin (if solid)</h3>
+      <ul>
+        <li><strong>Strand audit:</strong> gene-strand vs cut ρ <span class="num">−0.010</span> (null); Family A given strand <span class="num">+0.048</span> (survives vs raw +0.052). Cutting ≠ CRISPRi strand collapse.</li>
+        <li><strong>K562 chromatin:</strong> DNase/ATAC Δρ <span class="num">+0.001…+0.005</span> (null at this resolution; cell-type caveat).</li>
+        <li><strong>H6 matched chromatin:</strong> best ~+0.01 on base; ~null once A present. H6 GC/coverage control never landed — do not claim “not just GC.”</li>
+      </ul>
+    </section>
+
+    <section id="appendix">
+      <h2>4. Appendix candidates</h2>
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Key number / note</th><th>Suggested home</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ΔrecA flank ablation</td><td>Abs flank gain shrinks; relative Δ/baseline does <em>not</em> (Cas9 Δ/base ≈0.144 vs ΔrecA ≈0.175)</td><td>A1 / mechanism null</td></tr>
+          <tr><td>Replichore asymmetry</td><td>Left/right matched asym ≈ <span class="num">0.049 / 0.048</span> — no sign flip</td><td>A1</td></tr>
+          <tr><td>High-uniqueness stratum</td><td>Δρ <span class="num">+0.078 → +0.051</span> (n=4,949)</td><td>A3 robustness</td></tr>
+          <tr><td>Nearest-gene after match</td><td>Δ collapses; supporting only</td><td>A1</td></tr>
+          <tr><td>H6 chromatin tables</td><td>~+0.01 / null with A; incomplete GC control</td><td>A5b / A6 optional</td></tr>
+          <tr><td>Discovery nulls H4–H5</td><td>Shape / mechanics / folding null on A; extras don’t open transfer</td><td>Appendix modeling</td></tr>
+          <tr><td>Guo provenance notes</td><td>No per-guide replicates; label join hygiene</td><td>A4</td></tr>
+          <tr><td>Human tables (ladder, autopsy, strand)</td><td>If main text stays short</td><td>A5b / A6 — hard subhead vs CRISPOR</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="a5">
+      <h2>5. Keep separate from A5 CRISPOR</h2>
+      <div class="callout">
+        <strong>Rule:</strong> Never dump Noshay-human into Appendix A5 without a hard subhead.
+        Same word “kingdom / human,” different experiments. Cross-link once (“consistent with a kingdom wall; different data — see A5”).
+      </div>
+      <table>
+        <thead>
+          <tr><th></th><th>A5 CRISPOR (Runjia / PDF)</th><th>Jacky Noshay-human</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Data</td><td>11 eukaryotic CRISPOR tables</td><td>Noshay human → hg38 located <span class="num">16,490</span></td></tr>
+          <tr><td>Features</td><td>Mostly 20-mer / guide(+PAM)</td><td>Regenerated base + Family A flanks</td></tr>
+          <tr><td>Headline</td><td>Median E→euk ≈ −0.041; pos-20 G sign flip</td><td>Guide-only E→H ≈ −0.049; GC residualise fails; within-human A +0.052</td></tr>
+          <tr><td>Paper home</td><td>Appendix A5 (already drafted)</td><td>Methods §7c + short main Results; tables A5b/A6</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Pos-20 G design-rule story ≠ spacer GC quadratic autopsy.</li>
+        <li>Family A is invisible in A5 — dumping Jacky under A5 erases the positive flank result.</li>
+        <li>Ownership: A5 runners = Runjia; locate / ladder / autopsy = Jacky.</li>
+      </ul>
+    </section>
+
+    <section id="write">
+      <h2>6. What I will write into shared Methodology</h2>
+      <p class="note">Draft these <strong>before</strong> polishing appendix tables. Pin numbers from this outline / briefing before camera-ready.</p>
+      <div class="ordered-write">
+        <ol>
+          <li>
+            <strong>Human dataset, decode, hg38 locate, feature rebuild</strong> —
+            ~17,421-row Noshay matrix; cutting-style label ≠ E. coli survival; electron→spacer;
+            unique NGG → <span class="num">n = 16,490</span>; regenerated base + Family A (348 cols).
+            Unblocks every later human sentence.
+          </li>
+          <li>
+            <strong>Within-human Family A ladder</strong> —
+            bacterial champion HPs: base <span class="num">0.382</span> → base+A <span class="num">0.434</span> (<span class="num">+0.052</span>); A-alone 0.341.
+            State clearly: within-human CV, not transfer.
+          </li>
+          <li>
+            <strong>Guide-only transfer + GC autopsy</strong> —
+            shared-col E→H ≈ <span class="num">−0.049</span>; residualise / match GC+GC² still ≈ <span class="num">−0.049</span>;
+            GC shape (E. coli linear vs human peak ~0.57) is symptom not fix.
+          </li>
+          <li>
+            <strong>Intergenic TSS orientation control</strong> (bacterial Methods/Results) —
+            lead RegulonDB TSS Δ <span class="num">0.051 [0.020, 0.082]</span>;
+            nearest-gene fails matching; place under flank-mechanism controls, not under human.
+          </li>
+          <li>
+            <strong>Ceiling hygiene + flanks-both-sides honesty</strong> —
+            Guo Fig 2c ~0.94 vs curated freeze 0.946; then flanks-aligned transfer
+            <span class="num">+0.022 / +0.042</span> with “scientifically interesting, not product-ready”;
+            strand audit (+0.048 survives) as one control clause.
+          </li>
+        </ol>
+      </div>
+      <p style="color: var(--muted); font-size: 0.9rem;">
+        Second pass / appendix once 1–5 are in the shared doc: ΔrecA, replichore, uniqueness, chromatin, discovery capacity.
+      </p>
+    </section>
+
+    <footer>
+      Jacky-only planning twin · not merged into RSI09-1 / RSI09-2 ·
+      Evidence under <span class="mono">Jacky/human-boundary/results/</span>,
+      <span class="mono">Jacky/orientation-controls/results/</span>,
+      <span class="mono">Jacky/agent-notes/results/</span>.
+    </footer>
+  </div>
+</body>
+</html>
