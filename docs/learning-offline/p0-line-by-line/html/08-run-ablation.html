@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>08-run-ablation — RSI P0 learning</title>
+<style>
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --text: #1f2328;
+  --muted: #656d76;
+  --border: #d0d7de;
+  --code-bg: #f0f3f6;
+  --code-border: #d8dee4;
+  --accent: #0969da;
+  --plain: #1a7f37;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+    --code-bg: #0d1117;
+    --code-border: #30363d;
+    --accent: #2f81f7;
+    --plain: #3fb950;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+}
+.wrap {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 4rem;
+}
+nav.top {
+  position: sticky; top: 0; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  margin: -1.25rem -1rem 1.5rem;
+  padding: 0.75rem 1rem;
+  display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+}
+nav.top a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+nav.top a:hover { text-decoration: underline; }
+nav.top .title { font-weight: 600; color: var(--text); margin-right: auto; }
+h1,h2,h3,h4 { line-height: 1.25; }
+h1 { font-size: 1.6rem; margin-top: 0; }
+h2 { font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; margin-top: 2rem; }
+h3 { font-size: 1.05rem; margin-top: 1.4rem; color: var(--muted); }
+p { margin: 0.65rem 0; }
+strong { font-weight: 650; }
+a { color: var(--accent); }
+hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  line-height: 1.4;
+}
+pre code {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.82rem;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+  background: var(--card);
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: color-mix(in srgb, var(--card) 80%, var(--border)); }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.4rem 0.9rem;
+  border-left: 4px solid var(--accent);
+  color: var(--muted);
+  background: var(--card);
+}
+ul, ol { padding-left: 1.3rem; }
+li { margin: 0.25rem 0; }
+/* Make "Plain English" stand out a bit */
+p strong:first-child { color: var(--plain); }
+.footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media print {
+  nav.top { position: static; backdrop-filter: none; }
+  body { background: white; color: black; }
+  a { color: black; text-decoration: none; }
+  pre { white-space: pre-wrap; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="top">
+  <a href="index.html">Contents</a>
+  <a href="07-a-flank.html">← prev</a>
+  <span class="title">08-run-ablation</span>
+  <a href="09-human-boundary.html">next →</a>
+</nav>
+<article>
+<h1>P0 line-by-line: <code>Runjia/sgrna/harness/run_ablation.py</code></h1>
+<p><strong>Why this file matters:</strong> The shared experiment engine: fair train/test splits, feature picking, and family ablations.<br />
+<strong>Length:</strong> 559 lines.<br />
+<strong>How to read this guide:</strong> each block shows the real code, then plain English. If you see “same idea as…”, that pattern already appeared earlier.<br />
+<strong>Prerequisite:</strong> skim <a href="00-glossary.md"><code>00-glossary.md</code></a> once.</p>
+<hr />
+<h2>Big picture</h2>
+<p>A shared laboratory protocol: same fair exams, same model recipe, swap which feature ‘ingredients’ you add.</p>
+<hr />
+<h3>Lines 1–36</h3>
+<pre><code class="language-python">&quot;&quot;&quot;Step 3 -- the ablation harness. One family at a time, leakage-safe.
+
+This reproduces the frozen protocol the project already trusts -- five seeds
+(41-45), five folds, top-300 features by XGBoost gain, 400-tree champion --
+with one rule that matters more than any of the settings: **every fit happens
+inside the training split**. Median imputation, feature ranking and selection
+all see the training fold only. A validation fold that has influenced which
+features were chosen is not a validation fold.
+
+From a notebook cell (the usual way):
+
+    nb.ablate()                                        # baseline only
+    nb.ablate([&quot;a_flank&quot;])
+    nb.ablate([&quot;d_supercoiling&quot;], group=&quot;bin100k&quot;, permute=True)
+    nb.ablate([&quot;a_flank&quot;, &quot;b_energy&quot;], together=True)
+
+or from a terminal:
+
+    python -m sgrna.run_ablation --families a_flank
+    python -m sgrna.run_ablation --families a_flank b_energy --together
+    python -m sgrna.run_ablation --families d_supercoiling --group bin100k --permute
+    python -m sgrna.run_ablation --baseline-only
+
+Reading the output
+------------------
+Four things decide whether a family earned its place:
+
+  d_spearman   change against the baseline in the same run
+  permuted     the same family with its rows shuffled -- the noise floor
+  group        hold out whole genes or 100 kb blocks instead of random rows;
+               mandatory for any positional family (D2, E, G)
+  selected     how many of the family's columns survived into the top 300
+
+A family whose delta is inside the permuted band did not work, however many
+of its columns got selected. Run with --permute before claiming anything.
+&quot;&quot;&quot;
+</code></pre>
+<p><strong>Plain English:</strong> This is a <strong>docstring</strong> — a multi-line note describing the file or function. Python stores it as documentation but does not treat it as an instruction to compute something. Read it like a preface.</p>
+<h3>Line 38</h3>
+<pre><code class="language-python">from __future__ import annotations
+</code></pre>
+<p><strong>Plain English:</strong> Turns on newer Python typing behaviours so annotations like <code>list[str]</code> work on older Python versions.</p>
+<h3>Line 40</h3>
+<pre><code class="language-python">import argparse
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>import argparse</code> — used here for <strong>command-line switches like <code>--flank 1000</code></strong>.</p>
+<h3>Line 41</h3>
+<pre><code class="language-python">import json
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>import json</code> — used here for <strong>read/write JSON text files</strong>.</p>
+<h3>Line 42</h3>
+<pre><code class="language-python">import sys
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>import sys</code> — used here for <strong>Python runtime (arguments, exit codes)</strong>.</p>
+<h3>Line 43</h3>
+<pre><code class="language-python">import time
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>import time</code> — used here for <strong>clocks and timers</strong>.</p>
+<h3>Line 44</h3>
+<pre><code class="language-python">from datetime import datetime
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>from datetime import datetime</code> — used here for <strong>clocks and timers</strong>.</p>
+<h3>Line 46</h3>
+<pre><code class="language-python">import numpy as np
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>import numpy as np</code> — used here for <strong>numerical arrays &amp; maths</strong>.</p>
+<h3>Line 47</h3>
+<pre><code class="language-python">import pandas as pd
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>import pandas as pd</code> — used here for <strong>spreadsheet-like tables</strong>.</p>
+<h3>Line 48</h3>
+<pre><code class="language-python">from scipy.stats import pearsonr, spearmanr
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>from scipy.stats import pearsonr, spearmanr</code> — used here for <strong>scientific stats (Spearman/Pearson)</strong>.</p>
+<h3>Line 49</h3>
+<pre><code class="language-python">from sklearn.metrics import mean_squared_error, r2_score
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>from sklearn.metrics import mean_squared_error, r2_score</code> — used here for <strong>classic ML helpers (splits, metrics)</strong>.</p>
+<h3>Line 50</h3>
+<pre><code class="language-python">from sklearn.model_selection import KFold
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>from sklearn.model_selection import KFold</code> — used here for <strong>classic ML helpers (splits, metrics)</strong>.</p>
+<h3>Line 52</h3>
+<pre><code class="language-python">from .. import config
+</code></pre>
+<p><strong>Plain English:</strong> Load a project module from this repo: <code>from .. import config</code>.</p>
+<h3>Line 53</h3>
+<pre><code class="language-python">from ..build.build_matrix import load_dataset
+</code></pre>
+<p><strong>Plain English:</strong> Load an external or local module: <code>from ..build.build_matrix import load_dataset</code>.</p>
+<h3>Line 54</h3>
+<pre><code class="language-python">from ..features import ALL
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>from ..features import ALL</code> — used here for <strong>text pattern matching (regular expressions)</strong>.</p>
+<h3>Line 57</h3>
+<pre><code class="language-python"># --------------------------------------------------------------------------
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): --------------------------------------------------------------------------</p>
+<h3>Line 58</h3>
+<pre><code class="language-python"># Model settings -- identical to the frozen baseline script
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): Model settings -- identical to the frozen baseline script</p>
+<h3>Line 59</h3>
+<pre><code class="language-python"># --------------------------------------------------------------------------
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): --------------------------------------------------------------------------</p>
+<h3>Line 62</h3>
+<pre><code class="language-python">def selector_params(seed: int) -&gt; dict:
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>selector_params</code>. Inputs in parentheses: <code>seed: int</code>. Returns type hint: dict. Nothing runs yet until something <em>calls</em> <code>selector_params(...)</code>.</p>
+<h3>Line 63</h3>
+<pre><code class="language-python">    return dict(
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>dict(</code>.</p>
+<h3>Line 64</h3>
+<pre><code class="language-python">        n_estimators=300, learning_rate=0.05, max_depth=4, subsample=0.8,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_estimators</code> now holds the result of <code>300, learning_rate=0.05, max_depth=4, subsample=0.8,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 65</h3>
+<pre><code class="language-python">        colsample_bytree=0.8, reg_alpha=0.0, reg_lambda=1.0, min_child_weight=1,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>colsample_bytree</code> now holds the result of <code>0.8, reg_alpha=0.0, reg_lambda=1.0, min_child_weight=1,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 66</h3>
+<pre><code class="language-python">        random_state=seed, n_jobs=-1, tree_method=&quot;hist&quot;, importance_type=&quot;gain&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>random_state</code> now holds the result of <code>seed, n_jobs=-1, tree_method="hist", importance_type="gain",</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 67</h3>
+<pre><code class="language-python">    )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 70</h3>
+<pre><code class="language-python">def make_selector(seed: int, kind: str | None = None):
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>make_selector</code>. Inputs in parentheses: <code>seed: int, kind: str | None = None</code>. Nothing runs yet until something <em>calls</em> <code>make_selector(...)</code>.</p>
+<h3>Lines 71–75</h3>
+<pre><code class="language-python">    &quot;&quot;&quot;The throwaway model whose only job is to rank columns.
+
+    Its predictions are never used, so the choice is about speed and ordering.
+    `selector_params` is kept as the XGBoost settings of the frozen baseline.
+    &quot;&quot;&quot;
+</code></pre>
+<p><strong>Plain English:</strong> This is a <strong>docstring</strong> — a multi-line note describing the file or function. Python stores it as documentation but does not treat it as an instruction to compute something. Read it like a preface.</p>
+<h3>Line 76</h3>
+<pre><code class="language-python">    kind = kind or config.SELECTOR
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>kind</code> now holds the result of <code>kind or config.SELECTOR</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 77</h3>
+<pre><code class="language-python">    if kind == &quot;xgboost&quot;:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>kind == "xgboost"</code>.</p>
+<h3>Line 78</h3>
+<pre><code class="language-python">        import xgboost as xgb
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>import xgboost as xgb</code> — used here for <strong>the gradient-boosted tree learner</strong>.</p>
+<h3>Line 79</h3>
+<pre><code class="language-python">        return xgb.XGBRegressor(**selector_params(seed))
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>xgb.XGBRegressor(**selector_params(seed))</code>.</p>
+<h3>Line 80</h3>
+<pre><code class="language-python">    if kind == &quot;lightgbm&quot;:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>kind == "lightgbm"</code>.</p>
+<h3>Line 81</h3>
+<pre><code class="language-python">        import lightgbm as lgb
+</code></pre>
+<p><strong>Plain English:</strong> Load an external or local module: <code>import lightgbm as lgb</code>.</p>
+<h3>Line 82</h3>
+<pre><code class="language-python">        return lgb.LGBMRegressor(
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>lgb.LGBMRegressor(</code>.</p>
+<h3>Line 83</h3>
+<pre><code class="language-python">            n_estimators=300, learning_rate=0.05, max_depth=4, subsample=0.8,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_estimators</code> now holds the result of <code>300, learning_rate=0.05, max_depth=4, subsample=0.8,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 84</h3>
+<pre><code class="language-python">            colsample_bytree=0.8, random_state=seed, n_jobs=-1, verbose=-1,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>colsample_bytree</code> now holds the result of <code>0.8, random_state=seed, n_jobs=-1, verbose=-1,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 85</h3>
+<pre><code class="language-python">            importance_type=&quot;gain&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>importance_type</code> now holds the result of <code>"gain",</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 86</h3>
+<pre><code class="language-python">        )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 87</h3>
+<pre><code class="language-python">    raise ValueError(f&quot;unknown selector {kind!r}&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Stop and report a problem on purpose → <code>ValueError(f"unknown selector {kind!r}")</code>.</p>
+<h3>Line 90</h3>
+<pre><code class="language-python">def champion_params(seed: int) -&gt; dict:
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>champion_params</code>. Inputs in parentheses: <code>seed: int</code>. Returns type hint: dict. Nothing runs yet until something <em>calls</em> <code>champion_params(...)</code>.</p>
+<h3>Line 91</h3>
+<pre><code class="language-python">    return dict(
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>dict(</code>.</p>
+<h3>Line 92</h3>
+<pre><code class="language-python">        n_estimators=config.N_ESTIMATORS, learning_rate=0.05, max_depth=4,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_estimators</code> now holds the result of <code>config.N_ESTIMATORS, learning_rate=0.05, max_depth=4,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 93</h3>
+<pre><code class="language-python">        subsample=0.8, colsample_bytree=0.8, reg_alpha=0.0, reg_lambda=1.0,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>subsample</code> now holds the result of <code>0.8, colsample_bytree=0.8, reg_alpha=0.0, reg_lambda=1.0,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 94</h3>
+<pre><code class="language-python">        min_child_weight=1, random_state=seed, n_jobs=-1, tree_method=&quot;hist&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>min_child_weight</code> now holds the result of <code>1, random_state=seed, n_jobs=-1, tree_method="hist",</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 95</h3>
+<pre><code class="language-python">    )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 98</h3>
+<pre><code class="language-python">def _impute(X_train: np.ndarray, X_val: np.ndarray):
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>_impute</code>. Inputs in parentheses: <code>X_train: np.ndarray, X_val: np.ndarray</code>. Nothing runs yet until something <em>calls</em> <code>_impute(...)</code>.</p>
+<h3>Line 99</h3>
+<pre><code class="language-python">    &quot;&quot;&quot;Median impute with statistics from the training fold only.&quot;&quot;&quot;
+</code></pre>
+<p><strong>Plain English:</strong> A short documentation string attached to the nearest function/module: Median impute with statistics from the training fold only.</p>
+<h3>Line 100</h3>
+<pre><code class="language-python">    X_train = X_train.astype(np.float32, copy=True)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>X_train</code> now holds the result of <code>X_train.astype(np.float32, copy=True)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 101</h3>
+<pre><code class="language-python">    X_val = X_val.astype(np.float32, copy=True)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>X_val</code> now holds the result of <code>X_val.astype(np.float32, copy=True)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 102</h3>
+<pre><code class="language-python">    med = np.nanmedian(X_train, axis=0)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>med</code> now holds the result of <code>np.nanmedian(X_train, axis=0)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 103</h3>
+<pre><code class="language-python">    med = np.where(np.isnan(med), 0.0, med)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>med</code> now holds the result of <code>np.where(np.isnan(med), 0.0, med)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 104</h3>
+<pre><code class="language-python">    r, c = np.where(np.isnan(X_train))
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>r, c = np.where(np.isnan(X_train))</code>.</p>
+<h3>Line 105</h3>
+<pre><code class="language-python">    X_train[r, c] = med[c]
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>X_train[r, c] = med[c]</code>.</p>
+<h3>Line 106</h3>
+<pre><code class="language-python">    r, c = np.where(np.isnan(X_val))
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>r, c = np.where(np.isnan(X_val))</code>.</p>
+<h3>Line 107</h3>
+<pre><code class="language-python">    X_val[r, c] = med[c]
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>X_val[r, c] = med[c]</code>.</p>
+<h3>Line 108</h3>
+<pre><code class="language-python">    return X_train, X_val
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>X_train, X_val</code>.</p>
+<h3>Line 111</h3>
+<pre><code class="language-python">def _safe_spearman(a, b) -&gt; float:
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>_safe_spearman</code>. Inputs in parentheses: <code>a, b</code>. Returns type hint: float. Nothing runs yet until something <em>calls</em> <code>_safe_spearman(...)</code>.</p>
+<h3>Line 112</h3>
+<pre><code class="language-python">    if len(a) &lt; 2:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>len(a) &lt; 2</code>.</p>
+<h3>Line 113</h3>
+<pre><code class="language-python">        return float(&quot;nan&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>float("nan")</code>.</p>
+<h3>Line 114</h3>
+<pre><code class="language-python">    rho, _ = spearmanr(a, b)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>rho, _ = spearmanr(a, b)</code>.</p>
+<h3>Line 115</h3>
+<pre><code class="language-python">    return 0.0 if np.isnan(rho) else float(rho)
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>0.0 if np.isnan(rho) else float(rho)</code>.</p>
+<h3>Line 118</h3>
+<pre><code class="language-python">def _safe_pearson(a, b) -&gt; float:
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>_safe_pearson</code>. Inputs in parentheses: <code>a, b</code>. Returns type hint: float. Nothing runs yet until something <em>calls</em> <code>_safe_pearson(...)</code>.</p>
+<h3>Line 119</h3>
+<pre><code class="language-python">    if len(a) &lt; 2:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>len(a) &lt; 2</code>.</p>
+<h3>Line 120</h3>
+<pre><code class="language-python">        return float(&quot;nan&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>float("nan")</code>.</p>
+<h3>Line 121</h3>
+<pre><code class="language-python">    rho, _ = pearsonr(a, b)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>rho, _ = pearsonr(a, b)</code>.</p>
+<h3>Line 122</h3>
+<pre><code class="language-python">    return 0.0 if np.isnan(rho) else float(rho)
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>0.0 if np.isnan(rho) else float(rho)</code>.</p>
+<h3>Line 125</h3>
+<pre><code class="language-python"># --------------------------------------------------------------------------
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): --------------------------------------------------------------------------</p>
+<h3>Line 126</h3>
+<pre><code class="language-python"># Cross-validation
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): Cross-validation</p>
+<h3>Line 127</h3>
+<pre><code class="language-python"># --------------------------------------------------------------------------
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): --------------------------------------------------------------------------</p>
+<h3>Line 130</h3>
+<pre><code class="language-python">def grouped_folds(groups, n_splits: int, seed: int):
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>grouped_folds</code>. Inputs in parentheses: <code>groups, n_splits: int, seed: int</code>. Nothing runs yet until something <em>calls</em> <code>grouped_folds(...)</code>.</p>
+<h3>Lines 131–145</h3>
+<pre><code class="language-python">    &quot;&quot;&quot;KFold over *groups* rather than rows.
+
+    Why this matters here: the library puts ~20 guides in every gene, and
+    guides in the same gene share a locus. Plain KFold therefore puts guides
+    from the same gene in both the training and the validation split. For
+    sequence features that is harmless -- the sequences differ. For anything
+    positional (supercoiling, nucleoid bin, distance to oriC or to a TSS) it
+    is not: those columns identify the locus, so the model can learn &quot;guides
+    around here score about this much&quot; and be rewarded for it at validation
+    time. The gain is real memorisation, not real prediction.
+
+    Grouping by gene removes that route. Any positional family should be
+    reported under `--group gene`; a family whose gain survives grouping is
+    the one worth writing up.
+    &quot;&quot;&quot;
+</code></pre>
+<p><strong>Plain English:</strong> This is a <strong>docstring</strong> — a multi-line note describing the file or function. Python stores it as documentation but does not treat it as an instruction to compute something. Read it like a preface.</p>
+<h3>Line 146</h3>
+<pre><code class="language-python">    groups = np.asarray(groups, dtype=object)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>groups</code> now holds the result of <code>np.asarray(groups, dtype=object)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 147</h3>
+<pre><code class="language-python">    unique = np.unique(groups)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>unique</code> now holds the result of <code>np.unique(groups)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 148</h3>
+<pre><code class="language-python">    rng = np.random.default_rng(seed)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>rng</code> now holds the result of <code>np.random.default_rng(seed)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 149</h3>
+<pre><code class="language-python">    rng.shuffle(unique)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>rng.shuffle(unique)</code>.</p>
+<h3>Line 150</h3>
+<pre><code class="language-python">    chunks = np.array_split(unique, n_splits)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>chunks</code> now holds the result of <code>np.array_split(unique, n_splits)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 151</h3>
+<pre><code class="language-python">    for chunk in chunks:
+</code></pre>
+<p><strong>Plain English:</strong> Loop: repeat the indented block once for each item → <code>chunk in chunks</code>.</p>
+<h3>Line 152</h3>
+<pre><code class="language-python">        mask = np.isin(groups, chunk)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>mask</code> now holds the result of <code>np.isin(groups, chunk)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 153</h3>
+<pre><code class="language-python">        yield np.where(~mask)[0], np.where(mask)[0]
+</code></pre>
+<p><strong>Plain English:</strong> Produce one result now but pause the function so the caller can ask for the next one (a generator) → <code>np.where(~mask)[0], np.where(mask)[0]</code>.</p>
+<h3>Line 156</h3>
+<pre><code class="language-python">def fold_checkpoint_path(tag: str):
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>fold_checkpoint_path</code>. Inputs in parentheses: <code>tag: str</code>. Nothing runs yet until something <em>calls</em> <code>fold_checkpoint_path(...)</code>.</p>
+<h3>Line 157</h3>
+<pre><code class="language-python">    return config.RESULTS / f&quot;folds_{tag}.csv&quot;
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>config.RESULTS / f"folds_{tag}.csv"</code>.</p>
+<h3>Line 160</h3>
+<pre><code class="language-python">def _load_checkpoint(tag: str | None) -&gt; pd.DataFrame:
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>_load_checkpoint</code>. Inputs in parentheses: <code>tag: str | None</code>. Returns type hint: pd.DataFrame. Nothing runs yet until something <em>calls</em> <code>_load_checkpoint(...)</code>.</p>
+<h3>Line 161</h3>
+<pre><code class="language-python">    if not tag:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>not tag</code>.</p>
+<h3>Line 162</h3>
+<pre><code class="language-python">        return pd.DataFrame()
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>pd.DataFrame()</code>.</p>
+<h3>Line 163</h3>
+<pre><code class="language-python">    path = fold_checkpoint_path(tag)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>path</code> now holds the result of <code>fold_checkpoint_path(tag)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 164</h3>
+<pre><code class="language-python">    if not path.exists():
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>not path.exists()</code>.</p>
+<h3>Line 165</h3>
+<pre><code class="language-python">        return pd.DataFrame()
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>pd.DataFrame()</code>.</p>
+<h3>Line 166</h3>
+<pre><code class="language-python">    return pd.read_csv(path)
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>pd.read_csv(path)</code>.</p>
+<h3>Line 169</h3>
+<pre><code class="language-python">def _append_checkpoint(tag: str | None, row: dict) -&gt; None:
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>_append_checkpoint</code>. Inputs in parentheses: <code>tag: str | None, row: dict</code>. Returns type hint: None. Nothing runs yet until something <em>calls</em> <code>_append_checkpoint(...)</code>.</p>
+<h3>Line 170</h3>
+<pre><code class="language-python">    if not tag:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>not tag</code>.</p>
+<h3>Line 171</h3>
+<pre><code class="language-python">        return
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>(nothing / None)</code>.</p>
+<h3>Line 172</h3>
+<pre><code class="language-python">    path = fold_checkpoint_path(tag)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>path</code> now holds the result of <code>fold_checkpoint_path(tag)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 173</h3>
+<pre><code class="language-python">    header = not path.exists()
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>header</code> now holds the result of <code>not path.exists()</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 174</h3>
+<pre><code class="language-python">    pd.DataFrame([row]).to_csv(path, mode=&quot;a&quot;, header=header, index=False)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>pd.DataFrame([row]).to_csv(path, mode="a", header=header, index=False)</code>.</p>
+<h3>Line 177</h3>
+<pre><code class="language-python">def cross_validate(X, y, feature_names, family_of, n_features=None,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>def cross_validate(X, y, feature_names, family_of, n_features=None,</code>.</p>
+<h3>Line 178</h3>
+<pre><code class="language-python">                   seeds=None, n_splits=None, verbose=True, groups=None,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seeds</code> now holds the result of <code>None, n_splits=None, verbose=True, groups=None,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 179</h3>
+<pre><code class="language-python">                   tag: str | None = None, experiment: str = &quot;unnamed&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>tag: str | None = None, experiment: str = "unnamed",</code>.</p>
+<h3>Line 180</h3>
+<pre><code class="language-python">                   deadline: float | None = None,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>deadline: float | None = None,</code>.</p>
+<h3>Line 181</h3>
+<pre><code class="language-python">                   champion_overrides: dict | None = None,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>champion_overrides: dict | None = None,</code>.</p>
+<h3>Line 182</h3>
+<pre><code class="language-python">                   return_oof: bool = False) -&gt; dict:
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>_oof: bool = False) -&gt; dict:</code>.</p>
+<h3>Lines 183–198</h3>
+<pre><code class="language-python">    &quot;&quot;&quot;Leakage-safe CV, resumable one fold at a time.
+
+    Every fold is written to `results/folds_&lt;tag&gt;.csv` as soon as it finishes,
+    and a fold already recorded there is skipped. That matters for two
+    reasons: a 5-seed run over the 408-column flank family takes about fifteen
+    minutes, longer than a dropped Colab session tends to survive; and it lets
+    a long experiment be built up over several sittings without ever
+    recomputing work. Pass `deadline` (an absolute time.time() value) to stop
+    cleanly partway and resume later -- the partial result is still
+    summarised, marked incomplete.
+
+    `champion_overrides` replaces named champion hyperparameters for this call
+    only -- used by `representation.py` to ask whether a deeper tree can
+    recover what a redundant encoding provides. It is deliberately not a config
+    setting: the frozen champion is an anchor, not a default to drift from.
+    &quot;&quot;&quot;
+</code></pre>
+<p><strong>Plain English:</strong> This is a <strong>docstring</strong> — a multi-line note describing the file or function. Python stores it as documentation but does not treat it as an instruction to compute something. Read it like a preface.</p>
+<h3>Line 199</h3>
+<pre><code class="language-python">    import xgboost as xgb
+</code></pre>
+<p><strong>Plain English:</strong> Load toolbox code: <code>import xgboost as xgb</code> — used here for <strong>the gradient-boosted tree learner</strong>.</p>
+<h3>Line 201</h3>
+<pre><code class="language-python">    n_features = n_features or config.N_FEATURES
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_features</code> now holds the result of <code>n_features or config.N_FEATURES</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 202</h3>
+<pre><code class="language-python">    seeds = seeds or config.SEEDS
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seeds</code> now holds the result of <code>seeds or config.SEEDS</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 203</h3>
+<pre><code class="language-python">    n_splits = n_splits or config.N_SPLITS
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_splits</code> now holds the result of <code>n_splits or config.N_SPLITS</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 205</h3>
+<pre><code class="language-python">    family_of = np.asarray(family_of)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>family_of</code> now holds the result of <code>np.asarray(family_of)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 206</h3>
+<pre><code class="language-python">    done = _load_checkpoint(tag)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>done</code> now holds the result of <code>_load_checkpoint(tag)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 207</h3>
+<pre><code class="language-python">    if len(done):
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>len(done)</code>.</p>
+<h3>Line 208</h3>
+<pre><code class="language-python">        done = done[done[&quot;experiment&quot;] == experiment]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>done</code> now holds the result of <code>done[done["experiment"] == experiment]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 209</h3>
+<pre><code class="language-python">    seen = set(zip(done.get(&quot;seed&quot;, []), done.get(&quot;fold&quot;, [])))
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seen</code> now holds the result of <code>set(zip(done.get("seed", []), done.get("fold", [])))</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 210</h3>
+<pre><code class="language-python">    fold_rows = done.to_dict(&quot;records&quot;) if len(done) else []
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>fold_rows</code> now holds the result of <code>done.to_dict("records") if len(done) else []</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 211</h3>
+<pre><code class="language-python">    if seen and verbose:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>seen and verbose</code>.</p>
+<h3>Line 212</h3>
+<pre><code class="language-python">        print(f&quot;    resuming: {len(seen)} of {len(seeds) * n_splits} folds already done&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(f"    resuming: {len(seen)} of {len(seeds) * n_splits} folds already done")</code>.</p>
+<h3>Line 214</h3>
+<pre><code class="language-python">    oof_pred = np.full(len(y), np.nan, dtype=float) if return_oof else None
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>oof_pred</code> now holds the result of <code>np.full(len(y), np.nan, dtype=float) if return_oof else None</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 215</h3>
+<pre><code class="language-python">    oof_y = np.full(len(y), np.nan, dtype=float) if return_oof else None
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>oof_y</code> now holds the result of <code>np.full(len(y), np.nan, dtype=float) if return_oof else None</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 217</h3>
+<pre><code class="language-python">    stopped_early = False
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>stopped_early</code> now holds the result of <code>False</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 218</h3>
+<pre><code class="language-python">    for seed in seeds:
+</code></pre>
+<p><strong>Plain English:</strong> Loop: repeat the indented block once for each item → <code>seed in seeds</code>.</p>
+<h3>Line 219</h3>
+<pre><code class="language-python">        if stopped_early:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>stopped_early</code>.</p>
+<h3>Line 220</h3>
+<pre><code class="language-python">            break
+</code></pre>
+<p><strong>Plain English:</strong> Leave the loop early.</p>
+<h3>Line 221</h3>
+<pre><code class="language-python">        if groups is None:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>groups is None</code>.</p>
+<h3>Line 222</h3>
+<pre><code class="language-python">            splitter = KFold(
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>splitter</code> now holds the result of <code>KFold(</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 223</h3>
+<pre><code class="language-python">                n_splits=n_splits, shuffle=True, random_state=seed
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_splits</code> now holds the result of <code>n_splits, shuffle=True, random_state=seed</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 224</h3>
+<pre><code class="language-python">            ).split(X)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>).split(X)</code>.</p>
+<h3>Line 225</h3>
+<pre><code class="language-python">        else:
+</code></pre>
+<p><strong>Plain English:</strong> Otherwise: run this indented block when none of the previous conditions matched.</p>
+<h3>Line 226</h3>
+<pre><code class="language-python">            splitter = grouped_folds(groups, n_splits, seed)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>splitter</code> now holds the result of <code>grouped_folds(groups, n_splits, seed)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 227</h3>
+<pre><code class="language-python">        for fold, (tr, va) in enumerate(splitter, start=1):
+</code></pre>
+<p><strong>Plain English:</strong> Loop: repeat the indented block once for each item → <code>fold, (tr, va) in enumerate(splitter, start=1)</code>.</p>
+<h3>Line 228</h3>
+<pre><code class="language-python">            if (seed, fold) in seen:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>(seed, fold) in seen</code>.</p>
+<h3>Line 229</h3>
+<pre><code class="language-python">                continue
+</code></pre>
+<p><strong>Plain English:</strong> Skip the rest of this loop iteration; jump to the next item.</p>
+<h3>Line 230</h3>
+<pre><code class="language-python">            if deadline and time.time() &gt; deadline:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>deadline and time.time() &gt; deadline</code>.</p>
+<h3>Line 231</h3>
+<pre><code class="language-python">                stopped_early = True
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>stopped_early</code> now holds the result of <code>True</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 232</h3>
+<pre><code class="language-python">                break
+</code></pre>
+<p><strong>Plain English:</strong> Leave the loop early.</p>
+<h3>Line 234</h3>
+<pre><code class="language-python">            X_tr, X_va = _impute(X[tr], X[va])
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>X_tr, X_va = _impute(X[tr], X[va])</code>.</p>
+<h3>Line 235</h3>
+<pre><code class="language-python">            y_tr, y_va = y[tr], y[va]
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>y_tr, y_va = y[tr], y[va]</code>.</p>
+<h3>Line 237</h3>
+<pre><code class="language-python">            selector = make_selector(seed)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>selector</code> now holds the result of <code>make_selector(seed)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 238</h3>
+<pre><code class="language-python">            selector.fit(X_tr, y_tr)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>selector.fit(X_tr, y_tr)</code>.</p>
+<h3>Line 239</h3>
+<pre><code class="language-python">            gains = selector.feature_importances_
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>gains</code> now holds the result of <code>selector.feature_importances_</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 240</h3>
+<pre><code class="language-python">            top = np.argsort(gains)[::-1][:n_features]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>top</code> now holds the result of <code>np.argsort(gains)[::-1][:n_features]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 241</h3>
+<pre><code class="language-python">            n_engineered = int((family_of[top] != &quot;base&quot;).sum())
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_engineered</code> now holds the result of <code>int((family_of[top] != "base").sum())</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 243</h3>
+<pre><code class="language-python">            params = champion_params(seed)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>params</code> now holds the result of <code>champion_params(seed)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 244</h3>
+<pre><code class="language-python">            if champion_overrides:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>champion_overrides</code>.</p>
+<h3>Line 245</h3>
+<pre><code class="language-python">                params.update(champion_overrides)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>params.update(champion_overrides)</code>.</p>
+<h3>Line 246</h3>
+<pre><code class="language-python">            model = xgb.XGBRegressor(**params)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>model</code> now holds the result of <code>xgb.XGBRegressor(**params)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 247</h3>
+<pre><code class="language-python">            model.fit(X_tr[:, top], y_tr)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>model.fit(X_tr[:, top], y_tr)</code>.</p>
+<h3>Line 248</h3>
+<pre><code class="language-python">            pred = model.predict(X_va[:, top])
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>pred</code> now holds the result of <code>model.predict(X_va[:, top])</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 249</h3>
+<pre><code class="language-python">            if return_oof:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>return_oof</code>.</p>
+<h3>Line 250</h3>
+<pre><code class="language-python">                oof_pred[va] = np.asarray(pred).ravel()
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>oof_pred[va]</code> now holds the result of <code>np.asarray(pred).ravel()</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 251</h3>
+<pre><code class="language-python">                oof_y[va] = y_va
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>oof_y[va]</code> now holds the result of <code>y_va</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 253</h3>
+<pre><code class="language-python">            row = dict(
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>row</code> now holds the result of <code>dict(</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 254</h3>
+<pre><code class="language-python">                experiment=experiment, seed=seed, fold=fold,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>experiment</code> now holds the result of <code>experiment, seed=seed, fold=fold,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 255</h3>
+<pre><code class="language-python">                r2=r2_score(y_va, pred),
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>r2</code> now holds the result of <code>r2_score(y_va, pred),</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 256</h3>
+<pre><code class="language-python">                spearman=_safe_spearman(y_va, pred),
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>spearman</code> now holds the result of <code>_safe_spearman(y_va, pred),</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 257</h3>
+<pre><code class="language-python">                pearson=_safe_pearson(y_va, pred),
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>pearson</code> now holds the result of <code>_safe_pearson(y_va, pred),</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 258</h3>
+<pre><code class="language-python">                mse=mean_squared_error(y_va, pred),
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>mse</code> now holds the result of <code>mean_squared_error(y_va, pred),</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 259</h3>
+<pre><code class="language-python">                n_engineered_selected=n_engineered,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_engineered_selected</code> now holds the result of <code>n_engineered,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 260</h3>
+<pre><code class="language-python">            )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 261</h3>
+<pre><code class="language-python">            fold_rows.append(row)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>fold_rows.append(row)</code>.</p>
+<h3>Line 262</h3>
+<pre><code class="language-python">            _append_checkpoint(tag, row)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>_append_checkpoint(tag, row)</code>.</p>
+<h3>Line 263</h3>
+<pre><code class="language-python">        if verbose and not stopped_early:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>verbose and not stopped_early</code>.</p>
+<h3>Line 264</h3>
+<pre><code class="language-python">            last = [r for r in fold_rows if r[&quot;seed&quot;] == seed]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>last</code> now holds the result of <code>[r for r in fold_rows if r["seed"] == seed]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 265</h3>
+<pre><code class="language-python">            if last:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>last</code>.</p>
+<h3>Line 266</h3>
+<pre><code class="language-python">                print(
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(</code>.</p>
+<h3>Line 267</h3>
+<pre><code class="language-python">                    f&quot;    seed {seed}: R2 {np.mean([r['r2'] for r in last]):.4f}  &quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"    seed {seed}: R2 {np.mean([r['r2'] for r in last]):.4f}  "</code>.</p>
+<h3>Line 268</h3>
+<pre><code class="language-python">                    f&quot;rho {np.mean([r['spearman'] for r in last]):.4f}&quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"rho {np.mean([r['spearman'] for r in last]):.4f}"</code>.</p>
+<h3>Line 269</h3>
+<pre><code class="language-python">                )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 271</h3>
+<pre><code class="language-python">    folds = pd.DataFrame(fold_rows)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>folds</code> now holds the result of <code>pd.DataFrame(fold_rows)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 272</h3>
+<pre><code class="language-python">    complete = len(folds) == len(seeds) * n_splits
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>complete</code> now holds the result of <code>len(folds) == len(seeds) * n_splits</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 273</h3>
+<pre><code class="language-python">    if not complete and verbose:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>not complete and verbose</code>.</p>
+<h3>Line 274</h3>
+<pre><code class="language-python">        print(f&quot;    INCOMPLETE: {len(folds)} / {len(seeds) * n_splits} folds. &quot;
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(f"    INCOMPLETE: {len(folds)} / {len(seeds) * n_splits} folds. "</code>.</p>
+<h3>Line 275</h3>
+<pre><code class="language-python">              f&quot;Re-run the same call to continue.&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"Re-run the same call to continue.")</code>.</p>
+<h3>Line 276</h3>
+<pre><code class="language-python">    per_seed = folds.groupby(&quot;seed&quot;)[[&quot;r2&quot;, &quot;spearman&quot;, &quot;pearson&quot;, &quot;mse&quot;]].mean()
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>per_seed</code> now holds the result of <code>folds.groupby("seed")[["r2", "spearman", "pearson", "mse"]].mean()</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 277</h3>
+<pre><code class="language-python">    out = dict(
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>out</code> now holds the result of <code>dict(</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 278</h3>
+<pre><code class="language-python">        folds=folds,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>folds</code> now holds the result of <code>folds,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 279</h3>
+<pre><code class="language-python">        per_seed=per_seed,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>per_seed</code> now holds the result of <code>per_seed,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 280</h3>
+<pre><code class="language-python">        complete=complete,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>complete</code> now holds the result of <code>complete,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 281</h3>
+<pre><code class="language-python">        n_folds_done=len(folds),
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_folds_done</code> now holds the result of <code>len(folds),</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 282</h3>
+<pre><code class="language-python">        summary={
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>summary</code> now holds the result of <code>{</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 283</h3>
+<pre><code class="language-python">            m: dict(mean=float(per_seed[m].mean()), sd=float(per_seed[m].std()))
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>m: dict(mean=float(per_seed[m].mean()), sd=float(per_seed[m].std()))</code>.</p>
+<h3>Line 284</h3>
+<pre><code class="language-python">            for m in (&quot;r2&quot;, &quot;spearman&quot;, &quot;pearson&quot;, &quot;mse&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Loop: repeat the indented block once for each item → <code>m in ("r2", "spearman", "pearson", "mse")</code>.</p>
+<h3>Line 285</h3>
+<pre><code class="language-python">        },
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>},</code>.</p>
+<h3>Line 286</h3>
+<pre><code class="language-python">        selected={&quot;engineered&quot;: float(folds[&quot;n_engineered_selected&quot;].mean())
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>selected</code> now holds the result of <code>{"engineered": float(folds["n_engineered_selected"].mean())</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 287</h3>
+<pre><code class="language-python">                  if len(folds) else 0.0},
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>len(folds) else 0.0},</code>.</p>
+<h3>Line 288</h3>
+<pre><code class="language-python">    )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 289</h3>
+<pre><code class="language-python">    if return_oof:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>return_oof</code>.</p>
+<h3>Line 290</h3>
+<pre><code class="language-python">        out[&quot;oof_pred&quot;] = oof_pred
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>out["oof_pred"]</code> now holds the result of <code>oof_pred</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 291</h3>
+<pre><code class="language-python">        out[&quot;oof_y&quot;] = oof_y
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>out["oof_y"]</code> now holds the result of <code>oof_y</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 292</h3>
+<pre><code class="language-python">    return out
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>out</code>.</p>
+<h3>Line 295</h3>
+<pre><code class="language-python">def _permute_families(X, family_of, families, seed=0):
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>_permute_families</code>. Inputs in parentheses: <code>X, family_of, families, seed=0</code>. Nothing runs yet until something <em>calls</em> <code>_permute_families(...)</code>.</p>
+<h3>Line 296</h3>
+<pre><code class="language-python">    &quot;&quot;&quot;Shuffle the rows of the engineered columns -- the noise floor.&quot;&quot;&quot;
+</code></pre>
+<p><strong>Plain English:</strong> A short documentation string attached to the nearest function/module: Shuffle the rows of the engineered columns -- the noise floor.</p>
+<h3>Line 297</h3>
+<pre><code class="language-python">    rng = np.random.default_rng(seed)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>rng</code> now holds the result of <code>np.random.default_rng(seed)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 298</h3>
+<pre><code class="language-python">    X = X.copy()
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>X</code> now holds the result of <code>X.copy()</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 299</h3>
+<pre><code class="language-python">    fam = np.asarray(family_of)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>fam</code> now holds the result of <code>np.asarray(family_of)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 300</h3>
+<pre><code class="language-python">    idx = np.where(np.isin(fam, families))[0]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>idx</code> now holds the result of <code>np.where(np.isin(fam, families))[0]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 301</h3>
+<pre><code class="language-python">    if idx.size:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>idx.size</code>.</p>
+<h3>Line 302</h3>
+<pre><code class="language-python">        X[:, idx] = X[rng.permutation(X.shape[0])][:, idx]
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>X[:, idx] = X[rng.permutation(X.shape[0])][:, idx]</code>.</p>
+<h3>Line 303</h3>
+<pre><code class="language-python">    return X
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>X</code>.</p>
+<h3>Line 306</h3>
+<pre><code class="language-python"># --------------------------------------------------------------------------
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): --------------------------------------------------------------------------</p>
+<h3>Line 307</h3>
+<pre><code class="language-python"># Experiment driver
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): Experiment driver</p>
+<h3>Line 308</h3>
+<pre><code class="language-python"># --------------------------------------------------------------------------
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): --------------------------------------------------------------------------</p>
+<h3>Line 311</h3>
+<pre><code class="language-python">GROUP_CHOICES = {&quot;gene&quot;: None, &quot;bin5k&quot;: 5_000, &quot;bin100k&quot;: 100_000,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>GROUP_CHOICES</code> now holds the result of <code>{"gene": None, "bin5k": 5_000, "bin100k": 100_000,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 312</h3>
+<pre><code class="language-python">                 &quot;bin500k&quot;: 500_000, &quot;arc5&quot;: &quot;arc&quot;}
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>"bin500k": 500_000, "arc5": "arc"}</code>.</p>
+<h3>Line 315</h3>
+<pre><code class="language-python">def load_groups(ids, by: str = &quot;gene&quot;) -&gt; np.ndarray:
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>load_groups</code>. Inputs in parentheses: <code>ids, by: str = "gene"</code>. Returns type hint: np.ndarray. Nothing runs yet until something <em>calls</em> <code>load_groups(...)</code>.</p>
+<h3>Lines 316–328</h3>
+<pre><code class="language-python">    &quot;&quot;&quot;Group label per guide, for grouped cross-validation.
+
+    `gene` holds out whole genes. `bin100k` / `bin500k` hold out contiguous
+    chromosome blocks, which is the stricter test for anything positional:
+    neighbouring genes sit in the same supercoiling domain and the same Hi-C
+    neighbourhood, so gene-level grouping alone does not separate them.
+
+    `arc5` is the strictest: it cuts the chromosome into five contiguous arcs,
+    so with `n_splits=5` each fold holds out one whole arc. Blocked schemes
+    still let the model *interpolate* a smooth ori-to-ter trend from the
+    blocks either side; holding out a contiguous fifth forces extrapolation
+    instead. Use it to check any claim that a positional feature generalises.
+    &quot;&quot;&quot;
+</code></pre>
+<p><strong>Plain English:</strong> This is a <strong>docstring</strong> — a multi-line note describing the file or function. Python stores it as documentation but does not treat it as an instruction to compute something. Read it like a preface.</p>
+<h3>Line 329</h3>
+<pre><code class="language-python">    from ..io_utils import load_guide_index
+</code></pre>
+<p><strong>Plain English:</strong> Load an external or local module: <code>from ..io_utils import load_guide_index</code>.</p>
+<h3>Line 331</h3>
+<pre><code class="language-python">    idx = load_guide_index().set_index(config.ID_COL)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>idx</code> now holds the result of <code>load_guide_index().set_index(config.ID_COL)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 332</h3>
+<pre><code class="language-python">    if by == &quot;gene&quot;:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>by == "gene"</code>.</p>
+<h3>Line 333</h3>
+<pre><code class="language-python">        series = idx.reindex(ids)[&quot;b_number&quot;]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>series</code> now holds the result of <code>idx.reindex(ids)["b_number"]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 334</h3>
+<pre><code class="language-python">    elif by == &quot;arc5&quot;:
+</code></pre>
+<p><strong>Plain English:</strong> Otherwise-if: another condition to try if previous <code>if</code>/<code>elif</code> failed → <code>by == "arc5"</code>.</p>
+<h3>Line 335</h3>
+<pre><code class="language-python">        from ..build import genome
+</code></pre>
+<p><strong>Plain English:</strong> Load a project module from this repo: <code>from ..build import genome</code>.</p>
+<h3>Line 337</h3>
+<pre><code class="language-python">        size = genome.genome_length() / 5
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>size</code> now holds the result of <code>genome.genome_length() / 5</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 338</h3>
+<pre><code class="language-python">        # clamp so the final base does not spill into a sixth, one-guide arc
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): clamp so the final base does not spill into a sixth, one-guide arc</p>
+<h3>Line 339</h3>
+<pre><code class="language-python">        series = (((idx.reindex(ids)[&quot;left&quot;] - 1) // size)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>series</code> now holds the result of <code>(((idx.reindex(ids)["left"] - 1) // size)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 340</h3>
+<pre><code class="language-python">                  .clip(upper=4).astype(&quot;Int64&quot;))
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>.clip(upper=4).astype("Int64"))</code>.</p>
+<h3>Line 341</h3>
+<pre><code class="language-python">    else:
+</code></pre>
+<p><strong>Plain English:</strong> Otherwise: run this indented block when none of the previous conditions matched.</p>
+<h3>Line 342</h3>
+<pre><code class="language-python">        size = GROUP_CHOICES.get(by)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>size</code> now holds the result of <code>GROUP_CHOICES.get(by)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 343</h3>
+<pre><code class="language-python">        if size is None:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>size is None</code>.</p>
+<h3>Line 344</h3>
+<pre><code class="language-python">            raise ValueError(f&quot;Unknown grouping {by!r}; choose from {list(GROUP_CHOICES)}&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Stop and report a problem on purpose → <code>ValueError(f"Unknown grouping {by!r}; choose from {list(GROUP_CHOICES)}")</code>.</p>
+<h3>Line 345</h3>
+<pre><code class="language-python">        series = (idx.reindex(ids)[&quot;left&quot;] // size).astype(&quot;Int64&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>series</code> now holds the result of <code>(idx.reindex(ids)["left"] // size).astype("Int64")</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 346</h3>
+<pre><code class="language-python">    # One guide has a missing QCT descriptor and so no genomic position. Left
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): One guide has a missing QCT descriptor and so no genomic position. Left</p>
+<h3>Line 347</h3>
+<pre><code class="language-python">    # as its own group it becomes a one-row validation fold, which crashes the
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): as its own group it becomes a one-row validation fold, which crashes the</p>
+<h3>Line 348</h3>
+<pre><code class="language-python">    # correlation metrics; fold it into the largest group instead.
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): correlation metrics; fold it into the largest group instead.</p>
+<h3>Line 349</h3>
+<pre><code class="language-python">    labels = series.astype(str).replace({&quot;&lt;NA&gt;&quot;: None})
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>labels</code> now holds the result of <code>series.astype(str).replace({"&lt;NA&gt;": None})</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 350</h3>
+<pre><code class="language-python">    if labels.isna().any():
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>labels.isna().any()</code>.</p>
+<h3>Line 351</h3>
+<pre><code class="language-python">        labels = labels.fillna(labels.mode().iloc[0])
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>labels</code> now holds the result of <code>labels.fillna(labels.mode().iloc[0])</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 352</h3>
+<pre><code class="language-python">    return labels.to_numpy()
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>labels.to_numpy()</code>.</p>
+<h3>Line 355</h3>
+<pre><code class="language-python">def run(families, together=False, permute=False, n_features=None,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>def run(families, together=False, permute=False, n_features=None,</code>.</p>
+<h3>Line 356</h3>
+<pre><code class="language-python">        seeds=None, n_splits=None, tag=None, force=False,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seeds</code> now holds the result of <code>None, n_splits=None, tag=None, force=False,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 357</h3>
+<pre><code class="language-python">        group_by=None, time_budget=None, label=None) -&gt; pd.DataFrame:
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>group_by</code> now holds the result of <code>None, time_budget=None, label=None) -&gt; pd.DataFrame:</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Lines 358–364</h3>
+<pre><code class="language-python">    &quot;&quot;&quot;Run the requested experiments, appending to results/ablation_&lt;tag&gt;.csv.
+
+    Results accumulate across invocations: an experiment already present in
+    the file is skipped unless --force. That makes a long sweep restartable,
+    which matters on Colab (sessions drop) and lets you add a family later
+    without re-running everything.
+    &quot;&quot;&quot;
+</code></pre>
+<p><strong>Plain English:</strong> This is a <strong>docstring</strong> — a multi-line note describing the file or function. Python stores it as documentation but does not treat it as an instruction to compute something. Read it like a preface.</p>
+<h3>Line 365</h3>
+<pre><code class="language-python">    experiments: list[tuple[str, list[str]]] = [(&quot;baseline&quot;, [])]
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>experiments: list[tuple[str, list[str]]] = [("baseline", [])]</code>.</p>
+<h3>Line 366</h3>
+<pre><code class="language-python">    if families:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>families</code>.</p>
+<h3>Line 367</h3>
+<pre><code class="language-python">        if together:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>together</code>.</p>
+<h3>Line 368</h3>
+<pre><code class="language-python">            experiments.append((&quot;+&quot;.join(families), list(families)))
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>experiments.append(("+".join(families), list(families)))</code>.</p>
+<h3>Line 369</h3>
+<pre><code class="language-python">        else:
+</code></pre>
+<p><strong>Plain English:</strong> Otherwise: run this indented block when none of the previous conditions matched.</p>
+<h3>Line 370</h3>
+<pre><code class="language-python">            experiments += [(f, [f]) for f in families]
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>experiments += [(f, [f]) for f in families]</code>.</p>
+<h3>Line 372</h3>
+<pre><code class="language-python">    tag = tag or datetime.now().strftime(&quot;%Y%m%d-%H%M%S&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>tag</code> now holds the result of <code>tag or datetime.now().strftime("%Y%m%d-%H%M%S")</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 373</h3>
+<pre><code class="language-python">    out = config.RESULTS / f&quot;ablation_{tag}.csv&quot;
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>out</code> now holds the result of <code>config.RESULTS / f"ablation_{tag}.csv"</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 374</h3>
+<pre><code class="language-python">    # One deadline for the whole call, shared by every experiment in it, so a
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): One deadline for the whole call, shared by every experiment in it, so a</p>
+<h3>Line 375</h3>
+<pre><code class="language-python">    # sweep of ten families still returns inside the budget instead of
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): sweep of ten families still returns inside the budget instead of</p>
+<h3>Line 376</h3>
+<pre><code class="language-python">    # spending the budget ten times over.
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): spending the budget ten times over.</p>
+<h3>Line 377</h3>
+<pre><code class="language-python">    deadline = (time.time() + time_budget) if time_budget else None
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>deadline</code> now holds the result of <code>(time.time() + time_budget) if time_budget else None</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 379</h3>
+<pre><code class="language-python">    rows: list[dict] = []
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>rows: list[dict] = []</code>.</p>
+<h3>Line 380</h3>
+<pre><code class="language-python">    if out.exists() and not force:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>out.exists() and not force</code>.</p>
+<h3>Line 381</h3>
+<pre><code class="language-python">        rows = pd.read_csv(out).to_dict(&quot;records&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>rows</code> now holds the result of <code>pd.read_csv(out).to_dict("records")</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 383</h3>
+<pre><code class="language-python">    # What counts as done is decided by the FOLD checkpoint, not by the summary
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): What counts as done is decided by the FOLD checkpoint, not by the summary</p>
+<h3>Line 384</h3>
+<pre><code class="language-python">    # file. A row can land in the summary while its experiment is still short of
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): file. A row can land in the summary while its experiment is still short of</p>
+<h3>Line 385</h3>
+<pre><code class="language-python">    # folds (that used to happen to permuted controls), and trusting the summary
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): folds (that used to happen to permuted controls), and trusting the summary</p>
+<h3>Line 386</h3>
+<pre><code class="language-python">    # then blocked it from ever finishing.
+</code></pre>
+<p><strong>Plain English:</strong> Human-only note (Python ignores it): then blocked it from ever finishing.</p>
+<h3>Line 387</h3>
+<pre><code class="language-python">    expected = len(seeds or config.SEEDS) * (n_splits or config.N_SPLITS)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>expected</code> now holds the result of <code>len(seeds or config.SEEDS) * (n_splits or config.N_SPLITS)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 388</h3>
+<pre><code class="language-python">    done: set[str] = set()
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>done: set[str] = set()</code>.</p>
+<h3>Line 389</h3>
+<pre><code class="language-python">    if not force:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>not force</code>.</p>
+<h3>Line 390</h3>
+<pre><code class="language-python">        checkpoint = _load_checkpoint(tag)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>checkpoint</code> now holds the result of <code>_load_checkpoint(tag)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 391</h3>
+<pre><code class="language-python">        if len(checkpoint):
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>len(checkpoint)</code>.</p>
+<h3>Line 392</h3>
+<pre><code class="language-python">            counts = checkpoint.groupby(&quot;experiment&quot;).size()
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>counts</code> now holds the result of <code>checkpoint.groupby("experiment").size()</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 393</h3>
+<pre><code class="language-python">            done = set(counts[counts &gt;= expected].index)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>done</code> now holds the result of <code>set(counts[counts &gt;= expected].index)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 394</h3>
+<pre><code class="language-python">    if done:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>done</code>.</p>
+<h3>Line 395</h3>
+<pre><code class="language-python">        print(f&quot;Resuming {out.name}: {len(done)} experiment(s) complete &quot;
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(f"Resuming {out.name}: {len(done)} experiment(s) complete "</code>.</p>
+<h3>Line 396</h3>
+<pre><code class="language-python">              f&quot;({expected} folds each)&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"({expected} folds each)")</code>.</p>
+<h3>Line 398</h3>
+<pre><code class="language-python">    for exp_label, fams in experiments:
+</code></pre>
+<p><strong>Plain English:</strong> Loop: repeat the indented block once for each item → <code>exp_label, fams in experiments</code>.</p>
+<h3>Line 399</h3>
+<pre><code class="language-python">        if deadline and time.time() &gt; deadline:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>deadline and time.time() &gt; deadline</code>.</p>
+<h3>Line 400</h3>
+<pre><code class="language-python">            print(&quot;\n=== time budget reached; re-run the same call to continue&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print("\n=== time budget reached; re-run the same call to continue")</code>.</p>
+<h3>Line 401</h3>
+<pre><code class="language-python">            break
+</code></pre>
+<p><strong>Plain English:</strong> Leave the loop early.</p>
+<h3>Line 402</h3>
+<pre><code class="language-python">        need_main = exp_label not in done
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>need_main</code> now holds the result of <code>exp_label not in done</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 403</h3>
+<pre><code class="language-python">        need_perm = permute and bool(fams) and (exp_label + &quot; (permuted)&quot;) not in done
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>need_perm</code> now holds the result of <code>permute and bool(fams) and (exp_label + " (permuted)") not in done</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 404</h3>
+<pre><code class="language-python">        if not need_main and not need_perm:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>not need_main and not need_perm</code>.</p>
+<h3>Line 405</h3>
+<pre><code class="language-python">            print(f&quot;\n=== {exp_label}: already in {out.name}, skipping&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(f"\n=== {exp_label}: already in {out.name}, skipping")</code>.</p>
+<h3>Line 406</h3>
+<pre><code class="language-python">            continue
+</code></pre>
+<p><strong>Plain English:</strong> Skip the rest of this loop iteration; jump to the next item.</p>
+<h3>Line 407</h3>
+<pre><code class="language-python">        print(f&quot;\n=== {exp_label} &quot; + &quot;=&quot; * max(0, 58 - len(exp_label)))
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(f"\n=== {exp_label} " + "=" * max(0, 58 - len(exp_label)))</code>.</p>
+<h3>Line 408</h3>
+<pre><code class="language-python">        X, y, names, ids, family_of = load_dataset(fams, verbose=True, label=label)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>X, y, names, ids, family_of = load_dataset(fams, verbose=True, label=label)</code>.</p>
+<h3>Line 409</h3>
+<pre><code class="language-python">        print(f&quot;  matrix {X.shape[0]:,} x {X.shape[1]:,}&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(f"  matrix {X.shape[0]:,} x {X.shape[1]:,}")</code>.</p>
+<h3>Line 411</h3>
+<pre><code class="language-python">        groups = load_groups(ids, group_by) if group_by else None
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>groups</code> now holds the result of <code>load_groups(ids, group_by) if group_by else None</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 412</h3>
+<pre><code class="language-python">        if groups is not None:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>groups is not None</code>.</p>
+<h3>Line 413</h3>
+<pre><code class="language-python">            print(f&quot;  grouped CV by {group_by}: {len(set(groups)):,} groups&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(f"  grouped CV by {group_by}: {len(set(groups)):,} groups")</code>.</p>
+<h3>Line 415</h3>
+<pre><code class="language-python">        if need_main:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>need_main</code>.</p>
+<h3>Line 416</h3>
+<pre><code class="language-python">            t0 = time.time()
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>t0</code> now holds the result of <code>time.time()</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 417</h3>
+<pre><code class="language-python">            res = cross_validate(X, y, names, family_of, n_features=n_features,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>res</code> now holds the result of <code>cross_validate(X, y, names, family_of, n_features=n_features,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 418</h3>
+<pre><code class="language-python">                                 seeds=seeds, n_splits=n_splits, groups=groups,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seeds</code> now holds the result of <code>seeds, n_splits=n_splits, groups=groups,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 419</h3>
+<pre><code class="language-python">                                 tag=tag, experiment=exp_label, deadline=deadline)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>tag</code> now holds the result of <code>tag, experiment=exp_label, deadline=deadline)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 420</h3>
+<pre><code class="language-python">            s = res[&quot;summary&quot;]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>s</code> now holds the result of <code>res["summary"]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 421</h3>
+<pre><code class="language-python">            row = dict(
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>row</code> now holds the result of <code>dict(</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 422</h3>
+<pre><code class="language-python">                experiment=exp_label,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>experiment</code> now holds the result of <code>exp_label,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 423</h3>
+<pre><code class="language-python">                n_columns=X.shape[1],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_columns</code> now holds the result of <code>X.shape[1],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 424</h3>
+<pre><code class="language-python">                r2=s[&quot;r2&quot;][&quot;mean&quot;], r2_sd=s[&quot;r2&quot;][&quot;sd&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>r2</code> now holds the result of <code>s["r2"]["mean"], r2_sd=s["r2"]["sd"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 425</h3>
+<pre><code class="language-python">                spearman=s[&quot;spearman&quot;][&quot;mean&quot;], spearman_sd=s[&quot;spearman&quot;][&quot;sd&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>spearman</code> now holds the result of <code>s["spearman"]["mean"], spearman_sd=s["spearman"]["sd"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 426</h3>
+<pre><code class="language-python">                pearson=s[&quot;pearson&quot;][&quot;mean&quot;], mse=s[&quot;mse&quot;][&quot;mean&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>pearson</code> now holds the result of <code>s["pearson"]["mean"], mse=s["mse"]["mean"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 427</h3>
+<pre><code class="language-python">                selected_from_family=res[&quot;selected&quot;][&quot;engineered&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>selected_from_family</code> now holds the result of <code>res["selected"]["engineered"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 428</h3>
+<pre><code class="language-python">                folds_done=res[&quot;n_folds_done&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>folds_done</code> now holds the result of <code>res["n_folds_done"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 429</h3>
+<pre><code class="language-python">                complete=res[&quot;complete&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>complete</code> now holds the result of <code>res["complete"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 430</h3>
+<pre><code class="language-python">                seconds=round(time.time() - t0),
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seconds</code> now holds the result of <code>round(time.time() - t0),</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 431</h3>
+<pre><code class="language-python">                permuted=False,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>permuted</code> now holds the result of <code>False,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 432</h3>
+<pre><code class="language-python">            )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 433</h3>
+<pre><code class="language-python">            if res[&quot;complete&quot;]:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>res["complete"]</code>.</p>
+<h3>Line 434</h3>
+<pre><code class="language-python">                rows = [r for r in rows if r.get(&quot;experiment&quot;) != exp_label]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>rows</code> now holds the result of <code>[r for r in rows if r.get("experiment") != exp_label]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 435</h3>
+<pre><code class="language-python">                rows.append(row)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>rows.append(row)</code>.</p>
+<h3>Line 436</h3>
+<pre><code class="language-python">            else:
+</code></pre>
+<p><strong>Plain English:</strong> Otherwise: run this indented block when none of the previous conditions matched.</p>
+<h3>Line 437</h3>
+<pre><code class="language-python">                print(&quot;    not recorded in the summary until all folds finish&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print("    not recorded in the summary until all folds finish")</code>.</p>
+<h3>Line 438</h3>
+<pre><code class="language-python">            print(
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(</code>.</p>
+<h3>Line 439</h3>
+<pre><code class="language-python">                f&quot;  R2 {row['r2']:.4f} +/- {row['r2_sd']:.4f}   &quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"  R2 {row['r2']:.4f} +/- {row['r2_sd']:.4f}   "</code>.</p>
+<h3>Line 440</h3>
+<pre><code class="language-python">                f&quot;rho {row['spearman']:.4f} +/- {row['spearman_sd']:.4f}   &quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"rho {row['spearman']:.4f} +/- {row['spearman_sd']:.4f}   "</code>.</p>
+<h3>Line 441</h3>
+<pre><code class="language-python">                f&quot;({row['selected_from_family']:.1f} engineered columns in the top &quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"({row['selected_from_family']:.1f} engineered columns in the top "</code>.</p>
+<h3>Line 442</h3>
+<pre><code class="language-python">                f&quot;{n_features or config.N_FEATURES})&quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"{n_features or config.N_FEATURES})"</code>.</p>
+<h3>Line 443</h3>
+<pre><code class="language-python">            )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 445</h3>
+<pre><code class="language-python">        if need_perm:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>need_perm</code>.</p>
+<h3>Line 446</h3>
+<pre><code class="language-python">            print(f&quot;  permuted control for {exp_label} ...&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(f"  permuted control for {exp_label} ...")</code>.</p>
+<h3>Line 447</h3>
+<pre><code class="language-python">            Xp = _permute_families(X, family_of, fams)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>Xp</code> now holds the result of <code>_permute_families(X, family_of, fams)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 448</h3>
+<pre><code class="language-python">            resp = cross_validate(Xp, y, names, family_of, n_features=n_features,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>resp</code> now holds the result of <code>cross_validate(Xp, y, names, family_of, n_features=n_features,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 449</h3>
+<pre><code class="language-python">                                  seeds=seeds, n_splits=n_splits, verbose=False,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seeds</code> now holds the result of <code>seeds, n_splits=n_splits, verbose=False,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 450</h3>
+<pre><code class="language-python">                                  groups=groups, tag=tag,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>groups</code> now holds the result of <code>groups, tag=tag,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 451</h3>
+<pre><code class="language-python">                                  experiment=exp_label + &quot; (permuted)&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>experiment</code> now holds the result of <code>exp_label + " (permuted)",</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 452</h3>
+<pre><code class="language-python">                                  deadline=deadline)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>deadline</code> now holds the result of <code>deadline)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 453</h3>
+<pre><code class="language-python">            sp = resp[&quot;summary&quot;]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>sp</code> now holds the result of <code>resp["summary"]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 454</h3>
+<pre><code class="language-python">            rows = [r for r in rows
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>rows</code> now holds the result of <code>[r for r in rows</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 455</h3>
+<pre><code class="language-python">                    if r.get(&quot;experiment&quot;) != exp_label + &quot; (permuted)&quot;]
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>r.get("experiment") != exp_label + " (permuted)"]</code>.</p>
+<h3>Line 456</h3>
+<pre><code class="language-python">            rows.append(
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>rows.append(</code>.</p>
+<h3>Line 457</h3>
+<pre><code class="language-python">                dict(
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>dict(</code>.</p>
+<h3>Line 458</h3>
+<pre><code class="language-python">                    experiment=exp_label + &quot; (permuted)&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>experiment</code> now holds the result of <code>exp_label + " (permuted)",</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 459</h3>
+<pre><code class="language-python">                    n_columns=X.shape[1],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_columns</code> now holds the result of <code>X.shape[1],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 460</h3>
+<pre><code class="language-python">                    r2=sp[&quot;r2&quot;][&quot;mean&quot;], r2_sd=sp[&quot;r2&quot;][&quot;sd&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>r2</code> now holds the result of <code>sp["r2"]["mean"], r2_sd=sp["r2"]["sd"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 461</h3>
+<pre><code class="language-python">                    spearman=sp[&quot;spearman&quot;][&quot;mean&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>spearman</code> now holds the result of <code>sp["spearman"]["mean"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 462</h3>
+<pre><code class="language-python">                    spearman_sd=sp[&quot;spearman&quot;][&quot;sd&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>spearman_sd</code> now holds the result of <code>sp["spearman"]["sd"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 463</h3>
+<pre><code class="language-python">                    pearson=sp[&quot;pearson&quot;][&quot;mean&quot;], mse=sp[&quot;mse&quot;][&quot;mean&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>pearson</code> now holds the result of <code>sp["pearson"]["mean"], mse=sp["mse"]["mean"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 464</h3>
+<pre><code class="language-python">                    selected_from_family=resp[&quot;selected&quot;][&quot;engineered&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>selected_from_family</code> now holds the result of <code>resp["selected"]["engineered"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 465</h3>
+<pre><code class="language-python">                    folds_done=resp[&quot;n_folds_done&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>folds_done</code> now holds the result of <code>resp["n_folds_done"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 466</h3>
+<pre><code class="language-python">                    complete=resp[&quot;complete&quot;],
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>complete</code> now holds the result of <code>resp["complete"],</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 467</h3>
+<pre><code class="language-python">                    seconds=0, permuted=True,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seconds</code> now holds the result of <code>0, permuted=True,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 468</h3>
+<pre><code class="language-python">                )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 469</h3>
+<pre><code class="language-python">            )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 470</h3>
+<pre><code class="language-python">            if not resp[&quot;complete&quot;]:
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>not resp["complete"]</code>.</p>
+<h3>Line 471</h3>
+<pre><code class="language-python">                rows = [r for r in rows
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>rows</code> now holds the result of <code>[r for r in rows</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 472</h3>
+<pre><code class="language-python">                        if r.get(&quot;experiment&quot;) != exp_label + &quot; (permuted)&quot;]
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>r.get("experiment") != exp_label + " (permuted)"]</code>.</p>
+<h3>Line 473</h3>
+<pre><code class="language-python">                print(&quot;    permuted control incomplete; re-run to finish it&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print("    permuted control incomplete; re-run to finish it")</code>.</p>
+<h3>Line 474</h3>
+<pre><code class="language-python">            print(
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(</code>.</p>
+<h3>Line 475</h3>
+<pre><code class="language-python">                f&quot;  permuted: R2 {sp['r2']['mean']:.4f}   &quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"  permuted: R2 {sp['r2']['mean']:.4f}   "</code>.</p>
+<h3>Line 476</h3>
+<pre><code class="language-python">                f&quot;rho {sp['spearman']['mean']:.4f}&quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"rho {sp['spearman']['mean']:.4f}"</code>.</p>
+<h3>Line 477</h3>
+<pre><code class="language-python">            )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 479</h3>
+<pre><code class="language-python">    table = pd.DataFrame(rows)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>table</code> now holds the result of <code>pd.DataFrame(rows)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 480</h3>
+<pre><code class="language-python">    if &quot;baseline&quot; in set(table[&quot;experiment&quot;]):
+</code></pre>
+<p><strong>Plain English:</strong> Decision: run the indented block only when this condition is true → <code>"baseline" in set(table["experiment"])</code>.</p>
+<h3>Line 481</h3>
+<pre><code class="language-python">        base = table.loc[table[&quot;experiment&quot;] == &quot;baseline&quot;].iloc[0]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>base</code> now holds the result of <code>table.loc[table["experiment"] == "baseline"].iloc[0]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 482</h3>
+<pre><code class="language-python">        table[&quot;d_r2&quot;] = table[&quot;r2&quot;] - base[&quot;r2&quot;]
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>table["d_r2"]</code> now holds the result of <code>table["r2"] - base["r2"]</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 483</h3>
+<pre><code class="language-python">        table[&quot;d_spearman&quot;] = table[&quot;spearman&quot;] - base[&quot;spearman&quot;]
+</code></pre>
+<p><strong>Plain English:</strong> Δ Spearman vs the baseline arm in the same run — the number that decides if a family helped.</p>
+<h3>Line 484</h3>
+<pre><code class="language-python">    else:
+</code></pre>
+<p><strong>Plain English:</strong> Otherwise: run this indented block when none of the previous conditions matched.</p>
+<h3>Line 485</h3>
+<pre><code class="language-python">        table[&quot;d_r2&quot;] = np.nan
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>table["d_r2"]</code> now holds the result of <code>np.nan</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 486</h3>
+<pre><code class="language-python">        table[&quot;d_spearman&quot;] = np.nan
+</code></pre>
+<p><strong>Plain English:</strong> Δ Spearman vs the baseline arm in the same run — the number that decides if a family helped.</p>
+<h3>Line 488</h3>
+<pre><code class="language-python">    table.to_csv(out, index=False)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>table.to_csv(out, index=False)</code>.</p>
+<h3>Line 489</h3>
+<pre><code class="language-python">    (config.RESULTS / f&quot;ablation_{tag}_settings.json&quot;).write_text(
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>(config.RESULTS / f"ablation_{tag}_settings.json").write_text(</code>.</p>
+<h3>Line 490</h3>
+<pre><code class="language-python">        json.dumps(
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>json.dumps(</code>.</p>
+<h3>Line 491</h3>
+<pre><code class="language-python">            dict(
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>dict(</code>.</p>
+<h3>Line 492</h3>
+<pre><code class="language-python">                families=list(families), together=together, permute=permute,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>families</code> now holds the result of <code>list(families), together=together, permute=permute,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 493</h3>
+<pre><code class="language-python">                n_features=n_features or config.N_FEATURES,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_features</code> now holds the result of <code>n_features or config.N_FEATURES,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 494</h3>
+<pre><code class="language-python">                seeds=list(seeds or config.SEEDS),
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seeds</code> now holds the result of <code>list(seeds or config.SEEDS),</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 495</h3>
+<pre><code class="language-python">                n_splits=n_splits or config.N_SPLITS,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_splits</code> now holds the result of <code>n_splits or config.N_SPLITS,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 496</h3>
+<pre><code class="language-python">                group_by=group_by,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>group_by</code> now holds the result of <code>group_by,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 497</h3>
+<pre><code class="language-python">                label=label,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>label</code> now holds the result of <code>label,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 498</h3>
+<pre><code class="language-python">                frozen_baseline=config.BASELINE,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>frozen_baseline</code> now holds the result of <code>config.BASELINE,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 499</h3>
+<pre><code class="language-python">            ),
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>),</code>.</p>
+<h3>Line 500</h3>
+<pre><code class="language-python">            indent=1,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>indent</code> now holds the result of <code>1,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 501</h3>
+<pre><code class="language-python">        )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 502</h3>
+<pre><code class="language-python">    )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 504</h3>
+<pre><code class="language-python">    print(&quot;\n&quot; + &quot;=&quot; * 70)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print("\n" + "=" * 70)</code>.</p>
+<h3>Line 505</h3>
+<pre><code class="language-python">    cols = [&quot;experiment&quot;, &quot;n_columns&quot;, &quot;r2&quot;, &quot;d_r2&quot;, &quot;spearman&quot;, &quot;d_spearman&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Δ Spearman vs the baseline arm in the same run — the number that decides if a family helped.</p>
+<h3>Line 506</h3>
+<pre><code class="language-python">            &quot;selected_from_family&quot;]
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>"selected_from_family"]</code>.</p>
+<h3>Line 507</h3>
+<pre><code class="language-python">    print(table[cols].to_string(index=False, float_format=lambda v: f&quot;{v:9.4f}&quot;))
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(table[cols].to_string(index=False, float_format=lambda v: f"{v:9.4f}"))</code>.</p>
+<h3>Line 508</h3>
+<pre><code class="language-python">    print(f&quot;\nWrote {out}&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(f"\nWrote {out}")</code>.</p>
+<h3>Line 509</h3>
+<pre><code class="language-python">    print(
+</code></pre>
+<p><strong>Plain English:</strong> Show a message on the screen so a human can watch progress: <code>print(</code>.</p>
+<h3>Line 510</h3>
+<pre><code class="language-python">        f&quot;Frozen reference: R2 {config.BASELINE['r2']:.4f}, &quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"Frozen reference: R2 {config.BASELINE['r2']:.4f}, "</code>.</p>
+<h3>Line 511</h3>
+<pre><code class="language-python">        f&quot;rho {config.BASELINE['spearman']:.4f}&quot;
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>f"rho {config.BASELINE['spearman']:.4f}"</code>.</p>
+<h3>Line 512</h3>
+<pre><code class="language-python">    )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 513</h3>
+<pre><code class="language-python">    return table
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>table</code>.</p>
+<h3>Line 516</h3>
+<pre><code class="language-python">def main(argv=None) -&gt; int:
+</code></pre>
+<p><strong>Plain English:</strong> Defines a reusable recipe named <code>main</code>. Inputs in parentheses: <code>argv=None</code>. Returns type hint: int. Nothing runs yet until something <em>calls</em> <code>main(...)</code>.</p>
+<h3>Line 517</h3>
+<pre><code class="language-python">    ap = argparse.ArgumentParser(description=__doc__.split(&quot;\n&quot;)[0])
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>ap</code> now holds the result of <code>argparse.ArgumentParser(description=__doc__.split("\n")[0])</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 518</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--families&quot;, nargs=&quot;*&quot;, default=[], choices=ALL)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--families", nargs="*", default=[], choices=ALL)</code>.</p>
+<h3>Line 519</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--together&quot;, action=&quot;store_true&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--together", action="store_true",</code>.</p>
+<h3>Line 520</h3>
+<pre><code class="language-python">                    help=&quot;stack the families instead of testing each alone&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>help</code> now holds the result of <code>"stack the families instead of testing each alone")</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 521</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--permute&quot;, action=&quot;store_true&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--permute", action="store_true",</code>.</p>
+<h3>Line 522</h3>
+<pre><code class="language-python">                    help=&quot;also run a row-shuffled control for each family&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>help</code> now holds the result of <code>"also run a row-shuffled control for each family")</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 523</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--baseline-only&quot;, action=&quot;store_true&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--baseline-only", action="store_true")</code>.</p>
+<h3>Line 524</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--n-features&quot;, type=int, default=None)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--n-features", type=int, default=None)</code>.</p>
+<h3>Line 525</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--seeds&quot;, type=int, nargs=&quot;*&quot;, default=None)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--seeds", type=int, nargs="*", default=None)</code>.</p>
+<h3>Line 526</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--folds&quot;, type=int, default=None)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--folds", type=int, default=None)</code>.</p>
+<h3>Line 527</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--tag&quot;, default=None,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--tag", default=None,</code>.</p>
+<h3>Line 528</h3>
+<pre><code class="language-python">                    help=&quot;results/ablation_&lt;tag&gt;.csv; reruns append to it&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>help</code> now holds the result of <code>"results/ablation_&lt;tag&gt;.csv; reruns append to it")</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 529</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--force&quot;, action=&quot;store_true&quot;,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--force", action="store_true",</code>.</p>
+<h3>Line 530</h3>
+<pre><code class="language-python">                    help=&quot;recompute experiments already in the results file&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>help</code> now holds the result of <code>"recompute experiments already in the results file")</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 531</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--label&quot;, default=None,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--label", default=None,</code>.</p>
+<h3>Line 532</h3>
+<pre><code class="language-python">                    help=&quot;use an alternative target from data/interim/labels/&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>help</code> now holds the result of <code>"use an alternative target from data/interim/labels/")</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 533</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--time-budget&quot;, type=float, default=None,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--time-budget", type=float, default=None,</code>.</p>
+<h3>Line 534</h3>
+<pre><code class="language-python">                    help=&quot;stop cleanly after this many seconds; re-run to resume&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>help</code> now holds the result of <code>"stop cleanly after this many seconds; re-run to resume")</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 535</h3>
+<pre><code class="language-python">    ap.add_argument(&quot;--group&quot;, dest=&quot;group_by&quot;, choices=list(GROUP_CHOICES),
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>ap.add_argument("--group", dest="group_by", choices=list(GROUP_CHOICES),</code>.</p>
+<h3>Line 536</h3>
+<pre><code class="language-python">                    default=None,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>default</code> now holds the result of <code>None,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 537</h3>
+<pre><code class="language-python">                    help=&quot;hold out whole genes (or 5 kb bins) instead of rows -- &quot;
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>help</code> now holds the result of <code>"hold out whole genes (or 5 kb bins) instead of rows -- "</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 538</h3>
+<pre><code class="language-python">                         &quot;required before believing any positional family&quot;)
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>"required before believing any positional family")</code>.</p>
+<h3>Line 539</h3>
+<pre><code class="language-python">    args = ap.parse_args(argv)
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>args</code> now holds the result of <code>ap.parse_args(argv)</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 541</h3>
+<pre><code class="language-python">    families = [] if args.baseline_only else args.families
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>families</code> now holds the result of <code>[] if args.baseline_only else args.families</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 542</h3>
+<pre><code class="language-python">    run(
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>run(</code>.</p>
+<h3>Line 543</h3>
+<pre><code class="language-python">        families,
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>families,</code>.</p>
+<h3>Line 544</h3>
+<pre><code class="language-python">        together=args.together,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>together</code> now holds the result of <code>args.together,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 545</h3>
+<pre><code class="language-python">        permute=args.permute,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>permute</code> now holds the result of <code>args.permute,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 546</h3>
+<pre><code class="language-python">        n_features=args.n_features,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_features</code> now holds the result of <code>args.n_features,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 547</h3>
+<pre><code class="language-python">        seeds=tuple(args.seeds) if args.seeds else None,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>seeds</code> now holds the result of <code>tuple(args.seeds) if args.seeds else None,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 548</h3>
+<pre><code class="language-python">        n_splits=args.folds,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>n_splits</code> now holds the result of <code>args.folds,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 549</h3>
+<pre><code class="language-python">        tag=args.tag,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>tag</code> now holds the result of <code>args.tag,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 550</h3>
+<pre><code class="language-python">        force=args.force,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>force</code> now holds the result of <code>args.force,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 551</h3>
+<pre><code class="language-python">        group_by=args.group_by,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>group_by</code> now holds the result of <code>args.group_by,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 552</h3>
+<pre><code class="language-python">        time_budget=args.time_budget,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>time_budget</code> now holds the result of <code>args.time_budget,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 553</h3>
+<pre><code class="language-python">        label=args.label,
+</code></pre>
+<p><strong>Plain English:</strong> Store a value: the name <code>label</code> now holds the result of <code>args.label,</code>. Whenever you later write that name, you mean this value.</p>
+<h3>Line 554</h3>
+<pre><code class="language-python">    )
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>)</code>.</p>
+<h3>Line 555</h3>
+<pre><code class="language-python">    return 0
+</code></pre>
+<p><strong>Plain English:</strong> Finish this function and send back: <code>0</code>.</p>
+<h3>Line 558</h3>
+<pre><code class="language-python">if __name__ == &quot;__main__&quot;:
+</code></pre>
+<p><strong>Plain English:</strong> Special gate: this block runs only when you execute <em>this file directly</em> (not when another file imports it). Common pattern for scripts.</p>
+<h3>Line 559</h3>
+<pre><code class="language-python">    sys.exit(main())
+</code></pre>
+<p><strong>Plain English:</strong> Run this instruction: <code>sys.exit(main())</code>.</p>
+<hr />
+<h2>End-of-file checklist</h2>
+<ul>
+<li>[ ] I can explain this file’s job in one sentence</li>
+<li>[ ] I know which lines are ‘settings’ vs ‘real work’</li>
+<li>[ ] I know what I would change if my CSV path differed</li>
+</ul>
+<hr />
+<h2>Concept deep-dives</h2>
+<h3>Same exam protocol as the baseline</h3>
+<p><code>cross_validate</code> is CELL 5 of the baseline, packaged as a function: impute → select 300 → fit champion → score.</p>
+<h3>Grouped CV</h3>
+<p>Guides in the same gene share a neighbourhood. Random folds put the same neighbourhood in train <em>and</em> val → positional features cheat.<br />
+Grouping holds out whole genes/blocks.</p>
+<h3>Permutation floor</h3>
+<p>Shuffle Family A’s rows (destroy guide↔feature links) and re-run. If real Δρ ≈ permuted Δρ, Family A didn’t help — you only fitted noise.</p>
+</article>
+<p class="footer">Offline HTML render of <code>08-run-ablation.md</code>. Open in any browser. Use Print → Save as PDF if you want a PDF.</p>
+</div>
+</body>
+</html>

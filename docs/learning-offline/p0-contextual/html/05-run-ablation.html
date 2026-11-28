@@ -1,0 +1,170 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>05-run-ablation — P0 contextual</title><style>
+:root { --bg:#f6f7f9; --card:#fff; --text:#1f2328; --muted:#656d76; --border:#d0d7de; --code-bg:#f0f3f6; --accent:#0969da; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#0d1117; --card:#161b22; --text:#e6edf3; --muted:#8b949e; --border:#30363d; --code-bg:#0d1117; --accent:#2f81f7; }
+}
+* { box-sizing: border-box; }
+body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); background:var(--bg); }
+.wrap { max-width:820px; margin:0 auto; padding:1.25rem 1rem 4rem; }
+nav.top { position:sticky; top:0; z-index:5; background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--border); margin:-1.25rem -1rem 1.5rem; padding:.75rem 1rem; display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
+nav.top a { color:var(--accent); text-decoration:none; font-size:.92rem; }
+nav.top .title { font-weight:600; color:var(--text); margin-right:auto; }
+h1 { font-size:1.55rem; margin-top:0; }
+h2 { font-size:1.22rem; border-bottom:1px solid var(--border); padding-bottom:.3rem; margin-top:2rem; }
+h3 { font-size:1.05rem; margin-top:1.35rem; }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.88em; background:var(--code-bg); border:1px solid var(--border); border-radius:4px; padding:.1em .35em; }
+pre { background:var(--code-bg); border:1px solid var(--border); border-radius:8px; padding:.85rem 1rem; overflow-x:auto; }
+pre code { border:none; background:transparent; padding:0; font-size:.82rem; }
+table { border-collapse:collapse; width:100%; margin:1rem 0; background:var(--card); font-size:.95rem; }
+th,td { border:1px solid var(--border); padding:.45rem .6rem; text-align:left; vertical-align:top; }
+th { background:color-mix(in srgb, var(--card) 80%, var(--border)); }
+blockquote { margin:1rem 0; padding:.4rem .9rem; border-left:4px solid var(--accent); color:var(--muted); background:var(--card); }
+hr { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+.footer { margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--muted); font-size:.9rem; }
+@media print { nav.top { position:static; } pre { white-space:pre-wrap; } }
+</style></head><body><div class="wrap">
+<nav class="top"><a href="index.html">Contents</a><a href="04-a-flank.html">← prev</a><span class="title">05-run-ablation</span><a href="06-human-boundary.html">next →</a></nav>
+<article><h1>P0 #8 — Model harness / <code>run_ablation.py</code> (contextual guide)</h1>
+<p><strong>Source file:</strong> <code>Runjia/sgrna/harness/run_ablation.py</code> (~559 lines)<br />
+<em>(Imports may say <code>sgrna.run_ablation</code> or <code>sgrna.harness.run_ablation</code> depending on reorg/shims.)</em></p>
+<p><strong>Job in the project:</strong> the shared <strong>experiment engine</strong> — same leakage-safe exam protocol as the USE THIS baseline, plus family ablations, grouped CV, permutation floors, and resumable fold checkpoints.</p>
+<hr />
+<h2>Where this sits in the whole pipeline</h2>
+<pre><code class="language-text">BASE matrix (+ optional feature blocks from FEATURE_DIR)
+        │
+        ▼
+  load_dataset(families)     ← joins eng.* columns; tags family_of
+        │
+        ▼
+ ★ cross_validate / run ★
+   impute → select top 300 → champion → score
+        │
+        ▼
+ results/ablation_&lt;tag&gt;.csv
+   spearman, d_spearman, permuted arms, selected counts
+</code></pre>
+<p><strong>Depends on:</strong> <code>config</code> defaults (seeds, 300/400, baseline reference), <code>build_matrix.load_dataset</code>, feature blocks like <code>a_flank</code>.<br />
+<strong>Feeds:</strong> every “did family X help?” table in the report; Jacky scripts import <code>cross_validate</code> / <code>_impute</code> so human numbers use the <strong>same exam rules</strong>.</p>
+<hr />
+<h2>The scientific question in plain English</h2>
+<p>Adding columns is easy. Proving they help — without cheating — is the hard part.</p>
+<p>This harness answers, for one or more feature families:</p>
+<ol>
+<li>Does base+family beat <strong>base alone</strong> under the frozen CV recipe? (<code>d_spearman</code>)  </li>
+<li>Is that gain bigger than a <strong>noise floor</strong> (row-shuffled family columns)?  </li>
+<li>For positional biology, does the gain survive <strong>holding out whole genes/blocks</strong>?</li>
+</ol>
+<p>If Δρ sits inside the permutation band, the family did not earn a write-up — no matter how many of its columns entered the top 300.</p>
+<hr />
+<h2>Two layers: library vs driver</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Functions</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Core exam</strong></td>
+<td><code>selector_params</code>, <code>champion_params</code>, <code>_impute</code>, <code>cross_validate</code></td>
+<td>Same spirit as baseline CELL 5</td>
+</tr>
+<tr>
+<td><strong>Experiment driver</strong></td>
+<td><code>run</code>, <code>load_groups</code>, <code>_permute_families</code>, CLI/<code>main</code></td>
+<td>Decide <em>which</em> matrices to exam and how to log them</td>
+</tr>
+</tbody>
+</table>
+<p>Jacky often imports only the core exam pieces and builds its own matrices.</p>
+<hr />
+<h2>Core exam — <code>cross_validate</code> data flow</h2>
+<pre><code class="language-text">For each seed:
+  For each fold (random KFold OR grouped_folds):
+      skip if already in folds_&lt;tag&gt;.csv
+      impute with TRAIN medians only
+      fit selector → top n_features (default 300)
+      count how many selected columns are non-&quot;base&quot;
+      fit champion (optional champion_overrides for HP probes)
+      score val → append checkpoint row
+Summarise mean ± sd across seed means  (keys use &quot;sd&quot;, not &quot;std&quot;)
+</code></pre>
+<p><strong>Outputs of one call:</strong> dict with <code>folds</code>, <code>per_seed</code>, <code>summary</code>, <code>complete</code>, <code>selected.engineered</code>, optional OOF predictions.</p>
+<p><strong>Why checkpoints?</strong> A flank-family 5-seed run can outlast a Colab session. Finished <code>(seed, fold)</code> pairs are skipped on resume.</p>
+<hr />
+<h2>Grouped CV — when random folds lie</h2>
+<pre><code class="language-python">def grouped_folds(groups, n_splits, seed): ...
+def load_groups(ids, by=&quot;gene&quot;|&quot;bin100k&quot;|...): ...
+</code></pre>
+<p><strong>Problem:</strong> ~20 guides/gene share a locus. Random splits put the same neighborhood in train <em>and</em> val → positional features (supercoiling, ori distance, …) can memorize “this region scores ~X.”</p>
+<p><strong>Fix:</strong> hold out whole genes or chromosome bins/<code>arc5</code>.<br />
+<strong>Rule of thumb:</strong> report positional families under grouped CV before believing them. Family A’s sequence flanks are less about locus ID, but human gene-grouped checks still matter for honesty.</p>
+<hr />
+<h2>Permutation floor — <code>_permute_families</code></h2>
+<p>Shuffle <strong>rows</strong> of columns belonging to named families (keep column structure; break guide↔feature pairing). Re-run CV.  </p>
+<p><strong>Interpretation:</strong> real Δρ should clearly beat permuted Δρ. Otherwise you fitted noise that happens to look like a family.</p>
+<hr />
+<h2>Driver — <code>run(families, …)</code></h2>
+<p>Always includes a <code>"baseline"</code> arm (no engineered families). Then:</p>
+<ul>
+<li>one arm per family, <strong>or</strong> one stacked arm if <code>together=True</code>  </li>
+<li>optional <code>"(permuted)"</code> twin when <code>permute=True</code>  </li>
+<li>writes/appends <code>results/ablation_&lt;tag&gt;.csv</code>  </li>
+<li>computes <code>d_r2</code> / <code>d_spearman</code> vs the baseline row in that table  </li>
+<li>saves <code>ablation_&lt;tag&gt;_settings.json</code> (seeds, group_by, frozen <code>config.BASELINE</code>, …)</li>
+</ul>
+<p><strong>CLI / notebook:</strong> <code>nb.ablate(["a_flank"])</code> or <code>python -m … --families a_flank --permute --group gene</code>.</p>
+<hr />
+<h2>Mental link to the USE THIS baseline</h2>
+<table>
+<thead>
+<tr>
+<th>Baseline script</th>
+<th>Harness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CELL 5 <code>run_cv_for_seed</code></td>
+<td><code>cross_validate</code></td>
+</tr>
+<tr>
+<td>Hard-coded Drive CSV</td>
+<td><code>load_dataset</code> joins blocks</td>
+</tr>
+<tr>
+<td>No gene grouping</td>
+<td><code>grouped_folds</code> + <code>load_groups</code></td>
+</tr>
+<tr>
+<td>No permutation arm</td>
+<td><code>_permute_families</code></td>
+</tr>
+<tr>
+<td>No resume</td>
+<td><code>folds_&lt;tag&gt;.csv</code></td>
+</tr>
+</tbody>
+</table>
+<p>Hyperparameters intentionally match so <strong>Δρ vs baseline is apples-to-apples</strong>.</p>
+<hr />
+<h2>How Jacky / later code use this</h2>
+<ul>
+<li>Human ladder calls <code>cross_validate</code> on regenerated base / base+A matrices  </li>
+<li>Discovery / H6 / twin scripts reuse <code>_impute</code> + <code>cross_validate</code> (sometimes with HP overrides)  </li>
+<li>Reading results: trust <code>d_spearman</code> only alongside permutation + appropriate grouping  </li>
+</ul>
+<hr />
+<h2>Checklist</h2>
+<ul>
+<li>[ ] I can explain train-only impute + select in one sentence  </li>
+<li>[ ] I know what <code>d_spearman</code> compares against  </li>
+<li>[ ] I know when grouped CV is required  </li>
+<li>[ ] I know what a permutation floor is for  </li>
+<li>[ ] I know fold checkpoints let long runs resume  </li>
+</ul></article>
+<p class="footer">Contextual P0 guide · Print → Save as PDF if needed.</p>
+</div></body></html>
